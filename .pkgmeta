@@ -1,0 +1,10 @@
+package-as: VanillaVarnish
+ignore:
+  - tests
+  - tools
+  - dist
+  - .test-deps
+  - .gitignore
+  - .pkgmeta
+  - .gitattributes
+  - AGENTS.md

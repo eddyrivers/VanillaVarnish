@@ -1,0 +1,153 @@
+local ADDON, VV = ...
+
+VV.Nameplates, VV.QuestTracker, VV.Party = {}, {}, {}
+VV.moduleOrder = { "nameplates", "questTracker", "party" }
+VV.moduleLabels = { nameplates = "Nameplates", questTracker = "Quest tracker", party = "Party frames" }
+local legacy = { nameplates = "NameplateTweaks", questTracker = "QuestTrackerOrganizer", party = "PartyTweaks" }
+local events = CreateFrame("Frame")
+local pendingCategory
+
+function VV.Print(message)
+    print("|cff80cfffVanillaVarnish:|r " .. tostring(message):gsub("|", "||"))
+end
+
+function VV.Copy(value)
+    if type(value) ~= "table" then return value end
+    local result = {}
+    for key, item in pairs(value) do result[key] = VV.Copy(item) end
+    return result
+end
+
+function VV.IsLegacyLoaded(name)
+    local fn = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
+    if not fn then return false end
+    local ok, loaded = pcall(fn, name)
+    return ok and loaded == true
+end
+
+function VV.IsModuleEnabled(key)
+    return VV.db and VV.db.modules[key] == true and not VV.conflicts[key]
+end
+
+function VV.InitDB()
+    if type(VanillaVarnishDB) ~= "table" then VanillaVarnishDB = {} end
+    VV.db = VanillaVarnishDB
+    local db = VV.db
+    if type(db.modules) ~= "table" then db.modules = {} end
+    for _, key in ipairs(VV.moduleOrder) do
+        if type(db.modules[key]) ~= "boolean" then db.modules[key] = true end
+    end
+    -- Import each section only when it has no settings of its own. Never alias
+    -- legacy tables or replace preferences on subsequent loads.
+    if type(db.nameplates) ~= "table" then
+        db.nameplates = type(NameplateTweaksDB) == "table" and VV.Copy(NameplateTweaksDB) or {}
+    end
+    if type(db.nameplates.swingTimers) ~= "table" then
+        db.nameplates.swingTimers = type(NameplateSwingTimersDB) == "table" and VV.Copy(NameplateSwingTimersDB) or {}
+    end
+    if type(db.questTracker) ~= "table" then
+        db.questTracker = type(QuestTrackerOrganizerDB) == "table" and VV.Copy(QuestTrackerOrganizerDB) or {}
+    end
+    if type(db.party) ~= "table" then db.party = {} end
+    for _, key in ipairs({ "enabled", "completedFirst" }) do
+        if type(db.questTracker[key]) ~= "boolean" then db.questTracker[key] = key == "enabled" end
+    end
+    if type(db.questTracker.collapsed) ~= "table" then db.questTracker.collapsed = {} end
+    for _, key in ipairs({ "buffs", "classColors" }) do
+        if type(db.party[key]) ~= "boolean" then db.party[key] = true end
+    end
+    db.schemaVersion = 1
+    VV.conflicts = {}
+    for key, name in pairs(legacy) do
+        if VV.IsLegacyLoaded(name) then VV.conflicts[key] = name end
+    end
+    VV.swingConflict = VV.IsLegacyLoaded("NameplateSwingTimers")
+end
+
+function VV.RefreshModule(key)
+    local module = key == "nameplates" and VV.Nameplates
+        or key == "questTracker" and VV.QuestTracker or VV.Party
+    if module.RefreshModule then module.RefreshModule() end
+    if VV.RefreshOptions then VV.RefreshOptions() end
+end
+
+function VV.SetModuleEnabled(key, enabled)
+    if not VV.db or not VV.moduleLabels[key] or type(enabled) ~= "boolean" then return false end
+    VV.db.modules[key] = enabled
+    VV.RefreshModule(key)
+    return true
+end
+
+function VV.OpenSettingsCategory(category)
+    if InCombatLockdown() then
+        pendingCategory = category
+        VV.Print("Settings will open when combat ends.")
+        return
+    end
+    pendingCategory = nil
+    if securecallfunction then securecallfunction(Settings.OpenToCategory, category:GetID())
+    else Settings.OpenToCategory(category:GetID()) end
+end
+
+function VV.OpenOptions(page)
+    VV.RegisterOptions()
+    if page == "nameplates" then VV.Nameplates.OpenOptions(); return end
+    if page == "questTracker" then VV.QuestTracker.OpenOptions(); return end
+    VV.OpenSettingsCategory(page == "party" and VV.partyCategory or VV.rootCategory)
+end
+
+local function Status()
+    for _, key in ipairs(VV.moduleOrder) do
+        VV.Print(VV.moduleLabels[key] .. ": " .. (VV.db.modules[key] and "on" or "off")
+            .. (VV.conflicts[key] and "; waiting for " .. VV.conflicts[key] .. " to be disabled and /reload" or ""))
+    end
+end
+
+SLASH_VANILLAVARNISH1 = "/vv"
+SLASH_VANILLAVARNISH2 = "/vanillavarnish"
+SlashCmdList.VANILLAVARNISH = function(message)
+    if not VV.db then return end
+    local command, rest = (message or ""):match("^%s*(%S*)%s*(.-)%s*$")
+    command = command:lower()
+    local key = ({nameplates = "nameplates", nameplate = "nameplates", tracker = "questTracker",
+        quests = "questTracker", party = "party"})[command]
+    if command == "" or command == "options" or command == "settings" then VV.OpenOptions(); return end
+    if command == "status" then Status(); return end
+    if key then
+        local mode = rest:lower()
+        if mode == "on" or mode == "off" or mode == "toggle" then
+            VV.SetModuleEnabled(key, mode == "on" or mode == "toggle" and not VV.db.modules[key])
+            Status()
+        elseif rest == "" or mode == "options" then VV.OpenOptions(key)
+        else
+            local module = key == "nameplates" and VV.Nameplates
+                or key == "questTracker" and VV.QuestTracker or VV.Party
+            module.HandleSlash(rest)
+        end
+        return
+    end
+    VV.Print("/vv opens settings. /vv nameplates, /vv tracker, /vv party open module pages.")
+    VV.Print("/vv <module> on | off | toggle controls the whole module and preserves its feature settings.")
+    VV.Print("/vv status; /nt, /qto, and /pt retain their feature commands when the originals are disabled.")
+end
+
+events:RegisterEvent("ADDON_LOADED")
+events:RegisterEvent("PLAYER_LOGIN")
+events:RegisterEvent("PLAYER_REGEN_ENABLED")
+events:SetScript("OnEvent", function(_, event, name)
+    if event == "ADDON_LOADED" and name == ADDON then
+        if not VV.db then VV.InitDB() end
+    elseif event == "PLAYER_LOGIN" then
+        VV.RegisterOptions()
+        VV.Print("Loaded. Type /vv to configure Nameplates, Quest tracker, and Party frames.")
+        for _, key in ipairs(VV.moduleOrder) do
+            if VV.conflicts[key] then
+                VV.Print("Imported settings where available. Disable " .. VV.conflicts[key]
+                    .. " and /reload to activate " .. VV.moduleLabels[key] .. ".")
+            end
+        end
+        if VV.swingConflict then VV.Print("Disable NameplateSwingTimers and /reload to activate bundled swing timers.") end
+    elseif event == "PLAYER_REGEN_ENABLED" and pendingCategory then
+        VV.OpenSettingsCategory(pendingCategory)
+    end
+end)

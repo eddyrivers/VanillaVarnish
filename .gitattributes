@@ -1,0 +1,11 @@
+* text=auto
+*.lua text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.toc text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.pkgmeta text eol=lf
+*.tga binary
+*.ttf binary
+*.zip binary

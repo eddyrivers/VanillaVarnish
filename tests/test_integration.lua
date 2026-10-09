@@ -1,0 +1,62 @@
+local vv = VV_TEST_NS
+Mock.Event("ADDON_LOADED", "VanillaVarnish")
+Mock.Event("PLAYER_LOGIN")
+assert(vv.Nameplates ~= vv.QuestTracker and vv.Party ~= vv.Nameplates)
+assert(vv.db.nameplates == vv.Nameplates.tweaksDB and vv.db.questTracker == vv.QuestTracker.db)
+assert(vv.Nameplates.db == vv.db.nameplates.swingTimers)
+assert(#Mock.categories == 7 and Mock.categories[1].name == "VanillaVarnish")
+for index = 2, #Mock.categories do assert(Mock.categories[index].parent == vv.rootCategory) end
+local n = vv.Nameplates
+local plate = Mock.Plate("nameplate1")
+Mock.plates.target, Mock.units.target, Mock.units.nameplate1 = plate, true, true
+n.SetRangeSpell("damage", "Moonfire")
+Mock.rangeResult = false
+Mock.Event("NAME_PLATE_UNIT_ADDED", "nameplate1")
+Mock.Event("PLAYER_TARGET_CHANGED")
+Mock.Event("PLAYER_SWING", 3, Enum.PlayerSwingType.MainHand)
+local stack = assert(Mock.Stack(plate))
+assert(plate.UnitFrame:GetAlpha() == 0.5 and stack:IsShown())
+n.SetFeature("markers", false)
+n.SetBarValue("offhand", "enabled", false)
+local saved = vv.Copy(vv.db.nameplates)
+SlashCmdList.VANILLAVARNISH("nameplates off")
+assert(not stack:IsShown() and plate.UnitFrame:GetAlpha() == 1)
+assert(n.tweaksDB.damage == "Moonfire" and not n.tweaksDB.markers and not n.db.bars.offhand.enabled)
+Mock.Tick(1)
+assert(plate.UnitFrame:GetAlpha() == 1 and not stack:IsShown())
+-- Native alpha updates pass through the old post-hook while disabled.
+plate.UnitFrame:SetAlpha(0.7)
+assert(plate.UnitFrame:GetAlpha() == 0.7)
+n.SetFeature("rangeEnabled", false)
+SlashCmdList.VANILLAVARNISH("nameplates on")
+assert(plate.UnitFrame:GetAlpha() == 0.7 and not n.tweaksDB.rangeEnabled and not n.tweaksDB.markers)
+n.SetFeature("rangeEnabled", true)
+assert(math.abs(plate.UnitFrame:GetAlpha() - 0.35) < 0.0001)
+assert(n.db.width == saved.swingTimers.width and not n.db.bars.offhand.enabled)
+vv.QuestTracker.SetOption("completedFirst", true)
+vv.SetModuleEnabled("questTracker", false)
+assert(vv.QuestTracker.db.completedFirst and vv.QuestTracker.db.enabled)
+vv.QuestTracker.SetOption("enabled", false)
+vv.SetModuleEnabled("questTracker", true)
+assert(not vv.QuestTracker.db.enabled and vv.QuestTracker.db.completedFirst)
+vv.SetModuleEnabled("party", false)
+vv.Party.SetOption("buffs", false)
+vv.SetModuleEnabled("party", true)
+assert(not vv.db.party.buffs and vv.db.party.classColors)
+local openCalls = Mock.openCalls or 0
+Mock.lockdown = true
+SlashCmdList.VANILLAVARNISH("")
+SlashCmdList.QUESTTRACKERORGANIZER("")
+SlashCmdList.PARTYTWEAKS("options")
+assert((Mock.openCalls or 0) == openCalls)
+Mock.lockdown = false
+Mock.Event("PLAYER_REGEN_ENABLED")
+assert(Mock.openCalls == openCalls + 1 and vv.partyPanel:IsShown())
+SlashCmdList.VANILLAVARNISH("")
+assert(vv.optionsPanel:IsShown())
+local check = vv.optionControls.nameplates.button
+check:SetChecked(false); check.scripts.OnClick(check)
+assert(not vv.db.modules.nameplates and not stack:IsShown())
+local db = vv.db
+vv.InitDB()
+assert(vv.db == db and not vv.db.modules.nameplates and not vv.db.party.buffs)

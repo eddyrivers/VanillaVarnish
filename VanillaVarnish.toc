@@ -1,0 +1,22 @@
+## Interface: 16001
+## Title: VanillaVarnish
+## Notes: Modular improvements to Blizzard nameplates, quest tracking, and party frames.
+## Author: Ian
+## Version: 1.0.5
+## SavedVariablesPerCharacter: VanillaVarnishDB
+## OptionalDeps: Blizzard_ObjectiveTracker, QuestieDB, Questie, NameplateTweaks, QuestTrackerOrganizer, PartyTweaks, NameplateSwingTimers
+
+Core.lua
+Modules\Nameplates\QuestDrops.lua
+Modules\Nameplates\NameplateTweaks.lua
+Modules\Nameplates\SwingTimers\Options.lua
+Modules\Nameplates\SwingTimers\Bars.lua
+Modules\Nameplates\SwingTimers\PreviewNameplate.lua
+Modules\Nameplates\SwingTimers\SettingsUI.lua
+Modules\Nameplates\Settings.lua
+Modules\Nameplates\SwingTimers\NameplateSwingTimers.lua
+Modules\QuestTracker\Model.lua
+Modules\QuestTracker\QuestTrackerOrganizer.lua
+Modules\QuestTracker\Settings.lua
+Modules\Party\PartyTweaks.lua
+Settings.lua
