@@ -3,7 +3,7 @@ Mock.auras.party1 = {{icon = 123, auraInstanceID = 1, applications = 2, duration
 Mock.Event("PLAYER_LOGIN")
 local row = assert(Mock.Row(member))
 local icons = Mock.Icons(row)
-assert(member:GetHeight() == 69 and Mock.layouts == 1)
+assert(member:GetHeight() == 74 and Mock.layouts == 1)
 assert(member.HealthBarContainer.HealthBar.color[1] == RAID_CLASS_COLORS.MAGE.r)
 assert(member.HealthBarContainer.HealthBar.barTexture.desaturated == true)
 assert(row.point[1] == "TOPLEFT" and row.point[2] == member.ManaBar and row.point[3] == "BOTTOMLEFT")
@@ -23,7 +23,7 @@ Mock.Event("UNIT_AURA", "party1")
 assert(icons[1].texture.textureValue == protected and icons[1].count.text == "3")
 assert(icons[1].cooldown.durationObject == "native duration")
 assert(GameTooltip.id == 2)
-assert(member:GetHeight() == 69)
+assert(member:GetHeight() == 74)
 
 -- Native resets are recolored; a new member's protected layout waits.
 member.HealthBarContainer.HealthBar:SetStatusBarColor(0, 1, 0)
@@ -33,10 +33,10 @@ assert(member.HealthBarContainer.HealthBar.color[1] == RAID_CLASS_COLORS.MAGE.r)
 assert(Mock.Row(second) == nil)
 Mock.combat = false
 Mock.Event("PLAYER_REGEN_ENABLED")
-assert(Mock.Row(second) and second:GetHeight() == 69)
+assert(Mock.Row(second) and second:GetHeight() == 74)
 local frameCount = #Mock.frames
 Mock.Tick(1)
-assert(#Mock.frames == frameCount and member:GetHeight() == 69)
+assert(#Mock.frames == frameCount and member:GetHeight() == 74)
 
 -- A pooled frame is rebound without stale buffs/class colors.
 Mock.classes.party1 = "WARRIOR"

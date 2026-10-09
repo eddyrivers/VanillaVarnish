@@ -46,16 +46,16 @@ function VV.RegisterOptions()
 
     local party = CreateFrame("Frame", nil, UIParent)
     party:Hide()
-    Heading(party, "Party frames", "Buffs and class colors for Blizzard's portrait-style party frames.")
+    Heading(party, "Party frames", "Aura enhancements for portrait-style party frames, and class colors for both party-frame styles.")
     Check(party, "party.buffs", "Show party buffs", -90,
         function() return VV.db.party.buffs end,
         function(value) VV.Party.SetOption("buffs", value) end,
-        "Show the first eight helpful auras, with stack counts, cooldown swipes, and hover tooltips. Adds room beneath the mana bar.")
+        "Only shown when 'Use raid-style party frames' is OFF. Shows up to eight buffs beneath mana: yours come first and are 5px larger. Native debuffs you can dispel are doubled in size with type-colored borders. Includes counts, cooldowns, and tooltips.")
     Check(party, "party.classColors", "Class-colored health bars", -134,
         function() return VV.db.party.classColors end,
         function(value) VV.Party.SetOption("classColors", value) end,
-        "Color party health bars by class while preserving native artwork and bar height.")
-    UI.Label(party, "Enable Party frames on the VanillaVarnish main page to apply these features.\nUse portrait-style party frames in Edit Mode. Raid-style frames are not modified.\nBuff rows hide immediately; protected spacing and color restoration wait for combat to end.\n/pt status shows detected frames and any refused client API call.",
+        "Color portrait-style and raid-style party health bars by class while preserving native artwork and bar height.")
+    UI.Label(party, "Enable Party frames on the VanillaVarnish main page to apply these features.\nBuffs and larger dispellable debuffs apply only with 'Use raid-style party frames' OFF.\nClass colors apply to both styles. Protected restoration waits for combat to end.\n/pt status shows detected frames and any refused client API call.",
         16, -204, "GameFontHighlightSmall")
     VV.partyCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, party, "Party frames")
     Settings.RegisterAddOnCategory(VV.partyCategory)

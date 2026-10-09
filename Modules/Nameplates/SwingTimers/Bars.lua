@@ -52,6 +52,11 @@ local function NewBar(parent, index)
 end
 function ns.CreateStack(parent)
     local stack = CreateFrame("Frame", nil, parent)
+    -- Native target/combat nameplates animate their scale. Keep timer sizes
+    -- and spacing at the user's UI scale instead of inheriting that animation.
+    stack:SetIgnoreParentScale(true)
+    stack.uiScale = UIParent:GetEffectiveScale()
+    stack:SetScale(stack.uiScale)
     stack:EnableMouse(false)
     stack:SetRoundLayoutToNearestPixel(true)
     stack:SetFrameLevel(parent:GetFrameLevel() + 10)
@@ -227,7 +232,21 @@ function ns.CastClearance(frame, anchor, stack)
 end
 
 function ns.LayoutStack(stack, shown, anchor, clearance)
+    local uiScale = UIParent:GetEffectiveScale()
+    if stack.uiScale ~= uiScale then stack:SetScale(uiScale); stack.uiScale = uiScale end
     ns.StyleStack(stack)
+    -- Combat can alternate readable and restricted cast geometry. Retain the
+    -- placement for this anchor/style during combat rather than oscillating
+    -- between live coordinates and the dimension fallback every poll.
+    local inCombat = ns.Known(InCombatLockdown()) == true or ns.Known(UnitAffectingCombat("player")) == true
+    if not inCombat or stack.clearanceAnchor ~= anchor or stack.clearanceStyle ~= stack.styleVersion
+        or stack.clearancePixel ~= stack.pixel or stack.clearanceUnit ~= stack.unitToken then
+        stack.clearance = clearance or 0
+        stack.clearanceAnchor, stack.clearanceStyle = anchor, stack.styleVersion
+        stack.clearancePixel = stack.pixel
+        stack.clearanceUnit = stack.unitToken
+    end
+    clearance = stack.clearance
     local first
     for _, key in ipairs(ns.order) do if shown[key] then first = stack.bars[key]; break end end
     local offsetY = stack.yOffset
@@ -244,7 +263,9 @@ function ns.LayoutStack(stack, shown, anchor, clearance)
     for _, key in ipairs(ns.order) do
         local bar = stack.bars[key]
         if shown[key] then
-            local offset = previous and bottom + previous.visualPadding + stack.gap + bar.visualPadding or 0
+            -- The setting measures the gap between the bar borders. Decorative
+            -- spark/text bounds must not silently add to the requested gap.
+            local offset = previous and bottom + stack.gap or 0
             if bar.offset ~= offset then
                 bar:ClearAllPoints(); bar:SetPoint("TOPLEFT", stack, "TOPLEFT", 0, -offset); bar.offset = offset
             end

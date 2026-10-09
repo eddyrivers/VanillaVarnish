@@ -315,14 +315,18 @@ local function SetSpell(kind, input)
         db[kind] = nil
         Print(kind .. " range fading disabled.")
     else
-        local name, id, maxRange = SpellName(input)
+        local name, id = SpellName(input)
         if not name then Print("Unknown spell. Use its full name, spell ID, or shift-click a spell link.") return end
         local harmful = SafeCall(C_Spell and C_Spell.IsSpellHarmful or IsHarmfulSpell, id or name)
         local helpful = SafeCall(C_Spell and C_Spell.IsSpellHelpful or IsHelpfulSpell, id or name)
         if (kind == "damage" and harmful == false) or (kind == "friendly" and helpful == false) then
             Print(name .. " is not a " .. (kind == "damage" and "harmful" or "friendly") .. " spell.") return
         end
-        if maxRange and maxRange <= 0 then Print(name .. " has no usable spell range. Choose a targeted spell.") return end
+        -- Melee spells report maxRange=0: the range API still checks their
+        -- native combat reach. Spell metadata is not a range verdict.
+        if SafeCall(C_Spell and C_Spell.IsSpellPassive or IsPassiveSpell, id or name) == true then
+            Print(name .. " is passive. Choose a targeted spell.") return
+        end
         db[kind] = name
         Print(string.format("%s range spell set to %s. Out-of-range opacity: %g%%.", kind, name, db.rangeOpacity * 100))
     end

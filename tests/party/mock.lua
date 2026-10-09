@@ -6,6 +6,9 @@ function Widget:SetHeight(h)
     self.height = h
 end
 function Widget:GetHeight() return self.height or 53 end
+function Widget:GetWidth() return self.width or 14 end
+function Widget:GetNumPoints() return self.point and 1 or 0 end
+function Widget:GetPoint() return unpack(self.point) end
 function Widget:GetLeft() return self.left end
 function Widget:GetEffectiveScale() return self.scale or (self.parent and self.parent:GetEffectiveScale()) or 1 end
 function Widget:SetFrameLevel(level) self.level = level end
@@ -13,7 +16,9 @@ function Widget:GetFrameLevel() return self.level or 2 end
 function Widget:SetPoint(...) self.point = {...} end
 function Widget:ClearAllPoints() self.point = nil end
 function Widget:SetAllPoints() end
-function Widget:SetColorTexture() end
+function Widget:SetColorTexture(...) self.color = {...} end
+function Widget:SetVertexColor(...) self.color = {...} end
+function Widget:GetVertexColor() return unpack(self.color or {1, 1, 1, 1}) end
 function Widget:SetTexCoord() end
 function Widget:SetReverse() end
 function Widget:SetDrawEdge() end
@@ -55,8 +60,9 @@ RAID_CLASS_COLORS = {MAGE = {r = 0.25, g = 0.78, b = 0.92}, WARRIOR = {r = 0.78,
 C_Timer = {After = function(_, fn) Mock.pending = fn end}
 C_UnitAuras = {}
 function C_UnitAuras.GetUnitAuras(unit, filter, max)
-    assert(filter == "HELPFUL" and max == 8)
+    assert((filter == "HELPFUL" or filter == "HARMFUL|RAID") and max == 40)
     if Mock.refuse then error("aura access refused") end
+    if filter == "HARMFUL|RAID" then return Mock.dispellable and Mock.dispellable[unit] or {} end
     return Mock.auras[unit] or {}
 end
 function C_UnitAuras.GetAuraApplicationDisplayCount() return "3" end
@@ -99,13 +105,13 @@ end
 function Mock.Tick(delta) for _, frame in ipairs(Mock.frames) do if frame.scripts.OnUpdate then frame.scripts.OnUpdate(frame, delta) end end end
 function Mock.Row(member)
     for _, frame in ipairs(Mock.frames) do
-        if frame.parent == member and frame.width == 126 then return frame end
+        if frame.parent == member and frame.width == 166 then return frame end
     end
 end
 function Mock.Icons(row)
     local icons = {}
     for _, frame in ipairs(Mock.frames) do
-        if frame.parent == row and frame.width == 14 then icons[#icons + 1] = frame end
+        if frame.parent == row and frame.texture then icons[#icons + 1] = frame end
     end
     return icons
 end

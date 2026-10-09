@@ -14,7 +14,7 @@ Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. The main page en
 
 The Nameplates page has separate **Range check**, **Quest icons**, and **Swing timers** switches. Their detailed pages sit under the same VanillaVarnish menu. Turning the entire module off restores opacity and hides its quest icons and world swing bars without changing spell choices, feature switches, or bar settings. The settings preview remains available for configuration.
 
-Swing-bar spacing reserves the bounds of enabled sparks, labels, and their outlines, so these decorations cannot overlap neighboring swing bars. Hidden bars collapse without gaps; swing progress does not change spacing. Nonnegative vertical offsets are minimum distances: the stack moves farther down when necessary to clear the native cast container and its artwork, with the same behavior in the menu preview. The saved offset stays unchanged. Negative offsets retain manual placement and can overlap the nameplate or cast bar.
+Swing-bar spacing measures the gap between bar borders: **0 makes the bars touch**. Sparks and oversized labels can extend into the gap. Hidden bars collapse without gaps; swing progress does not change spacing. Timers keep the user's UI scale through native target/combat nameplate scale animations. Nonnegative vertical offsets are minimum distances: the stack moves farther down when necessary to clear the native cast container and its artwork, with the same behavior in the menu preview. Placement stays stable during combat for the same anchor and settings instead of alternating with restricted geometry. The saved offset stays unchanged. Negative offsets retain manual placement and can overlap the nameplate or cast bar.
 
 ### Quest tracker
 
@@ -32,12 +32,12 @@ Turning the module off restores native ordering, fonts, and visibility and prese
 
 ### Party frames
 
-Decorates Blizzard's portrait-style party frames, preserving their native artwork, bar height, targeting, click-casting, right-click menus, debuffs, and pets.
+Decorates Blizzard's native party frames, preserving their artwork, health-bar height, targeting, click-casting, right-click menus, and pets.
 
-- **Show party buffs:** the first eight helpful auras, seven pixels beneath the mana bar, with stack counts, cooldown swipes, and hover tooltips. Adds vertical spacing for the row.
-- **Class-colored health bars:** native health bars tinted by class.
+- **Show party buffs:** only when **Use raid-style party frames is off**. Up to eight helpful auras appear seven pixels beneath mana with stack counts, cooldown swipes, and hover tooltips. Your buffs come first (including those beyond the first eight in native order) and use 19px squares; others use 14px squares. Adds vertical spacing for the row. The same toggle doubles native debuffs you can dispel and colors their borders: curse purple, poison green, magic blue, disease brown. Dispel capability comes from the client's harmful RAID aura filter.
+- **Class-colored health bars:** native health bars tinted by class in both portrait-style and raid-style party frames.
 
-Each feature has its own toggle. Turning buffs off hides the row and restores spacing. Turning class colors off restores the native color/texture state. Protected restoration waits until combat ends. Turning the whole module off preserves both choices. Raid-style party frames are not modified. Unit-frame replacements can hide the native frames; configure those addons separately.
+Each feature has its own toggle. Turning buffs off hides the row and restores spacing and native debuff geometry. Turning class colors off restores the native color/texture state. Protected restoration waits until combat ends. Turning the whole module off preserves both choices. Raid-style party frames retain their native aura display and dimensions. Unit-frame replacements can hide the native frames; configure those addons separately.
 
 ## Installation and migration
 
@@ -87,6 +87,6 @@ Before submission, check in the actual supported client: all settings pages, tog
 
 `/pt status` reports whether the party module and buffs are enabled, combat state, each initialized unit's aura source and display result, and any refused API call. Frames first discovered during combat wait until combat ends for their protected layout to be initialized.
 
-`python tools/build_release.py` creates `dist/VanillaVarnish-1.0.5.zip` with a single `VanillaVarnish` root folder, runtime sources, assets, README, changelog, and the font license. Tests, tools, cached sources, and Python binaries are excluded.
+`python tools/build_release.py` creates `dist/VanillaVarnish-1.0.6.zip` with a single `VanillaVarnish` root folder, runtime sources, assets, README, changelog, and the font license. Tests, tools, cached sources, and Python binaries are excluded.
 
 Montserrat is bundled under the SIL Open Font License; see `Media/Montserrat-OFL.txt`. [Upstream font](https://github.com/JulietaUla/Montserrat).

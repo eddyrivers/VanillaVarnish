@@ -3,7 +3,14 @@ local addon = VV.Party
 -- WoW Forever: decorate Blizzard's frames without replacing their artwork,
 -- unit buttons, event handlers, or secure mixin methods.
 local ICON_SIZE, ICON_GAP, MAX_BUFFS = 14, 2, 8
-local EXTRA_HEIGHT = ICON_SIZE + 2
+local PLAYER_ICON_SIZE, AURA_SCAN_LIMIT = ICON_SIZE + 5, 40
+local EXTRA_HEIGHT = PLAYER_ICON_SIZE + 2
+-- Blizzard's DebuffTypeColor values (FrameXML/BuffFrame.lua). Prefer the
+-- client's table when present, including any accessibility customization.
+local debuffColors = {
+    Magic = {r=0.20, g=0.60, b=1.00}, Curse = {r=0.60, g=0.00, b=1.00},
+    Disease = {r=0.60, g=0.40, b=0}, Poison = {r=0, g=0.60, b=0},
+}
 local states, lastError = {}, nil
 local driver = CreateFrame("Frame")
 local ready, elapsed, auraElapsed = false, 0, 0
@@ -36,6 +43,20 @@ local function auraField(aura, key)
     if ok then return readable(value) end
 end
 
+local function raidStyle()
+    local manager = _G.EditModeManagerFrame
+    if manager and manager.UseRaidStylePartyFrames then
+        local ok, value = attempt(manager.UseRaidStylePartyFrames, manager)
+        if ok and readable(value) ~= nil then return readable(value) == true end
+    end
+    if GetCVarBool then
+        local ok, value = attempt(GetCVarBool, "useCompactPartyFrames")
+        if ok and readable(value) == true then return true end
+    end
+    local compact = _G.CompactPartyFrame
+    return compact and visible(compact) == true or false
+end
+
 local function hideIcon(icon)
     if GameTooltip:IsOwned(icon) then GameTooltip:Hide() end
     icon.unit, icon.auraID, icon.auraIndex = nil, nil, nil
@@ -61,7 +82,7 @@ end
 
 local function createState(member)
     local row = CreateFrame("Frame", nil, member)
-    row:SetSize(MAX_BUFFS * (ICON_SIZE + ICON_GAP) - ICON_GAP, ICON_SIZE)
+    row:SetSize(MAX_BUFFS * (PLAYER_ICON_SIZE + ICON_GAP) - ICON_GAP, PLAYER_ICON_SIZE)
     row:SetFrameLevel(member:GetFrameLevel() + 5)
     row:Hide()
     local state = { member = member, row = row, icons = {}, baseHeight = member:GetHeight() }
@@ -101,7 +122,7 @@ local function createState(member)
 end
 
 local function memberUnit(member)
-    local unit = readable(member.overrideUnit) or readable(member.unit)
+    local unit = readable(member.displayedUnit) or readable(member.overrideUnit) or readable(member.unit)
         or readable(member.unitToken)
     if type(unit) == "string" then return unit end
 end
@@ -136,7 +157,7 @@ local function colorHealth(state)
     if type(class) ~= "string" then return end
     local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
     local container = member.HealthBarContainer
-    local bar = container and container.HealthBar or member.healthbar or member.HealthBar
+    local bar = container and container.HealthBar or member.healthBar or member.healthbar or member.HealthBar
     if bar and color then
         -- Do not read/compare health, percentages, or Blizzard's secret colors.
         local texture = bar:GetStatusBarTexture()
@@ -183,6 +204,7 @@ end
 local function updateBuffs(state)
     state.buffCount, state.buffSource, state.buffReadFailed = 0, nil, false
     if not feature("buffs") then state.buffStatus = "buffs disabled"; clearRow(state); return end
+    if state.compact or raidStyle() then state.buffStatus = "raid-style party frames"; clearRow(state); return end
     local unit = memberUnit(state.member)
     if not state.active or visible(state.member) == false or not unit then
         state.buffStatus = not state.active and "inactive frame" or not unit and "no readable unit" or "hidden frame"
@@ -196,14 +218,14 @@ local function updateBuffs(state)
     local list, indexed
     -- The list API exposes buffs in Forever even when the index API refuses.
     if C_UnitAuras.GetUnitAuras then
-        local ok, result = attempt(C_UnitAuras.GetUnitAuras, unit, "HELPFUL", MAX_BUFFS)
+        local ok, result = attempt(C_UnitAuras.GetUnitAuras, unit, "HELPFUL", AURA_SCAN_LIMIT)
         if ok and type(result) == "table" then
             -- The list can contain secret AuraData references. Attempt numeric
             -- indexing without comparing those references; if indexing itself
             -- is refused, use the independent indexed API below.
             local copied, values = attempt(function()
                 local values = {}
-                for index = 1, MAX_BUFFS do values[index] = result[index] end
+                for index = 1, AURA_SCAN_LIMIT do values[index] = result[index] end
                 return values
             end)
             if copied then list = values; state.buffSource = "list" end
@@ -212,7 +234,7 @@ local function updateBuffs(state)
     if not list and C_UnitAuras.GetAuraDataByIndex then
         list, indexed = {}, true
         state.buffSource = "index"
-        for index = 1, MAX_BUFFS do
+        for index = 1, AURA_SCAN_LIMIT do
             local ok, aura = attempt(C_UnitAuras.GetAuraDataByIndex, unit, index, "HELPFUL")
             if not ok then state.buffReadFailed = true; break end
             if type(aura) ~= "table" then break end
@@ -220,15 +242,41 @@ local function updateBuffs(state)
         end
     end
     if not list then state.buffStatus = "aura read unavailable/refused"; clearRow(state); return end
-    local received = 0
-    for index, icon in ipairs(state.icons) do
+    -- Stable partition before limiting the row: a player's buff beyond the
+    -- first eight still belongs at the front. Restricted ownership stays in
+    -- native order and continues to display through the widget-only path.
+    local ordered, others = {}, {}
+    for index = 1, AURA_SCAN_LIMIT do
         local aura = list[index]
+        if type(aura) == "table" then
+            local source = auraField(aura, "sourceUnit")
+            local own = source == "player"
+            if not own and type(source) == "string" and UnitIsUnit then
+                local ok, value = attempt(UnitIsUnit, source, "player")
+                own = ok and readable(value) == true
+            end
+            local entry = {aura=aura, index=index, own=own}
+            local destination = own and ordered or others
+            destination[#destination + 1] = entry
+        end
+    end
+    for _, entry in ipairs(others) do ordered[#ordered + 1] = entry end
+    local received = 0
+    local x = 0
+    for index, icon in ipairs(state.icons) do
+        local entry = ordered[index]
+        local aura = entry and entry.aura
         -- AuraData records may themselves be secret references in combat.
         -- Do not compare or filter them: attempt permitted field-to-widget
         -- display, retaining the guards on secret counts, IDs, and durations.
         if type(aura) == "table" then
             received = received + 1
-            if attempt(setAura, icon, unit, aura, indexed and index or nil) then
+            local size = entry.own and PLAYER_ICON_SIZE or ICON_SIZE
+            icon:SetSize(size, size)
+            icon:ClearAllPoints()
+            icon:SetPoint("TOPLEFT", state.row, "TOPLEFT", x, 0)
+            x = x + size + ICON_GAP
+            if attempt(setAura, icon, unit, aura, indexed and entry.index or nil) then
                 state.buffCount = state.buffCount + 1
             else hideIcon(icon) end
         else
@@ -242,7 +290,7 @@ local function updateBuffs(state)
 end
 
 local function layoutRow(state)
-    if not feature("buffs") then return restoreHeight(state) end
+    if state.compact or raidStyle() or not feature("buffs") then return restoreHeight(state) end
     if InCombatLockdown() then return false end
     local member = state.member
     if not state.layoutApplied then state.baseHeight = member:GetHeight() end
@@ -254,7 +302,7 @@ local function layoutRow(state)
     -- below mana. Convert the left edges to the row's scale before comparing.
     state.row:ClearAllPoints()
     local container = member.HealthBarContainer
-    local health = container and container.HealthBar or member.healthbar or member.HealthBar
+    local health = container and container.HealthBar or member.healthBar or member.healthbar or member.HealthBar
     local mana = member.ManaBar or member.manabar
     if health and mana then
         local healthLeft, manaLeft = readable(health:GetLeft()), readable(mana:GetLeft())
@@ -272,6 +320,89 @@ local function layoutRow(state)
     return changed
 end
 
+local function restoreDebuffs(state)
+    if not state.debuffStyles or InCombatLockdown() then return end
+    for icon, original in pairs(state.debuffStyles) do
+        attempt(function()
+            icon:SetSize(original.width, original.height)
+            icon:ClearAllPoints()
+            for _, point in ipairs(original.points) do icon:SetPoint(unpack(point)) end
+            if original.color then icon.DebuffBorder:SetVertexColor(unpack(original.color)) end
+        end)
+    end
+    state.debuffStyles = nil
+end
+
+local function updateDebuffs(state)
+    local member = state.member
+    if state.compact or raidStyle() or not state.active or visible(member) == false or not feature("buffs") then
+        restoreDebuffs(state)
+        return
+    end
+    local unit, pool = memberUnit(member), member.AuraFramePool
+    if not unit or not pool or not pool.EnumerateActive or not C_UnitAuras then return end
+    -- RAID is the client's capability filter for harmful auras the player can
+    -- dispel; this follows learned spells rather than guessing from class.
+    local dispellable = {}
+    if C_UnitAuras.GetUnitAuras then
+        local ok, list = attempt(C_UnitAuras.GetUnitAuras, unit, "HARMFUL|RAID", AURA_SCAN_LIMIT)
+        if ok and type(list) == "table" then
+            for index = 1, AURA_SCAN_LIMIT do
+                local read, aura = attempt(function() return list[index] end)
+                if read and type(aura) == "table" then
+                    local id = auraField(aura, "auraInstanceID")
+                    if type(id) == "number" then dispellable[id] = auraField(aura, "dispelName") end
+                end
+            end
+        end
+    end
+    local icons, any = {}, false
+    for icon in pool:EnumerateActive() do
+        -- Native portrait frames can leave showBuffs/isBuff nil for debuffs.
+        -- A restricted flag is still unknown and must not be interpreted.
+        if not secret(icon.isBuff) and readable(icon.isBuff) ~= true and visible(icon) ~= false then
+            local id = readable(icon.auraInstanceID)
+            local kind = type(id) == "number" and dispellable[id] or nil
+            local color = kind and ((DebuffTypeColor and DebuffTypeColor[kind]) or debuffColors[kind])
+            local order = readable(icon.layoutIndex)
+            icons[#icons + 1] = {icon=icon, color=color, order=type(order) == "number" and order or #icons + 1}
+            any = any or color ~= nil
+        end
+    end
+    if not any then restoreDebuffs(state); return end
+    table.sort(icons, function(a, b) return a.order < b.order end)
+    state.debuffStyles = state.debuffStyles or {}
+    local previous
+    for _, entry in ipairs(icons) do
+        local icon, color = entry.icon, entry.color
+        -- These are native aura children, not secure unit buttons. Do not
+        -- replace Setup/UpdateMember or invoke native container layout code.
+        attempt(function()
+            local original = state.debuffStyles[icon]
+            if not original then
+                local width, height = readable(icon:GetWidth()), readable(icon:GetHeight())
+                if type(width) ~= "number" or type(height) ~= "number" then return end
+                original = {width=width, height=height, points={}}
+                for index = 1, icon:GetNumPoints() do original.points[index] = {icon:GetPoint(index)} end
+                if icon.DebuffBorder and icon.DebuffBorder.GetVertexColor then
+                    original.color = {icon.DebuffBorder:GetVertexColor()}
+                end
+                state.debuffStyles[icon] = original
+            end
+            icon:SetSize(original.width * (color and 2 or 1), original.height * (color and 2 or 1))
+            if previous then
+                icon:ClearAllPoints()
+                icon:SetPoint("TOPLEFT", previous, "TOPRIGHT", ICON_GAP, 0)
+            end
+            if icon.DebuffBorder then
+                if color then icon.DebuffBorder:SetVertexColor(color.r, color.g, color.b, 1)
+                elseif original.color then icon.DebuffBorder:SetVertexColor(unpack(original.color)) end
+            end
+        end)
+        previous = icon
+    end
+end
+
 local function visitMembers(callback)
     local party = _G.PartyFrame
     if party and party.PartyMemberFramePool then
@@ -282,26 +413,41 @@ local function visitMembers(callback)
             if member then callback(member) end
         end
     end
+    local compact = _G.CompactPartyFrame
+    if compact and compact.memberUnitFrames then
+        for _, member in ipairs(compact.memberUnitFrames) do callback(member, true) end
+    else
+        for index = 1, 5 do
+            local member = _G["CompactPartyFrameMember" .. index]
+            if member then callback(member, true) end
+        end
+    end
 end
 
 local function refresh()
     local layoutChanged = false
     for _, state in pairs(states) do state.active = false end
-    visitMembers(function(member)
+    visitMembers(function(member, compact)
         local state = states[member]
-        if not state and VV.IsModuleEnabled("party") and not InCombatLockdown() then state = createState(member) end
+        if not state and VV.IsModuleEnabled("party") then
+            if compact then
+                state = {member=member, compact=true, buffStatus="raid-style party frames; native auras"}
+                states[member] = state
+            elseif not InCombatLockdown() then state = createState(member) end
+        end
         if state then
             state.active = true
-            if layoutRow(state) then layoutChanged = true end
+            if not compact and layoutRow(state) then layoutChanged = true end
             colorHealth(state)
-            updateBuffs(state)
+            if not compact then updateBuffs(state); updateDebuffs(state) end
         end
     end)
     for _, state in pairs(states) do
         if not state.active then
-            clearRow(state)
+            if state.row then clearRow(state) end
             if restoreHeight(state) then layoutChanged = true end
             restoreColor(state)
+            restoreDebuffs(state)
         end
     end
     if layoutChanged and _G.PartyFrame and _G.PartyFrame.Layout then
@@ -310,7 +456,7 @@ local function refresh()
 end
 
 for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "GROUP_ROSTER_UPDATE",
-    "PLAYER_REGEN_ENABLED", "UNIT_AURA", "UNIT_CONNECTION", "UNIT_PET" }) do
+    "PLAYER_REGEN_ENABLED", "UNIT_AURA", "UNIT_CONNECTION", "UNIT_PET", "CVAR_UPDATE", "EDIT_MODE_LAYOUTS_UPDATED" }) do
     driver:RegisterEvent(event)
 end
 driver:SetScript("OnEvent", function(_, event, unit)
@@ -320,12 +466,14 @@ driver:SetScript("OnEvent", function(_, event, unit)
         if not feature("buffs") then return end
         if secret(unit) then
             -- Refresh known units without inspecting the restricted event token.
-            for _, state in pairs(states) do updateBuffs(state) end
+            for _, state in pairs(states) do if state.row then updateBuffs(state); updateDebuffs(state) end end
+            C_Timer.After(0, refresh)
             return
         end
         for _, state in pairs(states) do
-            if memberUnit(state.member) == unit then updateBuffs(state) end
+            if state.row and memberUnit(state.member) == unit then updateBuffs(state); updateDebuffs(state) end
         end
+        C_Timer.After(0, refresh)
     else
         -- Run after Blizzard has processed this event and assigned pooled units.
         C_Timer.After(0, refresh)
@@ -365,7 +513,7 @@ local function Status()
         if state.active then
             print((memberUnit(state.member) or "unknown unit") .. ": " .. (state.buffStatus or "not updated")
                 .. "; source: " .. (state.buffSource or "none")
-                .. "; layout: " .. (state.layoutApplied and "ready" or "waiting for combat to end"))
+                .. "; layout: " .. (state.compact and "native raid-style" or state.layoutApplied and "ready" or "no extra row"))
         end
     end
     if pending > 0 then

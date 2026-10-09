@@ -69,7 +69,7 @@ function ns.RegisterFeatureOptions()
     Heading(range, "Range check", "Choose the opacity of out-of-range plates. Unknown results keep normal opacity.")
     SpellBox(range, "damage", "Damage spell", -90)
     SpellBox(range, "friendly", "Friendly spell", -134)
-    UI.Label(range, "Enter a spell name, ID, or spell link, then click Apply or press Enter.\nClear the field to disable that spell. The main toggle keeps both spell choices saved.",
+    UI.Label(range, "Enter a spell name, ID, or spell link, then click Apply or press Enter.\nMelee abilities check melee reach. Clear the field to disable that spell.",
         16, -188, "GameFontHighlightSmall")
     local opacityHolder = CreateFrame("Frame", nil, range)
     opacityHolder:SetPoint("TOPLEFT", range, "TOPLEFT", 16, -248)

@@ -43,14 +43,13 @@ for _, geometry in ipairs({{768, 1}, {1080, 0.8}, {1440, 1.15}, {2160, 0.65}, {7
                                 local bar = stack.bars[key]
                                 Check(bar:IsShown() == shown[key], "Only selected bars occupy the stack")
                                 if shown[key] then
-                                    local top, bottom = Bounds(bar, key)
                                     if previousBottom then
-                                        Check(top + 0.00001 >= previousBottom + stack.gap,
-                                            "Swing spark/label artwork overlaps its neighbor")
+                                        Check(math.abs(bar.offset - previousBottom - stack.gap) < 0.00001,
+                                            "The border-to-border gap exactly matches the setting")
                                     else
                                         Check(bar.offset == 0, "Hidden bars leave no leading gap")
                                     end
-                                    previousBottom = bottom
+                                    previousBottom = bar.offset + bar.height
                                 end
                             end
                             local offsets = {}
@@ -145,12 +144,31 @@ issecretvalue = function(value)
     return originalSecret(value)
 end
 Mock.combat = true
+local steadyOffset = Mock.Stack(plate).offset
 Mock.Event("PLAYER_TARGET_CHANGED")
 Mock.Tick(0.1)
 issecretvalue = originalSecret
 Mock.combat = false
 Check(visibilityProbes >= 2, "Live refreshes sanitize restricted false cast visibility in combat")
-Check(Mock.Stack(plate).offset >= 41, "Live combat refresh retains cast-artwork clearance")
+Check(Mock.Stack(plate).offset == steadyOffset, "Combat restriction changes preserve the established placement")
+-- Starting combat, native scale animations, and swing resets cannot alter
+-- rendered width/height or the distance between timer borders.
+ns.SetValue("gap", 0)
+local live = Mock.Stack(plate)
+local width, scale, offset = live.barWidth, live:GetEffectiveScale(), live.offset
+Mock.combat = true
+for _, nativeScale in ipairs({1, 1.05, 1.2, 1.1, 1}) do
+    plate:SetScale(nativeScale)
+    Mock.Event("PLAYER_SWING", 2, Enum.PlayerSwingType.MainHand)
+    Mock.Tick(0.2)
+    Check(live:GetEffectiveScale() == scale and live.barWidth == width, "Native combat/target scaling cannot stretch timer bars")
+    Check(live.offset == offset, "Cast geometry cannot move the timers back and forth in combat")
+    if live.bars.ranged:IsShown() then
+        Check(live.bars.ranged.offset == live.barHeight, "Zero gap makes visible timer borders touch")
+    end
+end
+Mock.combat = false
+plate:SetScale(1)
 ns.SetValue("y", -10)
 ns.LayoutStack(stack, {main=true}, health, ns.CastClearance(frame, health))
 Check(stack.offset == -10, "Explicit negative placements retain manual positioning")

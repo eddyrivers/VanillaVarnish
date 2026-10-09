@@ -307,7 +307,7 @@ local function BuildPanel()
     GlobalSlider("height", "Bar height", 1, false, "Height of every bar. The border remains exactly 1 physical pixel.")
     GlobalSlider("x", "Horizontal offset", 1, false, "Positive moves right; negative moves left.")
     GlobalSlider("y", "Vertical offset", 1, false, "Minimum distance below the nameplate. Nonnegative offsets clear cast artwork and swing decorations automatically. Negative offsets move up manually.")
-    GlobalSlider("gap", "Space between bars", 1, false, "Gap between visible artwork, including sparks and labels. Only visible bars consume space.")
+    GlobalSlider("gap", "Space between bars", 1, false, "Gap between bar borders. 0 makes the bars touch. Sparks and oversized labels can extend into the gap. Hidden bars consume no space.")
     y = y - 12
     Section("Border, gradient, and effects")
     Color(content, "borderColor", "Border color", y, function() return ns.db.borderColor end,
