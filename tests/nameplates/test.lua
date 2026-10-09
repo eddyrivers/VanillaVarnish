@@ -479,10 +479,10 @@ Check(ns.db.bars.main.color == "coral" and ns.db.bars.main.alpha == 1 and not ns
 Check(ns.db.bars.ranged.color == "warmyellow" and ns.db.bars.ranged.alpha == 1)
 Check(ns.db.bars.main.effect == "pulse", "Removed saved effects migrate to pulse")
 
--- The unified settings root has exactly three feature switches and three children.
+-- Each nameplate feature has its own switch and settings page.
 Cmd("reset")
-Check(#Mock.categories == 6 and Mock.categories[1].name == "VanillaVarnish" and Mock.categories[3].name == "Nameplates")
-for i, name in ipairs({"Range check", "Quest icons", "Swing timers"}) do
+Check(#Mock.categories == 7 and Mock.categories[1].name == "VanillaVarnish" and Mock.categories[3].name == "Nameplates")
+for i, name in ipairs({"Range check", "Quest icons", "Swing timers", "Combo points"}) do
     Check(Mock.categories[i + 3].name == name and Mock.categories[i + 3].parent == ns.rootCategory)
 end
 local nt = SlashCmdList.NAMEPLATETWEAKS

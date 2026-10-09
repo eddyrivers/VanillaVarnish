@@ -4,7 +4,7 @@ Mock.Event("PLAYER_LOGIN")
 assert(vv.Nameplates ~= vv.QuestTracker and vv.Party ~= vv.Nameplates)
 assert(vv.db.nameplates == vv.Nameplates.tweaksDB and vv.db.questTracker == vv.QuestTracker.db)
 assert(vv.Nameplates.db == vv.db.nameplates.swingTimers)
-assert(#Mock.categories == 7 and Mock.categories[1].name == "VanillaVarnish")
+assert(#Mock.categories == 8 and Mock.categories[1].name == "VanillaVarnish")
 for index = 2, #Mock.categories do assert(Mock.categories[index].parent == vv.rootCategory) end
 local n = vv.Nameplates
 local plate = Mock.Plate("nameplate1")

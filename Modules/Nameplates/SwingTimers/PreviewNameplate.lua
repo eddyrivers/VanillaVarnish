@@ -334,3 +334,33 @@ function ns.StopMenuNameplatePreview(plate)
         cast:SetIsHighlightedImportantCast(false)
     end
 end
+
+local swingPeriods = { main = 2.6, offhand = 1.8, ranged = 3.2 }
+
+function ns.CreateMenuFeaturePreview(parent)
+    local plate = ns.CreateMenuNameplatePreview(parent)
+    plate.swingStack = ns.CreateStack(plate)
+    plate.comboRow = ns.ComboPoints.CreateRow(plate)
+    return plate
+end
+
+function ns.DrawMenuFeaturePreview(plate)
+    if not ns.db or not ns.ComboPoints.db then return end
+    local now = GetTime()
+    ns.UpdateMenuNameplatePreview(plate, now)
+    local anchor = ns.MenuNameplatePreviewAnchor(plate)
+    local shown = {}
+    for _, key in ipairs(ns.order) do
+        shown[key] = ns.tweaksDB.swingsEnabled and not VV.swingConflict and ns.db.bars[key].enabled
+    end
+    ns.LayoutStack(plate.swingStack, shown, anchor,
+        ns.CastClearance(plate.nativeFrame or plate, anchor, plate.swingStack))
+    ns.RenderStack(plate.swingStack, now, function(key, time) return (time / swingPeriods[key]) % 1 end)
+    local health = ns.ComboPoints.HealthAnchor(plate.nativeFrame, plate.healthBar)
+    ns.ComboPoints.LayoutRow(plate.comboRow, health, ns.tweaksDB.comboPointsEnabled and 5 or 0)
+end
+
+function ns.StopMenuFeaturePreview(plate)
+    for _, bar in pairs(plate.swingStack.bars) do bar.sparkAnim:Stop() end
+    ns.StopMenuNameplatePreview(plate)
+end

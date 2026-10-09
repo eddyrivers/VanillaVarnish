@@ -23,7 +23,7 @@ function VV.RegisterOptions()
     end
     local root = CreateFrame("Frame", nil, UIParent)
     root:Hide()
-    Heading(root, "VanillaVarnish", "Improve Blizzard's native UI. Choose whole modules here, then configure their individual features in the sub-pages.")
+    Heading(root, "VanillaVarnish", "A few finishing touches for your UI. Choose what to enable, then explore each settings page.")
     VV.rootCategory = Settings.RegisterCanvasLayoutCategory(root, "VanillaVarnish")
     Settings.RegisterAddOnCategory(VV.rootCategory)
     for index, moduleKey in ipairs(VV.moduleOrder) do
@@ -31,9 +31,9 @@ function VV.RegisterOptions()
         Check(root, key, "Enable " .. VV.moduleLabels[key], -90 - (index - 1) * 44,
             function() return VV.db.modules[key] end,
             function(value) VV.SetModuleEnabled(key, value) end,
-            "Turning this module off preserves all its individual feature settings. Protected layout changes apply when combat ends.")
+            "Turn this section on or off. Your settings are kept either way.")
     end
-    UI.Label(root, "All settings save per character. Module switches keep your smaller feature choices.\nOpen this menu with /vv. Use /vv status for module diagnostics.",
+    UI.Label(root, "Your settings save per character. Open this menu anytime with /vv.",
         16, -238, "GameFontHighlightSmall")
     local conflictText = {}
     for _, key in ipairs(VV.moduleOrder) do
@@ -46,16 +46,16 @@ function VV.RegisterOptions()
 
     local party = CreateFrame("Frame", nil, UIParent)
     party:Hide()
-    Heading(party, "Party frames", "Aura enhancements for portrait-style party frames, and class colors for both party-frame styles.")
+    Heading(party, "Party frames", "Keep helpful buffs in view and make party members easier to recognize.")
     Check(party, "party.buffs", "Show party buffs", -90,
         function() return VV.db.party.buffs end,
         function(value) VV.Party.SetOption("buffs", value) end,
-        "Only shown when 'Use raid-style party frames' is OFF. Shows up to eight buffs beneath mana: yours come first and are 5px larger. Native debuffs you can dispel are doubled in size with type-colored borders. Includes counts, cooldowns, and tooltips.")
+        "Show up to eight buffs beneath mana, with yours first and larger. Also enlarge debuffs you can dispel and color their borders by type. Requires portrait-style party frames.")
     Check(party, "party.classColors", "Class-colored health bars", -134,
         function() return VV.db.party.classColors end,
         function(value) VV.Party.SetOption("classColors", value) end,
-        "Color portrait-style and raid-style party health bars by class while preserving native artwork and bar height.")
-    UI.Label(party, "Enable Party frames on the VanillaVarnish main page to apply these features.\nBuffs and larger dispellable debuffs apply only with 'Use raid-style party frames' OFF.\nClass colors apply to both styles. Protected restoration waits for combat to end.\n/pt status shows detected frames and any refused client API call.",
+        "Use each party member's class color for their health bar. Works with both party-frame styles.")
+    UI.Label(party, "Buffs and larger dispellable debuffs need 'Use raid-style party frames' turned off.\nSome layout changes take effect when combat ends.",
         16, -204, "GameFontHighlightSmall")
     VV.partyCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, party, "Party frames")
     Settings.RegisterAddOnCategory(VV.partyCategory)

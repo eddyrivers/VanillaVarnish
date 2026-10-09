@@ -343,10 +343,12 @@ end
 function ns.SetFeature(key, value)
     if not db or type(value) ~= "boolean" then return false end
     if key ~= "rangeEnabled" and key ~= "markers" and key ~= "swingsEnabled"
-        and key ~= "questieFallback" then return false end
+        and key ~= "comboPointsEnabled" and key ~= "questieFallback" then return false end
     db[key] = value
     ns.RefreshTweaks()
     if ns.Refresh then ns.Refresh() end
+    if ns.RefreshComboPoints then ns.RefreshComboPoints() end
+    if ns.RefreshOptions then ns.RefreshOptions() end
     return true
 end
 
@@ -364,7 +366,8 @@ local function Status()
     Print("Damage: " .. (db.damage or "off") .. "; friendly: " .. (db.friendly or "off")
         .. "; range check: " .. (db.rangeEnabled and "on" or "off")
         .. "; quest icons: " .. (db.markers and "on" or "off")
-        .. "; swing timers: " .. (db.swingsEnabled and "on" or "off") .. ".")
+        .. "; swing timers: " .. (db.swingsEnabled and "on" or "off")
+        .. "; combo points: " .. (db.comboPointsEnabled and "on" or "off") .. ".")
     Print(string.format("Out-of-range opacity: %g%% of normal.", db.rangeOpacity * 100))
 end
 
@@ -380,7 +383,8 @@ local function Slash(message)
         return
     end
     local feature = ({range = "rangeEnabled", quests = "markers", questicons = "markers",
-        markers = "markers", swings = "swingsEnabled", swing = "swingsEnabled"})[command]
+        markers = "markers", swings = "swingsEnabled", swing = "swingsEnabled",
+        combo = "comboPointsEnabled", combos = "comboPointsEnabled"})[command]
     local mode = rest:lower()
     if feature and (mode == "on" or mode == "off" or mode == "toggle") then
         ns.SetFeature(feature, mode == "on" or mode == "toggle" and not db[feature])
@@ -413,7 +417,7 @@ local function Slash(message)
         return
     elseif command == "questie" and (rest:lower() == "on" or rest:lower() == "off") then
         ns.SetFeature("questieFallback", rest:lower() == "on")
-        Print("Optional Questie fallback " .. rest:lower() .. ". Native quest data is always checked first.")
+        Print("Extra Questie quest information " .. rest:lower() .. ".")
         return
     elseif command == "debug" then
         Status()
@@ -428,8 +432,8 @@ local function Slash(message)
         ns.Slash(message)
         return
     end
-    Print("/nt opens settings. /nt range, /nt quests, /nt swings open sub-pages.")
-    Print("/nt range on or off; /nt quests on or off; /nt swings on or off.")
+    Print("/nt opens settings. /nt range, /nt quests, /nt swings, /nt combo open feature pages.")
+    Print("/nt range on or off; /nt quests on or off; /nt swings on or off; /nt combo on or off.")
     Print("/nt range damage Moonfire — set enemy range spell")
     Print("/nt range friendly Healing Touch — set friendly range spell")
     Print("/nt range opacity 50 — choose out-of-range opacity from 0 to 100 percent.")
@@ -452,6 +456,7 @@ function ns.InitializeTweaks()
     if type(db.markers) ~= "boolean" then db.markers = true end
     if type(db.rangeEnabled) ~= "boolean" then db.rangeEnabled = true end
     if type(db.swingsEnabled) ~= "boolean" then db.swingsEnabled = true end
+    if type(db.comboPointsEnabled) ~= "boolean" then db.comboPointsEnabled = true end
     if type(db.questieFallback) ~= "boolean" then db.questieFallback = false end
     local opacity = Known(db.rangeOpacity)
     if type(opacity) ~= "number" or opacity ~= opacity or opacity < 0 or opacity > 1 then db.rangeOpacity = 0.5 end
@@ -515,4 +520,5 @@ function ns.RefreshModule()
     end
     ns.RefreshTweaks()
     if ns.Refresh then ns.Refresh() end
+    if ns.RefreshComboPoints then ns.RefreshComboPoints() end
 end

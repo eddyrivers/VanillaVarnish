@@ -51,13 +51,15 @@ function ns.RegisterFeatureOptions()
     if ns.nameplateCategory then return end
     local root = CreateFrame("Frame", nil, UIParent)
     root:Hide()
-    Heading(root, "Nameplates", "Enable Nameplates on the VanillaVarnish main page, then choose the features below.")
+    Heading(root, "Nameplates", "Choose what to show on nameplates. Each feature has its own settings page.")
     FeatureCheck(root, "rangeEnabled", "Range check", -86, "rangeEnabled",
-        "Fade out-of-range plates using your chosen damage and friendly spells.")
+        "Fade nameplates when a unit is out of range of your chosen spell.")
     FeatureCheck(root, "markers", "Quest icons", -126, "markers",
-        "Show loot, kill, and other icons for incomplete quest objectives.")
+        "Mark units you still need for quests.")
     FeatureCheck(root, "swingsEnabled", "Swing timers", -166, "swingsEnabled",
-        "Show your main-hand, off-hand, and ranged swing timers beneath your target nameplate.")
+        "Show weapon swing timers beneath your target's nameplate.")
+    FeatureCheck(root, "comboPointsEnabled", "Combo points", -206, "comboPointsEnabled",
+        "Show red combo-point dots on your target's health bar.")
     VV.RegisterOptions()
     ns.rootCategory = VV.rootCategory
     ns.nameplateCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, root, "Nameplates")
@@ -66,10 +68,10 @@ function ns.RegisterFeatureOptions()
 
     local range = CreateFrame("Frame", nil, UIParent)
     range:Hide()
-    Heading(range, "Range check", "Choose the opacity of out-of-range plates. Unknown results keep normal opacity.")
+    Heading(range, "Range check", "Fade units beyond your spell's range. Choose how faint their nameplates become.")
     SpellBox(range, "damage", "Damage spell", -90)
     SpellBox(range, "friendly", "Friendly spell", -134)
-    UI.Label(range, "Enter a spell name, ID, or spell link, then click Apply or press Enter.\nMelee abilities check melee reach. Clear the field to disable that spell.",
+    UI.Label(range, "Enter a spell name, ID, or link, then click Apply or press Enter.\nClear a field to stop checking that spell. If range is unavailable, nameplates stay at normal opacity.",
         16, -188, "GameFontHighlightSmall")
     local opacityHolder = CreateFrame("Frame", nil, range)
     opacityHolder:SetPoint("TOPLEFT", range, "TOPLEFT", 16, -248)
@@ -77,17 +79,17 @@ function ns.RegisterFeatureOptions()
     opacityHolder:SetHeight(40)
     controls.rangeOpacity = UI.Slider(opacityHolder, "feature.rangeOpacity", "Out-of-range opacity", 0, 0, 1, 0.01, true,
         function() return ns.tweaksDB.rangeOpacity end, ns.SetRangeOpacity,
-        "Percent of the nameplate's normal opacity when out of range. 0% hides it; 100% keeps normal opacity. Default: 50%.")
+        "How visible out-of-range nameplates are. 0% hides them; 100% leaves them unchanged.")
     panels.rangeEnabled = range
     ns.rangeCategory = Settings.RegisterCanvasLayoutSubcategory(ns.rootCategory, range, "Range check")
     Settings.RegisterAddOnCategory(ns.rangeCategory)
 
     local quests = CreateFrame("Frame", nil, UIParent)
     quests:Hide()
-    Heading(quests, "Quest icons", "Small white icons beside names identify incomplete loot, kill, and other quest objectives.")
-    FeatureCheck(quests, "questieFallback", "Use Questie as an optional fallback", -90, "questieFallback",
-        "Add Questie's objective tooltip data to the native icons. Item drops use QuestieDB automatically when available.")
-    local hint = UI.Label(quests, "Item drops (including cooking ingredients) use QuestieDB automatically when enabled.\nQuestie's own icons can be disabled to avoid duplicates.",
+    Heading(quests, "Quest icons", "White icons beside names show units you need to loot, defeat, or interact with for quests.")
+    FeatureCheck(quests, "questieFallback", "Use Questie for extra quest information", -90, "questieFallback",
+        "Use Questie's tooltip information when a quest objective is missing from the game's data.")
+    local hint = UI.Label(quests, "Questie can also help identify quest-item drops when installed.\nIf you see duplicate icons, turn off Questie's nameplate icons.",
         16, -144, "GameFontHighlightSmall")
     hint:SetPoint("TOPRIGHT", quests, "TOPRIGHT", -16, -144)
     hint:SetJustifyH("LEFT")
@@ -102,6 +104,7 @@ end
 function ns.OpenOptions(page)
     if not ns.nameplateCategory then ns.RegisterOptions() end
     if page == "swingsEnabled" or page == "swings" then ns.OpenSwingOptions(); return end
+    if page == "comboPointsEnabled" or page == "combo" then ns.OpenComboOptions(); return end
     local category = page == "rangeEnabled" and ns.rangeCategory
         or page == "markers" and ns.questCategory or ns.nameplateCategory
     ns.OpenSettingsCategory(category)

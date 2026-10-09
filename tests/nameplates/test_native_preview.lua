@@ -8,7 +8,7 @@ ns.OpenSwingOptions()
 local plate, stack = ns.optionsPreviewNameplate, ns.optionsPreview
 local frame = plate.nativeFrame
 local cast, health = frame.CastBarsContainer.castBar, frame.HealthBarsContainer.healthBar
-Check(frame and Mock.nativeFrames == 1, 'Use one complete native nameplate template')
+Check(frame and Mock.nativeFrames == 2, 'Use a complete native nameplate template on each feature preview')
 Check(not plate.healthBar:IsShown() and not plate.castBar:IsShown(), 'Remove approximated artwork')
 Check(frame.unit == nil and cast.unit == nil, 'Sample must never bind a live unit')
 Check(next(frame.events) == nil and next(cast.events) == nil and not frame.scripts.OnUpdate, 'Detach unit events and updates')
@@ -48,6 +48,7 @@ for style = 0, 6 do
         Check(frame.LevelFrame:IsShown() == NamePlateEnemyFrameOptions.showLevel, 'Native level visibility follows style')
         Check(stack.anchor == frame.HealthBarsContainer and stack.offset >= ns.db.y, 'Swings clear the native cast container and retain their health anchor')
         Check(stack.offset >= frame.CastBarsContainer.height + setup.castBarToHealthBarSpacing + stack.bars.main.visualPadding + 2 * stack.pixel - 0.00001, 'Native cast container cannot overlap swing artwork')
+        Check(plate.comboRow.points[1][2] == health and plate.comboRow.points[1][3] == 'BOTTOM', 'Combo dots use the native health bar across styles and sizes')
         if level then
             Check(level:IsShown() and Near(level.width, setup.playerLevelDiffWidth) and Near(level.height, setup.playerLevelDiffHeight),
                 'Separate level box follows native style and size')
@@ -93,7 +94,7 @@ Mock.ApplyNameplateStyle(6, 2)
 ns.OpenSwingOptions()
 Check(frame.LevelFrame:IsShown() and cast.Border:IsShown(), 'Reopen immediately applies native classic artwork')
 Check(cast.Icon:IsShown() and cast.Text:IsShown(), 'Reopen restarts cast with current display options')
-Check(Mock.nativeFrames == 1 and not ns.preview and ns.anchorUnit == nil, 'Native sample is reused and isolated from world timers')
+Check(Mock.nativeFrames == 2 and not ns.preview and ns.anchorUnit == nil, 'Native sample is reused and isolated from world timers')
 local unitMixin, scriptMixin = NamePlateUnitFrameMixin, NamePlateScriptBaseMixin
 NamePlateUnitFrameMixin, NamePlateScriptBaseMixin = nil, nil
 local late = ns.CreateMenuNameplatePreview(plate.menuParent)

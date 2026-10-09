@@ -47,16 +47,16 @@ function addon.RegisterOptions()
     panel = CreateFrame("Frame", nil, UIParent)
     panel:Hide()
     Label("Quest tracker", 16, -16, "GameFontNormalLarge")
-    Label("Organize tracked quests by zone and level inside the native quest tracker.", 16, -44, "GameFontHighlightSmall")
+    Label("Keep tracked quests together by zone, with lower-level quests first.", 16, -44, "GameFontHighlightSmall")
     Check("enabled", "Enable zone grouping", -86,
-        "Group tracked quests by their quest-log zone. Turning this off restores native ordering, fonts, and visibility.")
+        "Group quests by zone. Turn off to use the game's usual quest tracker.")
     Check("completedFirst", "Show completed quests first", -126,
-        "Within each zone, show completed quests in ascending level order, followed by incomplete quests in ascending level order. Disabled by default.")
-    Label("Completed quests first applies while zone grouping is enabled.\nEqual levels sort by title; unknown levels appear last in each group.",
+        "Move completed quests to the top of each zone. Requires zone grouping.")
+    Label("Completed quests first applies while zone grouping is on.",
         44, -160, "GameFontHighlightSmall")
     Button("Expand all zones", 16, -218, function() addon.SetAllZonesCollapsed(false) end)
     Button("Collapse all zones", 172, -218, function() addon.SetAllZonesCollapsed(true) end)
-    Label("Click a zone heading or its white + / - button to fold or expand it.\nRight-click for zone tracking. Move and resize the tracker using Edit Mode.\nSettings save per character; tracker changes made in combat apply when combat ends.",
+    Label("Click a zone heading to expand or collapse it. Right-click to track or untrack the zone.\nMove and resize the tracker in Edit Mode. Changes made in combat apply when combat ends.",
         16, -266, "GameFontHighlightSmall")
     Button("Restore defaults", 16, -338, addon.ResetOptions)
     VV.RegisterOptions()

@@ -202,6 +202,7 @@ ns.SwingHelp, ns.SwingStatus = Help, Status
 function ns.Changed()
     ns.styleVersion = (ns.styleVersion or 0) + 1
     if ns.Refresh then ns.Refresh() end
+    if ns.RefreshComboPoints then ns.RefreshComboPoints() end
     if ns.RefreshOptions then ns.RefreshOptions() end
     if ns.RefreshFeatureOptions then ns.RefreshFeatureOptions() end
 end

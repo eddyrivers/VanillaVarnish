@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.7
+
+- Add target nameplate combo points using Blizzard's red personal-resource artwork. Dots overlap the health bar's bottom edge halfway by default.
+- Add a Combo points settings page with dot size, horizontal and vertical offsets, spacing, and a switch on the Nameplates page.
+- Show enabled swing timers and combo points together in both settings previews.
+- Simplify settings descriptions, tooltips, and the user guide.
+- Add regression checks for target-bound point updates, toggles, restricted API results, saved settings, and both previews.
+
 ## 1.0.6
 
 - Hide added buff rows whenever Use raid-style party frames is selected; tint native raid-style party health bars by class without changing their auras or dimensions.
