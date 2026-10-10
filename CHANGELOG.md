@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.11
+
+- Add an optional Tooltips module with mouse following for world units, spells, bag items, auras, and other hover controls, including explicit button anchors. Native cursor tracking supports configurable X/Y offsets without a per-frame positioning loop.
+- Add class colors for player names (including Forever surnames) and class detail text, plus Classic difficulty colors for hostile unit levels. Preserve native content and skip restricted values.
+- Add instant hide and combat pause options, both off by default. Combat pause anchors current and new hover tooltips to Blizzard's saved Edit Mode position and resumes following after combat.
+- Add a Tooltips settings page, per-character preferences, module switch, restore defaults, and `/vv tooltips` commands. Detect loaded ForeverMouseTooltip to prevent competing tooltip changes; no standalone addon code or saved settings are bundled/imported.
+- Add Lua 5.1 regressions for tooltip anchoring, offsets, combat transitions, fades, colors, restricted data, controls, persistence, and conflicts, with optional native Forever tooltip-source checks. In-game rendering and taint verification remain required.
+
 ## 1.0.10
 
 - Set default combo-point offsets to 17 horizontal and 25 vertical.

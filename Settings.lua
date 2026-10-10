@@ -34,13 +34,13 @@ function VV.RegisterOptions()
             "Turn this section on or off. Your settings are kept either way.")
     end
     UI.Label(root, "Your settings save per character. Open this menu anytime with /vv.",
-        16, -238, "GameFontHighlightSmall")
+        16, -282, "GameFontHighlightSmall")
     local conflictText = {}
     for _, key in ipairs(VV.moduleOrder) do
         if VV.conflicts[key] then conflictText[#conflictText + 1] = "Disable " .. VV.conflicts[key] .. " and /reload to activate " .. VV.moduleLabels[key] .. "." end
     end
     if VV.swingConflict then conflictText[#conflictText + 1] = "Disable NameplateSwingTimers and /reload to activate bundled swing timers." end
-    UI.Label(root, table.concat(conflictText, "\n"), 16, -306, "GameFontHighlightSmall")
+    UI.Label(root, table.concat(conflictText, "\n"), 16, -330, "GameFontHighlightSmall")
     root:SetScript("OnShow", VV.RefreshOptions)
     VV.optionsPanel = root
 

@@ -4,7 +4,7 @@ Mock.Event("PLAYER_LOGIN")
 assert(vv.Nameplates ~= vv.QuestTracker and vv.Party ~= vv.Nameplates)
 assert(vv.db.nameplates == vv.Nameplates.tweaksDB and vv.db.questTracker == vv.QuestTracker.db)
 assert(vv.Nameplates.db == vv.db.nameplates.swingTimers)
-assert(#Mock.categories == 8 and Mock.categories[1].name == "VanillaVarnish")
+assert(#Mock.categories == 9 and Mock.categories[1].name == "VanillaVarnish")
 for index = 2, #Mock.categories do assert(Mock.categories[index].parent == vv.rootCategory) end
 local n = vv.Nameplates
 local plate = Mock.Plate("nameplate1")
@@ -60,3 +60,18 @@ assert(not vv.db.modules.nameplates and not stack:IsShown())
 local db = vv.db
 vv.InitDB()
 assert(vv.db == db and not vv.db.modules.nameplates and not vv.db.party.buffs)
+assert(vv.Tooltips.db == vv.db.tooltips and vv.db.tooltips.followMouse and not vv.db.tooltips.pauseInCombat)
+SlashCmdList.VANILLAVARNISH("tooltips offset 24 -30")
+SlashCmdList.VANILLAVARNISH("tooltips off")
+SlashCmdList.VANILLAVARNISH("tooltips on")
+assert(vv.db.tooltips.offsetX == 24 and vv.db.tooltips.offsetY == -30)
+SlashCmdList.VANILLAVARNISH("tooltips")
+assert(vv.Tooltips.optionsPanel:IsShown())
+local tooltipCheck = vv.Tooltips.optionControls.pauseInCombat.button
+tooltipCheck:SetChecked(true); tooltipCheck.scripts.OnClick(tooltipCheck)
+assert(vv.db.tooltips.pauseInCombat)
+local offsetBox = vv.Tooltips.optionControls.offsetX.box
+offsetBox:SetText("-45"); offsetBox.scripts.OnEnterPressed(offsetBox)
+assert(vv.db.tooltips.offsetX == -45)
+vv.Tooltips.ResetSettings()
+assert(vv.db.modules.tooltips and vv.db.tooltips.offsetX == 12 and not vv.db.tooltips.pauseInCombat)

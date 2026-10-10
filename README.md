@@ -33,13 +33,25 @@ Collapsing a zone keeps its quests tracked. Turning grouping off returns to the 
 
 Buffs include stack counts, cooldowns, and hover tooltips. Some layout changes take effect after combat. If another addon replaces Blizzard's party frames, configure those frames in that addon.
 
+## Tooltips
+
+Open **`/vv tooltips`** for mouse following, colors, and fade options. The module and mouse following start enabled; turn either off to keep the usual hover placement.
+
+- **Follow the mouse:** keep hover tooltips for mobs, players, spells, bag items, auras, and other controls beside the cursor, including tooltips normally anchored to a button. Item comparisons stay attached to the main item tooltip.
+- **Horizontal / vertical offset:** adjust the native cursor anchor from -500 to 500 UI units. Positive X moves right; positive Y moves up. Defaults are X **12**, Y **-12**.
+- **Color unit names, classes, and levels:** player names, including Forever surnames, and class text use class colors. Hostile levels use Classic difficulty colors: red, orange, yellow, green, or gray. Restricted information keeps its native colors. Enabled by default.
+- **Hide instantly when hovering ends:** skip the normal tooltip fade. Disabled by default.
+- **Pause mouse following in combat:** put hover tooltips at the position saved in Blizzard's Edit Mode while in combat, then resume mouse following when combat ends. Disabled by default. Unit colors and instant hide still apply when enabled.
+
+Clicked chat links and embedded tooltip panels retain their own placement. The module uses native cursor tracking and secure hooks, with fresh settings; it does not import ForeverMouseTooltip. If **ForeverMouseTooltip** is loaded, disable it and `/reload` to activate VV's Tooltips module.
+
 ## Installation
 
 1. Place the `VanillaVarnish` folder in `Interface/AddOns`.
 2. Fully restart WoW so the addon appears in the AddOns list.
 3. Enable VanillaVarnish and open `/vv`.
 
-The [1.0.10 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.10.zip) contains the installable folder. Other WoW client families have not been validated.
+The [1.0.11 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.11.zip) contains the installable folder. Other WoW client families have not been validated.
 
 ### Importing settings from the original addons
 
@@ -54,8 +66,10 @@ While an original addon is enabled, its matching VanillaVarnish module stays ina
 | Command | Action |
 | --- | --- |
 | `/vv` or `/vanillavarnish` | Open settings |
-| `/vv nameplates`, `/vv tracker`, `/vv party` | Open a module page |
-| `/vv nameplates on`, `/vv tracker off`, `/vv party toggle` | Switch a module on or off |
+| `/vv nameplates`, `/vv tracker`, `/vv party`, `/vv tooltips` | Open a module page |
+| `/vv nameplates on`, `/vv tracker off`, `/vv party toggle`, `/vv tooltips off` | Switch a module on or off |
+| `/vv tooltips offset 12 -12` | Set horizontal and vertical cursor offsets |
+| `/vv tooltips reset` | Restore tooltip feature defaults |
 | `/nt range`, `/nt quests`, `/nt swings`, `/nt combo` | Open a nameplate feature page |
 | `/nt range on`, `/nt quests off`, `/nt swings on`, `/nt combo on` | Switch a nameplate feature on or off |
 | `/nt range damage Moonfire`, `/nt range friendly Healing Touch` | Choose range spells; names, IDs, and links work |
@@ -71,6 +85,6 @@ While an original addon is enabled, its matching VanillaVarnish module stays ina
 
 Feature commands also work after a module name, such as `/vv nameplates combo off` or `/vv tracker collapse`. Settings requested in combat open after combat ends. Legacy aliases such as `/nt` are available when their original addon is disabled.
 
-**Restore defaults** on the Swing timers, Combo points, or Quest tracker page resets only that page's settings. `/nt reset` resets swing settings. Module switches stay as you set them.
+**Restore defaults** on the Swing timers, Combo points, Quest tracker, or Tooltips page resets only that page's settings. `/nt reset` resets swing settings. Module switches stay as you set them.
 
 [Source repository](https://github.com/eddyrivers/VanillaVarnish). Montserrat is bundled under the SIL Open Font License; see `Media/Montserrat-OFL.txt` and the [upstream font](https://github.com/JulietaUla/Montserrat).

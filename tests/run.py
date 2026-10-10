@@ -11,6 +11,7 @@ from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument("--lua-runtime")
 parser.add_argument("--blizzard-source")
+parser.add_argument("--tooltip-source", help="Optional cached Forever tooltip source directory (shared.lua, tooltip.lua)")
 args = parser.parse_args()
 if args.lua_runtime:
     sys.path.insert(0, args.lua_runtime)
@@ -126,6 +127,18 @@ load(styles, "Modules/Party/PartyTweaks.lua")
 styles.execute((ROOT / "tests/test_party_styles.lua").read_text())
 print("PASS: raid-style colors and aura suppression, player buff priority/size, native dispellable debuff size/borders/restoration")
 
+tooltip = runtime()
+tooltip.execute((ROOT / "tests/tooltips/mock.lua").read_text())
+if args.tooltip_source:
+    for filename in ("shared.lua", "tooltip.lua"):
+        tooltip.execute((Path(args.tooltip_source) / filename).read_text(encoding="utf-8-sig"))
+for path in FILES:
+    if path == "Core.lua" or path.startswith("Modules/Tooltips/"):
+        load(tooltip, path)
+tooltip.execute("VV_TEST_NS.RegisterOptions=function() end; VV_TEST_NS.Tooltips.RegisterOptions=function() end")
+tooltip.execute((ROOT / "tests/tooltips/test.lua").read_text())
+print("PASS: tooltip hover anchors, offsets, fades, combat/Edit Mode, colors, restricted values, persistence, and conflict checks")
+
 combined = nameplates(full=True)
 combined.execute((ROOT / "tests/test_integration.lua").read_text())
 print("PASS: combined TOC load, namespace isolation, shared menu, master switches, and persistence")
@@ -190,6 +203,6 @@ end
 Mock.Event("PLAYER_LOGIN")
 assert(VV_TEST_NS.Nameplates.tweaksDB == VV_TEST_NS.db.nameplates)
 assert(VV_TEST_NS.Nameplates.db == VV_TEST_NS.db.nameplates.swingTimers)
-assert(#Mock.categories == 8)
+assert(#Mock.categories == 9)
 ''')
 print("PASS: modules disabled at startup can be enabled later; initialization is independent of event dispatch order")
