@@ -151,7 +151,7 @@ ApplyLayout = function()
     pendingRefresh = false
     if not VV.IsModuleEnabled("questTracker") or not db.enabled or not tracker:IsShown() or tracker:IsCollapsed() then return end
 
-    local groups = addon.ReadWatchGroups(db.completedFirst)
+    local groups = addon.ReadWatchGroups(db.completedSort)
     addon.groups = groups
     local watched, blocks, special = {}, {}, {}
     for _, group in ipairs(groups) do
@@ -297,7 +297,6 @@ local function Initialize()
     if not VV.db then VV.InitDB() end
     db = VV.db.questTracker
     if db.enabled == nil then db.enabled = true end
-    if db.completedFirst == nil then db.completedFirst = false end
     if type(db.collapsed) ~= "table" then db.collapsed = {} end
     displayEnabled = VV.IsModuleEnabled("questTracker") and db.enabled
     db.position = nil -- Remove the retired separate panel's saved position.
@@ -306,10 +305,15 @@ local function Initialize()
 end
 
 function addon.SetOption(key, value)
-    if key ~= "enabled" and key ~= "completedFirst" then return end
-    db[key] = not not value
+    if key == "completedSort" then
+        if value ~= "off" and value ~= "top" and value ~= "bottom" then return false end
+    elseif key == "enabled" then
+        value = not not value
+    else return false end
+    db[key] = value
     addon.RefreshOptions()
     Refresh()
+    return true
 end
 
 function addon.SetAllZonesCollapsed(collapsed)
@@ -322,7 +326,7 @@ function addon.SetAllZonesCollapsed(collapsed)
 end
 
 function addon.ResetOptions()
-    db.enabled, db.completedFirst, db.collapsed = true, false, {}
+    db.enabled, db.completedSort, db.collapsed = true, "off", {}
     addon.RefreshOptions()
     Refresh()
 end
@@ -358,7 +362,8 @@ local function Slash(message)
         local version, build, _, interface = GetBuildInfo()
         Print("Client " .. version .. " / build " .. build .. " / interface " .. interface .. ".")
         Print("Grouping " .. (db.enabled and "on" or "off") .. "; native tracker " .. (tracker and "connected" or "unavailable") .. ".")
-        Print("Completed quests first " .. (db.completedFirst and "on" or "off") .. ".")
+        local label = ({off = "off", top = "completed on top", bottom = "completed on bottom"})[db.completedSort]
+        Print("Completed quest sorting: " .. label .. ".")
     else
         Print("/qto opens settings. /qto on | off | expand | collapse | status | help. Click a native zone heading to fold it.")
     end

@@ -3,6 +3,14 @@ MockFrames = {}
 MockGeometry = {}
 UIParent = {}
 MockTimers = {}
+function MockDropdownMenu(dropdown)
+    local root = {items={}}
+    function root:CreateRadio(label, selected, callback)
+        self.items[#self.items + 1] = {label=label, selected=selected, callback=callback}
+    end
+    dropdown.menuGenerator(dropdown, root)
+    return root.items
+end
 C_Timer = { After = function(_, callback) MockTimers[#MockTimers + 1] = callback end }
 function RunMockTimers()
     local pending = MockTimers
@@ -54,6 +62,13 @@ CreateFrame = function(kind, name, parent, template)
     function frame:SetText(text) self.text = text end
     function frame:SetChecked(checked) self.checked = not not checked end
     function frame:GetChecked() return self.checked end
+    function frame:SetupMenu(generator) self.menuGenerator = generator end
+    function frame:GenerateMenu()
+        self.selectionText = nil
+        for _, item in ipairs(MockDropdownMenu(self)) do
+            if item.selected() then self.selectionText = item.label end
+        end
+    end
     function frame:SetNormalTexture(texture) self.normalTexture = texture end
     function frame:SetHighlightTexture(texture) self.highlightTexture = texture end
     function frame:RegisterForDrag() end

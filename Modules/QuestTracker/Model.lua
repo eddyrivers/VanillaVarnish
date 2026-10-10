@@ -2,7 +2,7 @@ local _, VV = ...
 local addon = VV.QuestTracker
 
 -- Read the engine watch list without invoking native renderers/cache builders.
-function addon.ReadWatchGroups(completedFirst)
+function addon.ReadWatchGroups(completedSort)
     local metadata, watches = addon.ReadMetadata(), {}
     for index = 1, C_QuestLog.GetNumQuestWatches() do
         local id = C_QuestLog.GetQuestIDForQuestWatchIndex(index)
@@ -14,7 +14,7 @@ function addon.ReadWatchGroups(completedFirst)
             } }
         end
     end
-    return addon.BuildGroups(watches, metadata, completedFirst)
+    return addon.BuildGroups(watches, metadata, completedSort)
 end
 
 function addon.FormatQuestTitle(title, level)
@@ -27,7 +27,7 @@ function addon.FormatQuestTitle(title, level)
 end
 
 -- Keep grouping independent of tracker frames so it can be exercised without WoW.
-function addon.BuildGroups(watches, metadata, completedFirst)
+function addon.BuildGroups(watches, metadata, completedSort)
     local groups, byZone = {}, {}
     local function GetGroup(zone)
         local group = byZone[zone]
@@ -54,7 +54,10 @@ function addon.BuildGroups(watches, metadata, completedFirst)
     table.sort(groups, function(a, b) return a.zone < b.zone end)
     for _, group in ipairs(groups) do
         table.sort(group.quests, function(a, b)
-            if completedFirst and a.completed ~= b.completed then return a.completed end
+            if a.completed ~= b.completed then
+                if completedSort == "top" then return a.completed end
+                if completedSort == "bottom" then return not a.completed end
+            end
             -- Unknown/scaling levels follow quests with a known level.
             local al = a.level > 0 and a.level or math.huge
             local bl = b.level > 0 and b.level or math.huge

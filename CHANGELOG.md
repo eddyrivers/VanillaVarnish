@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.14
+
+- Replace the completed-first checkbox with a Completed quest sorting dropdown: Off, Completed on top, or Completed on bottom within each zone.
+- Keep ascending level/title/ID order within completion groups; Off preserves the usual level sort. Restore defaults selects Off.
+- Migrate existing enabled completed-first preferences to Completed on top and disabled preferences to Off, including imported legacy settings. Preserve new selections across reloads and module switches.
+- Add regressions for all three modes, dropdown selection, completion updates, combat deferral, defaults, persistence, and migration.
+
 ## 1.0.13
 
 - Change swing-bar pulse highlights from white to a bright, pale gold tint so the bar warms gradually as it fills, in game and in settings previews.

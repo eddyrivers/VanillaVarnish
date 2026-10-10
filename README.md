@@ -17,7 +17,7 @@ Positive horizontal offsets move right; positive vertical offsets move down. Com
 
 ## Quest tracker
 
-Group tracked quests by zone, with lower-level quests first. You can also put completed quests at the top of each zone.
+Group tracked quests by zone, with lower-level quests first. The **Completed quest sorting** dropdown offers **Off**, **Completed on top**, or **Completed on bottom** within each zone. Off keeps level sorting; the other choices retain level/title order within the completed and incomplete groups. It defaults to Off, and an existing completed-first preference becomes Completed on top.
 
 - Click a zone heading or its + / - button to expand or collapse it.
 - Right-click a heading to track or untrack quests in that zone.
@@ -51,7 +51,7 @@ Clicked chat links and embedded tooltip panels retain their own placement. The m
 2. Fully restart WoW so the addon appears in the AddOns list.
 3. Enable VanillaVarnish and open `/vv`.
 
-The [1.0.13 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.13.zip) contains the installable folder. Other WoW client families have not been validated.
+The [1.0.14 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.14.zip) contains the installable folder. Other WoW client families have not been validated.
 
 ### Importing settings from the original addons
 

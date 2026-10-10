@@ -152,14 +152,22 @@ migration.execute('''
 Mock.Event("ADDON_LOADED", "VanillaVarnish")
 local vv = VV_TEST_NS
 assert(vv.db.nameplates.markers == false and vv.db.nameplates.swingTimers.width == 191)
-assert(vv.db.questTracker.completedFirst and vv.db.questTracker.collapsed.Westfall)
+assert(vv.db.questTracker.completedSort == "top" and vv.db.questTracker.completedFirst == nil and vv.db.questTracker.collapsed.Westfall)
 assert(vv.db.nameplates ~= NameplateTweaksDB and vv.db.nameplates.swingTimers.bars ~= NameplateTweaksDB.swingTimers.bars)
 assert(vv.db.questTracker.collapsed ~= QuestTrackerOrganizerDB.collapsed)
 vv.db.nameplates.swingTimers.width = 207
 NameplateTweaksDB.swingTimers.width = 240
 vv.InitDB()
 assert(vv.db.nameplates.swingTimers.width == 207 and NameplateTweaksDB.markers == false)
+assert(QuestTrackerOrganizerDB.completedFirst == true)
+vv.db.questTracker.completedSort = "bottom"
+vv.db.questTracker.completedFirst = true
+vv.InitDB()
+assert(vv.db.questTracker.completedSort == "bottom" and vv.db.questTracker.completedFirst == nil)
 ''')
+for old_value, expected in (("true", "top"), ("false", "off")):
+    completion = nameplates(full=True, seed=f"VanillaVarnishDB = {{questTracker={{completedFirst={old_value}}}}}")
+    completion.execute(f"VV_TEST_NS.InitDB(); assert(VV_TEST_NS.db.questTracker.completedSort == '{expected}'); assert(VV_TEST_NS.db.questTracker.completedFirst == nil)")
 conflict = nameplates(full=True, seed='''
 C_AddOns = {IsAddOnLoaded=function(name) return name == "NameplateTweaks" or name == "QuestTrackerOrganizer" or name == "PartyTweaks" or name == "NameplateSwingTimers" end}
 NameplateTweaksDB = {markers=false}

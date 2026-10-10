@@ -50,9 +50,12 @@ function VV.InitDB()
     end
     if type(db.party) ~= "table" then db.party = {} end
     if type(db.tooltips) ~= "table" then db.tooltips = {} end
-    for _, key in ipairs({ "enabled", "completedFirst" }) do
-        if type(db.questTracker[key]) ~= "boolean" then db.questTracker[key] = key == "enabled" end
+    if type(db.questTracker.enabled) ~= "boolean" then db.questTracker.enabled = true end
+    local sort = db.questTracker.completedSort
+    if sort ~= "off" and sort ~= "top" and sort ~= "bottom" then
+        db.questTracker.completedSort = db.questTracker.completedFirst == true and "top" or "off"
     end
+    db.questTracker.completedFirst = nil
     if type(db.questTracker.collapsed) ~= "table" then db.questTracker.collapsed = {} end
     for _, key in ipairs({ "buffs", "classColors" }) do
         if type(db.party[key]) ~= "boolean" then db.party[key] = true end

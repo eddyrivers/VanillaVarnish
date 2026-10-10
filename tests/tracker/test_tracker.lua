@@ -99,17 +99,21 @@ local ids = {}
 for _, entry in ipairs(groups[2].quests) do ids[#ids + 1] = entry.id end
 equal(table.concat(ids, ","), "1,2,6,3,4", "level title and ID sorting")
 equal(table.concat(watches, ","), "4,3,2,1,5,6", "engine watch order unchanged")
-local function order(completedFirst)
+local function order(completedSort)
     local result = {}
-    for _, entry in ipairs(addon.ReadWatchGroups(completedFirst)[2].quests) do result[#result + 1] = entry.id end
+    for _, entry in ipairs(addon.ReadWatchGroups(completedSort)[2].quests) do result[#result + 1] = entry.id end
     return table.concat(result, ",")
 end
-equal(order(true), "2,6,3,4,1", "completed quests sort by level title ID before incomplete quests")
+equal(order("off"), "1,2,6,3,4", "off retains level title and ID sorting")
+equal(order("top"), "2,6,3,4,1", "completed quests sort by level title ID before incomplete quests")
+equal(order("bottom"), "1,2,6,3,4", "completed quests sort by level title ID after incomplete quests")
 completed[3] = false
-equal(order(true), "2,6,4,1,3", "incomplete quests retain ascending level order after completed quests")
+equal(order("top"), "2,6,4,1,3", "incomplete quests retain ascending level order after completed quests")
+equal(order("bottom"), "1,3,2,6,4", "bottom keeps level order within both completion groups")
 completed[3] = true
 completed[4] = false
-equal(order(true), "2,6,3,1,4", "unknown incomplete level follows known incomplete levels")
+equal(order("top"), "2,6,3,1,4", "unknown incomplete level follows known incomplete levels")
+equal(order("bottom"), "1,4,2,6,3", "unknown incomplete level stays before completed quests in bottom mode")
 completed[4] = true
 
 local native = CreateFrame("Frame")
@@ -209,10 +213,10 @@ assert(loadfile("Modules/QuestTracker/QuestTrackerOrganizer.lua"))("VanillaVarni
 assert(loadfile("Modules/QuestTracker/Settings.lua"))("VanillaVarnish", vv)
 local events = MockFrames[#MockFrames]
 events.callback(events, "PLAYER_LOGIN")
-equal(vv.db.questTracker.completedFirst, false, "completed-first defaults off")
+equal(vv.db.questTracker.completedSort, "off", "completion sorting defaults off")
 equal(registeredCategory.name, "Quest tracker", "settings category title")
 equal(addon.optionControls.enabled:GetChecked(), true, "grouping checkbox defaults on")
-equal(addon.optionControls.completedFirst:GetChecked(), false, "completed-first checkbox defaults off")
+equal(addon.optionControls.completedSort.selectionText, "Off", "completion dropdown defaults off")
 local heightUsed, truncated = container:Update()
 local nativeHeight = native.contentsHeight
 local originalNext = blocks[4].nextBlock
@@ -279,9 +283,17 @@ end
 addon.SetAllZonesCollapsed(false); RunMockTimers()
 SlashCmdList.QUESTTRACKERORGANIZER("")
 equal(openedCategory, 123, "bare slash command opens settings")
-local completedCheck = addon.optionControls.completedFirst
-completedCheck:SetChecked(true); completedCheck.scripts.OnClick(completedCheck); RunMockTimers()
-equal(vv.db.questTracker.completedFirst, true, "menu saves completed-first option")
+local completedSelect = addon.optionControls.completedSort
+local function SelectCompleted(label)
+    for _, item in ipairs(MockDropdownMenu(completedSelect)) do
+        if item.label == label then item.callback(); RunMockTimers(); return end
+    end
+    error("Missing completion option: " .. label)
+end
+equal(#MockDropdownMenu(completedSelect), 3, "completion menu offers three choices")
+SelectCompleted("Completed on top")
+equal(vv.db.questTracker.completedSort, "top", "menu saves completed-on-top option")
+equal(completedSelect.selectionText, "Completed on top", "dropdown synchronizes after selection")
 equal(top(blocks[2]) > top(blocks[6]), true, "completed equal levels retain ID order")
 equal(top(blocks[6]) > top(blocks[3]), true, "completed equal levels retain title order")
 equal(top(blocks[4]) > top(blocks[1]), true, "unknown-level completed quest precedes incomplete lower-level quest")
@@ -292,8 +304,29 @@ completed[1] = false
 events.callback(events, "QUEST_LOG_UPDATE"); RunMockTimers()
 equal(top(blocks[4]) > top(blocks[1]), true, "quest becoming incomplete returns to incomplete group")
 equal(table.concat(watches, ","), "4,3,2,1,5,6", "completed-first leaves engine watch list unchanged")
-completedCheck:SetChecked(false); completedCheck.scripts.OnClick(completedCheck); RunMockTimers()
-equal(top(blocks[1]) > top(blocks[2]), true, "unchecking option restores level-only order")
+SelectCompleted("Completed on bottom")
+equal(vv.db.questTracker.completedSort, "bottom", "menu saves completed-on-bottom option")
+equal(top(blocks[1]) > top(blocks[2]), true, "incomplete quest precedes completed quests in bottom mode")
+equal(top(blocks[2]) > top(blocks[6]) and top(blocks[6]) > top(blocks[3]), true,
+    "completed quests retain title and ID order at the bottom")
+completed[2] = false
+events.callback(events, "QUEST_WATCH_UPDATE"); RunMockTimers()
+equal(top(blocks[2]) > top(blocks[6]), true, "quest becoming incomplete moves out of the completed bottom group")
+completed[2] = true
+events.callback(events, "QUEST_LOG_UPDATE"); RunMockTimers()
+combat = true
+local beforeSort = top(blocks[1])
+SelectCompleted("Completed on top")
+equal(top(blocks[1]), beforeSort, "completion order layout changes wait during combat")
+equal(addon.db.completedSort, "top", "completion preference saves immediately in combat")
+combat = false
+events.callback(events, "PLAYER_REGEN_ENABLED"); RunMockTimers()
+equal(top(blocks[4]) > top(blocks[1]), true, "completion order applies after combat")
+SelectCompleted("Off")
+equal(top(blocks[1]) > top(blocks[2]), true, "off restores level-only order")
+equal(table.concat(watches, ","), "4,3,2,1,5,6", "all completion modes leave engine watch list unchanged")
+equal(addon.SetOption("completedSort", "invalid"), false, "reject unknown completion mode")
+equal(addon.db.completedSort, "off", "invalid mode preserves saved choice")
 addon.optionsPanel:Hide()
 combat = true
 local opensBefore = settingsOpens
@@ -397,35 +430,35 @@ equal(blocks[1]:IsShown(), false, "settings collapse action folds quests")
 actions["Expand all zones"].scripts.OnClick(); RunMockTimers()
 equal(blocks[1]:IsShown(), true, "settings expand action restores quests")
 local enabledCheck = addon.optionControls.enabled
-completedCheck:SetChecked(true); completedCheck.scripts.OnClick(completedCheck); RunMockTimers()
+SelectCompleted("Completed on top")
 enabledCheck:SetChecked(false); enabledCheck.scripts.OnClick(enabledCheck); RunMockTimers()
 equal(heads[1]:IsShown(), false, "settings grouping toggle removes headings")
 equal(blocks[1].HeaderText:GetText(), "Low", "settings grouping toggle restores native title")
-equal(completedCheck:GetChecked(), true, "completed-first preference stays saved while disabled")
+equal(completedSelect.selectionText, "Completed on top", "completion preference stays saved while disabled")
 SlashCmdList.QUESTTRACKERORGANIZER("on"); RunMockTimers()
 equal(enabledCheck:GetChecked(), true, "slash command synchronizes settings checkbox")
 equal(top(blocks[4]) > top(blocks[1]), true, "re-enabling applies saved completed-first preference")
 vv.db.questTracker.enabled = false
 events.callback(events, "PLAYER_LOGIN"); RunMockTimers()
 equal(vv.db.questTracker.enabled, false, "saved disabled grouping survives initialization")
-equal(vv.db.questTracker.completedFirst, true, "saved completed-first survives initialization")
+equal(vv.db.questTracker.completedSort, "top", "saved completion order survives initialization")
 addon.optionsPanel:Hide(); SlashCmdList.QUESTTRACKERORGANIZER("options")
 equal(enabledCheck:GetChecked(), false, "settings controls refresh on reopen")
-equal(completedCheck:GetChecked(), true, "settings reopen retains completed-first preference")
+equal(completedSelect.selectionText, "Completed on top", "settings reopen retains completion preference")
 actions["Restore defaults"].scripts.OnClick(); RunMockTimers()
 equal(vv.db.questTracker.enabled, true, "restore defaults enables grouping")
-equal(vv.db.questTracker.completedFirst, false, "restore defaults disables completed-first")
+equal(vv.db.questTracker.completedSort, "off", "restore defaults disables completion sorting")
 equal(next(vv.db.questTracker.collapsed), nil, "restore defaults expands zones")
-equal(completedCheck:GetChecked(), false, "restore defaults synchronizes checkbox")
+equal(completedSelect.selectionText, "Off", "restore defaults synchronizes dropdown")
 print("PASS: " .. checks .. " native tracker checks")
 
 -- Master switch restores native state without overwriting smaller choices.
-addon.SetOption("completedFirst", true); container:Update(); RunMockTimers()
+addon.SetOption("completedSort", "bottom"); container:Update(); RunMockTimers()
 vv.SetModuleEnabled("questTracker", false); RunMockTimers()
 equal(heads[1]:IsShown(), false, "module off hides headings")
 equal(blocks[4].HeaderText.size, 14, "module off restores native fonts")
 equal(addon.db.enabled, true, "module off preserves grouping choice")
-equal(addon.db.completedFirst, true, "module off preserves ordering choice")
+equal(addon.db.completedSort, "bottom", "module off preserves ordering choice")
 combat = true
 vv.SetModuleEnabled("questTracker", true)
 equal(heads[1]:IsShown(), false, "module enabling waits in combat")
@@ -434,4 +467,7 @@ events.callback(events, "PLAYER_REGEN_ENABLED"); RunMockTimers()
 container:Update(); RunMockTimers()
 equal(heads[1]:IsShown(), true, "module re-enables after combat")
 equal(blocks[4].HeaderText.size, 12, "module re-enables smaller fonts")
+equal(top(blocks[1]) > top(blocks[2]), true, "module re-enables saved bottom sorting")
+vv.InitDB()
+equal(addon.db.completedSort, "bottom", "bottom sorting survives database initialization")
 print("PASS: quest tracker master toggle restoration and combat deferral")
