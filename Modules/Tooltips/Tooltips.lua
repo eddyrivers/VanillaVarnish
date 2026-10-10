@@ -10,6 +10,7 @@ local anchorQueued = setmetatable({}, { __mode = "k" })
 local worldHover = setmetatable({}, { __mode = "k" })
 local shownAlpha = setmetatable({}, { __mode = "k" })
 local changedLines = setmetatable({}, { __mode = "k" })
+local hookedHelpers = {}
 local changingAnchor = false
 
 -- Forever can return restricted values even from cosmetic tooltip APIs.
@@ -83,13 +84,14 @@ local function ApplyAnchor(tooltip)
 end
 
 local function QueueAnchor(tooltip)
-    if changingAnchor or not Enabled() or not Allowed(tooltip) or anchorQueued[tooltip] then return end
+    if changingAnchor or not Enabled() or not Allowed(tooltip) then return end
     anchorQueued[tooltip] = true
-    C_Timer.After(0, function()
-        if not anchorQueued[tooltip] then return end
-        anchorQueued[tooltip] = nil
-        if Allowed(tooltip) and Read(tooltip.IsShown, tooltip) == true then ApplyAnchor(tooltip) end
-    end)
+end
+
+local function FinishAnchor(tooltip)
+    if not hooked[tooltip] or not anchorQueued[tooltip] or changingAnchor then return end
+    anchorQueued[tooltip] = nil
+    ApplyAnchor(tooltip)
 end
 
 local function RestoreColors()
@@ -273,21 +275,32 @@ local function InstallHooks()
             for _, method in ipairs({"SetAnchorType", "SetPoint"}) do
                 -- Bag layouts set the anchor type and then SetPoint. Changing
                 -- families between those calls can make the native SetPoint
-                -- fail before any post-hook runs. Coalesce until setup ends.
+                -- fail before any post-hook runs. Mark dirty until setup ends.
                 hooksecurefunc(tooltip, method, QueueAnchor)
             end
             tooltip:HookScript("OnShow", function(self)
                 shownAlpha[self] = Read(self.GetAlpha, self)
                 RememberWorldHover(self)
                 QueueAnchor(self)
+                FinishAnchor(self)
             end)
             tooltip:HookScript("OnHide", function(self)
                 anchorQueued[self], worldHover[self], shownAlpha[self] = nil, nil, nil
             end)
-            tooltip:HookScript("OnUpdate", HideWhenHoverEnds)
+            -- Show is called again when refreshing an already visible tooltip;
+            -- OnShow alone would miss that case. No next-frame timer: native
+            -- placement must be corrected before this update is rendered.
+            hooksecurefunc(tooltip, "Show", FinishAnchor)
+            tooltip:HookScript("OnUpdate", function(self)
+                HideWhenHoverEnds(self)
+                if Read(self.IsShown, self) == true then FinishAnchor(self) end
+            end)
             if tooltip.SetWorldCursor then
                 hooksecurefunc(tooltip, "SetWorldCursor", function(self)
-                    if Read(self.IsShown, self) == true then worldHover[self] = true end
+                    if Read(self.IsShown, self) == true then
+                        worldHover[self] = true
+                        FinishAnchor(self)
+                    end
                 end)
             end
             if tooltip.FadeOut then
@@ -296,6 +309,19 @@ local function InstallHooks()
                 end)
             end
         end
+    end
+    -- These routines finish compound native anchor changes. Restore VV's
+    -- placement on return, including repeated world and bag hover refreshes.
+    for _, name in ipairs({"GameTooltip_SetDefaultAnchor", "SharedTooltip_SetDefaultAnchor"}) do
+        if type(_G[name]) == "function" and not hookedHelpers[name] then
+            hookedHelpers[name] = true
+            hooksecurefunc(name, FinishAnchor)
+        end
+    end
+    local bagHelper = "ContainerFrameItemButton_CalculateItemTooltipAnchors"
+    if type(_G[bagHelper]) == "function" and not hookedHelpers[bagHelper] then
+        hookedHelpers[bagHelper] = true
+        hooksecurefunc(bagHelper, function(_, tooltip) FinishAnchor(tooltip) end)
     end
 end
 

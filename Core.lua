@@ -1,7 +1,7 @@
 local ADDON, VV = ...
 
 VV.Nameplates, VV.QuestTracker, VV.Party, VV.Tooltips = {}, {}, {}, {}
-VV.moduleOrder = { "nameplates", "questTracker", "party", "tooltips" }
+VV.moduleOrder = { "nameplates", "party", "questTracker", "tooltips" }
 VV.moduleLabels = { nameplates = "Nameplates", questTracker = "Quest tracker", party = "Party frames", tooltips = "Tooltips" }
 local legacy = { nameplates = "NameplateTweaks", questTracker = "QuestTrackerOrganizer", party = "PartyTweaks", tooltips = "ForeverMouseTooltip" }
 local events = CreateFrame("Frame")

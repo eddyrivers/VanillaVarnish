@@ -25,7 +25,7 @@ local calls = tip.anchorCalls
 Mock.Tick(1); Mock.Tick(1)
 assert(tip.anchorCalls == calls, "Do not interfere with native fades by moving the tooltip every frame")
 tip:SetAnchorType("ANCHOR_LEFT")
-Mock.Flush()
+Mock.Tick(0)
 assert(tip.anchor == "ANCHOR_CURSOR_RIGHT")
 Mock.Hover(ShoppingTooltip1, owner, "ANCHOR_LEFT")
 Mock.Hover(ItemRefTooltip, owner, "ANCHOR_LEFT")
@@ -85,12 +85,7 @@ for _, pause in ipairs({false, true}) do
     for _, right in ipairs({200, 1820.778320}) do
         bag.right = right
         tip:SetOwner(bag, "ANCHOR_NONE")
-        Mock.bagSetup = true
         ContainerFrameItemButton_CalculateItemTooltipAnchors(bag, tip)
-        Mock.bagSetup = false
-        assert(tip.anchor == (right < 960 and "ANCHOR_RIGHT" or "ANCHOR_LEFT"))
-        assert(select(2, tip:GetPoint(#tip.points)) == bag)
-        Mock.Flush()
         assert(tip.anchor == (pause and "ANCHOR_NONE" or "ANCHOR_CURSOR_RIGHT"))
         if not pause then assert(#tip.points == 0, "Clear explicit bag anchors before native cursor tracking") end
     end
@@ -98,6 +93,54 @@ end
 tip.SetPoint = setPoint
 Mock.lockdown = false
 addon.SetOption("pauseInCombat", false)
+
+-- Refreshing an already shown tooltip must end in VV's position within the
+-- same call/frame, even when timers have run before the native refresh.
+for _, pause in ipairs({false, true}) do
+    Mock.lockdown = pause
+    addon.SetOption("pauseInCombat", pause)
+    bag.UpdateTooltip = function(self)
+        tip:SetOwner(self, "ANCHOR_NONE")
+        ContainerFrameItemButton_CalculateItemTooltipAnchors(self, tip)
+        tip:Show()
+    end
+    Mock.Hover(tip, bag, "ANCHOR_RIGHT")
+    for frame = 1, 25 do
+        Mock.Flush()
+        tip.scripts.OnUpdate(tip, 0.1)
+        assert(tip.anchor == (pause and "ANCHOR_NONE" or "ANCHOR_CURSOR_RIGHT"), "No rendered frame at the native bag position")
+        GameTooltip_SetDefaultAnchor(tip, bag)
+        assert(tip.anchor == (pause and "ANCHOR_NONE" or "ANCHOR_CURSOR_RIGHT"), "No timer delay after default anchoring")
+        tip:SetOwner(bag, "ANCHOR_RIGHT")
+        tip:SetPoint("LEFT", bag, "RIGHT")
+        tip:Show()
+        assert(tip.anchor == (pause and "ANCHOR_NONE" or "ANCHOR_CURSOR_RIGHT"), "Repeated Show must finalize explicit spell/item placement")
+    end
+    -- Other owners can update multiple explicit points without Show/helper
+    -- calls. Finish after native OnUpdate, not between individual SetPoints.
+    bag.UpdateTooltip = function(self)
+        tip:SetOwner(self, "ANCHOR_NONE")
+        tip:SetAnchorType("ANCHOR_LEFT")
+        tip:ClearAllPoints()
+        tip:SetPoint("TOPLEFT", self, "TOPRIGHT")
+        assert(tip.anchor == "ANCHOR_LEFT")
+        tip:SetPoint("BOTTOMLEFT", self, "BOTTOMRIGHT")
+        assert(tip.anchor == "ANCHOR_LEFT")
+    end
+    tip.scripts.OnUpdate(tip, 0.21)
+    assert(tip.anchor == (pause and "ANCHOR_NONE" or "ANCHOR_CURSOR_RIGHT"), "Finish custom owner updates before rendering")
+end
+bag.UpdateTooltip = nil
+Mock.lockdown = false
+addon.SetOption("pauseInCombat", false)
+if GameTooltipDataMixin then
+    Mock.worldCursorData = {}
+    for refresh = 1, 25 do
+        Mock.Flush()
+        tip:SetWorldCursor(Enum.WorldCursorAnchorType.Default)
+        assert(tip.anchor == "ANCHOR_CURSOR_RIGHT", "World refresh must stay beside the mouse within the same call")
+    end
+end
 
 -- World departure and UI owner departure need no Lua FadeOut call at all.
 Mock.WorldHover(tip, "mouseover")

@@ -25,6 +25,7 @@ function VV.RegisterOptions()
     root:Hide()
     Heading(root, "VanillaVarnish", "A few finishing touches for your UI. Choose what to enable, then explore each settings page.")
     VV.rootCategory = Settings.RegisterCanvasLayoutCategory(root, "VanillaVarnish")
+    VV.rootCategory:SetShouldSortAlphabetically(true)
     Settings.RegisterAddOnCategory(VV.rootCategory)
     for index, moduleKey in ipairs(VV.moduleOrder) do
         local key = moduleKey

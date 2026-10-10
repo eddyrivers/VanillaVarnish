@@ -189,6 +189,7 @@ Settings = {
     RegisterCanvasLayoutCategory = function(frame, name)
         local id = #Mock.categories + 1
         local category = {frame = frame, name = name, GetID = function() return id end}
+        function category:SetShouldSortAlphabetically(should) self.shouldSortAlphabetically = should end
         Mock.categories[id] = category
         return category
     end,

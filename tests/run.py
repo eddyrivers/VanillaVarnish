@@ -139,12 +139,13 @@ if args.tooltip_source:
         start = source.index("function ContainerFrameItemButton_CalculateItemTooltipAnchors(")
         end = source.index("\nfunction ContainerFrameExtendedItemButton_OnEnter(", start)
         tooltip.execute(source[start:end])
+tooltip.execute("Mock.WatchNativeSetup()")
 for path in FILES:
     if path == "Core.lua" or path.startswith("Modules/Tooltips/"):
         load(tooltip, path)
 tooltip.execute("VV_TEST_NS.RegisterOptions=function() end; VV_TEST_NS.Tooltips.RegisterOptions=function() end")
 tooltip.execute((ROOT / "tests/tooltips/test.lua").read_text())
-print("PASS: tooltip bag setup order, immediate hover dismissal, offsets, combat/Edit Mode, colors, restricted values, persistence, and conflicts")
+print("PASS: tooltip same-frame refreshes, bag setup order, immediate hover dismissal, offsets, combat/Edit Mode, colors, restricted values, persistence, and conflicts")
 
 combined = nameplates(full=True)
 combined.execute((ROOT / "tests/test_integration.lua").read_text())

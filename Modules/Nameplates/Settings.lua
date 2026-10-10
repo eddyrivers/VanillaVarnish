@@ -52,14 +52,14 @@ function ns.RegisterFeatureOptions()
     local root = CreateFrame("Frame", nil, UIParent)
     root:Hide()
     Heading(root, "Nameplates", "Choose what to show on nameplates. Each feature has its own settings page.")
-    FeatureCheck(root, "rangeEnabled", "Range check", -86, "rangeEnabled",
-        "Fade nameplates when a unit is out of range of your chosen spell.")
+    FeatureCheck(root, "comboPointsEnabled", "Combo points", -86, "comboPointsEnabled",
+        "Show five circles that fill red as you gain combo points.")
     FeatureCheck(root, "markers", "Quest icons", -126, "markers",
         "Mark units you still need for quests.")
-    FeatureCheck(root, "swingsEnabled", "Swing timers", -166, "swingsEnabled",
+    FeatureCheck(root, "rangeEnabled", "Range check", -166, "rangeEnabled",
+        "Fade nameplates when a unit is out of range of your chosen spell.")
+    FeatureCheck(root, "swingsEnabled", "Swing timers", -206, "swingsEnabled",
         "Show weapon swing timers beneath your target's nameplate.")
-    FeatureCheck(root, "comboPointsEnabled", "Combo points", -206, "comboPointsEnabled",
-        "Show five circles that fill red as you gain combo points.")
     VV.RegisterOptions()
     ns.rootCategory = VV.rootCategory
     ns.nameplateCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, root, "Nameplates")

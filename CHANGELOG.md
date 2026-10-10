@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.16
+
+- Fix hover tooltip flicker by applying VV placement at the end of native default/world/bag anchor setup and visible-tooltip refreshes in the same update. Remove next-frame anchor timers while retaining the protection against changing anchor families halfway through bag setup.
+- Keep a pending-anchor fallback after the tooltip's native OnUpdate for other hover layouts. Preserve mouse offsets, combat pause, immediate dismissal, and native comparison tooltip attachments.
+- Alphabetize the settings sidebar, module switches, and nameplate feature switches using the native Forever settings category sort.
+- Add repeated-refresh regressions with cached native Forever tooltip updates and bag anchoring; Lua 5.1 checks pass. In-game rendering still needs verification after reloading.
+
 ## 1.0.15
 
 - Remove the instant-hide checkbox and saved preference. Enabled hover tooltips always hide immediately, including native fades, world-hover departure, and leaving UI controls; preserve Blizzard's Edit Mode preview.
