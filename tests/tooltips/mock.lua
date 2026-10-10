@@ -37,6 +37,7 @@ RAID_CLASS_COLORS = { MAGE = {r=0.25,g=0.78,b=0.92} }
 UNIT_LEVEL_TEMPLATE, LEVEL = "Level %d", "Level"
 Constants = { CharacterNameSeparatorConsts = {CHARACTERNAME_SURNAME_SEPARATOR=" "} }
 Enum.TooltipDataType = { Unit = 2 }
+Enum.TooltipDataLineType = { UnitLevel = 47 }
 Enum.WorldCursorAnchorType = { Default=0, Cursor=1, Nameplate=2 }
 TooltipDataProcessor = { AddTooltipPostCall = function(kind, callback) assert(kind == 2); Mock.colorCallback = callback end }
 TooltipUtil = { GetDisplayedUnit = function(tooltip) return "Ada", Mock.displayedUnit end }
@@ -60,6 +61,7 @@ function Mock.Tooltip(name)
     function tip:GetName() return self.name end
     function tip:GetUnit() return "Ada", self.unit end
     function tip:GetPrimaryTooltipInfo() return self.info end
+    function tip:GetPrimaryTooltipData() return self.primaryData end
     function tip:ProcessInfo(info) self.info = info; self:Show() end
     function tip:NumLines() return self.lineCount end
     function tip:FadeOut() self.fading = true end

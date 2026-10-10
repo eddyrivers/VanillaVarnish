@@ -204,6 +204,71 @@ end
 data.hostile = false
 Mock.Lines(tip, {"Friendly", "Level 22 Beast"})
 Mock.colorCallback(tip); assert(Mock.Text(2) == "Level 22 Beast")
+
+-- Dungeon level lines need native formatting and target-frame difficulty.
+Mock.unitInfo.player.level, data.level, data.hostile = 19, 19, true
+local nativeDifficultyCalls = 0
+C_PlayerInfo = {GetContentDifficultyCreatureForPlayer=function(unit)
+    assert(unit == "mouseover")
+    nativeDifficultyCalls = nativeDifficultyCalls + 1
+    return 7
+end}
+GetDifficultyColor = function(difficulty)
+    assert(difficulty == 7)
+    return {r=1,g=0.82,b=0}
+end
+local levelData = {lines={{type=Enum.TooltipDataLineType.UnitLevel, lineIndex=2}}}
+for _, spec in ipairs({
+    {"Level 19 (Elite) Humanoid", "|cffffd100Level 19|r (Elite) Humanoid"},
+    {"19 (Elite) Humanoid", "|cffffd10019|r (Elite) Humanoid"},
+    {"Level |cffffffff19|r (Elite) Humanoid", "Level |cffffffff|cffffd10019|r|r (Elite) Humanoid"},
+    {"|cffff19ff19|r (Elite) Humanoid", "|cffff19ff|cffffd10019|r|r (Elite) Humanoid"},
+}) do
+    Mock.Lines(tip, {"Dungeon enemy", spec[1], "Defeat 19 enemies: 0/19"})
+    Mock.colorCallback(tip, levelData)
+    assert(Mock.Text(2) == spec[2], "Same-level dungeon enemies must use the target frame's yellow and preserve other text")
+    assert(Mock.Text(3) == "Defeat 19 enemies: 0/19", "Only the native level line gets numeric matching")
+    local result = Mock.Text(2)
+    Mock.colorCallback(tip, levelData)
+    assert(Mock.Text(2) == result, "Native level-line coloring must not nest on refresh")
+end
+assert(nativeDifficultyCalls > 0)
+Mock.unitInfo.player.level = nil
+Mock.Lines(tip, {"Dungeon enemy", "Level 19 (Elite) Humanoid"})
+Mock.colorCallback(tip, levelData)
+assert(Mock.Text(2):find("|cffffd100", 1, true), "Native difficulty does not require a separate player-level query")
+Mock.Lines(tip, {"Dungeon enemy", "19 (Elite) Humanoid"})
+tip.primaryData = levelData
+Mock.colorCallback(tip)
+assert(Mock.Text(2) == "|cffffd10019|r (Elite) Humanoid", "Refreshes can read primary level-line metadata")
+addon.SetOption("unitColors", false)
+assert(Mock.Text(2) == "19 (Elite) Humanoid")
+addon.SetOption("unitColors", true)
+assert(Mock.Text(2) == "|cffffd10019|r (Elite) Humanoid", "Re-enabling colors reapplies native level formatting")
+tip.primaryData = nil
+C_PlayerInfo, GetDifficultyColor = nil, nil
+Mock.unitInfo.player.level = 19
+Mock.Lines(tip, {"Dungeon enemy", "19 (Elite) Humanoid"})
+Mock.colorCallback(tip, levelData)
+assert(Mock.Text(2) == "|cffffff0019|r (Elite) Humanoid", "Keep Classic fallback colors without native helpers")
+Mock.Lines(tip, {"Dungeon enemy", "190 (Elite) Humanoid"})
+Mock.colorCallback(tip, levelData)
+assert(Mock.Text(2) == "190 (Elite) Humanoid", "Do not match a level inside a different number")
+local restrictedDifficulty = {secret=true}
+local restrictedDifficultyCalls = 0
+C_PlayerInfo = {GetContentDifficultyCreatureForPlayer=function() return restrictedDifficulty end}
+GetDifficultyColor = function() restrictedDifficultyCalls = restrictedDifficultyCalls + 1 end
+Mock.Lines(tip, {"Dungeon enemy", "19 (Elite) Humanoid"})
+Mock.colorCallback(tip, levelData)
+assert(Mock.Text(2) == "|cffffff0019|r (Elite) Humanoid", "Restricted native difficulty can use readable fallback levels")
+assert(restrictedDifficultyCalls == 0, "Do not pass restricted difficulty to native helpers")
+C_PlayerInfo.GetContentDifficultyCreatureForPlayer = function() error("restricted difficulty getter") end
+Mock.Lines(tip, {"Dungeon enemy", "19 (Elite) Humanoid"})
+Mock.colorCallback(tip, {lines=restrictedDifficulty})
+assert(Mock.Text(2) == "19 (Elite) Humanoid", "Restricted metadata must not enable numeric text matching")
+C_PlayerInfo, GetDifficultyColor = nil, nil
+Mock.unitInfo.player.level = 30
+
 data.player, data.hostile, data.name, data.level = true, true, "Ada", 33
 UNIT_LEVEL_TEMPLATE = "Niveau %d"
 Mock.Lines(tip, {"Ada", "Niveau 33 Mage"})

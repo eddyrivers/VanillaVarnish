@@ -2,7 +2,7 @@
 ## Title: VanillaVarnish
 ## Notes: Modular improvements to Blizzard nameplates, quest tracking, party frames, and tooltips.
 ## Author: Ian
-## Version: 1.0.16
+## Version: 1.0.17
 ## Category: UI Overhaul
 ## IconTexture: Interface\Icons\INV_Enchant_DustIllusion
 ## SavedVariablesPerCharacter: VanillaVarnishDB

@@ -50,7 +50,7 @@ Clicked chat links and embedded tooltip panels retain their own placement. The m
 2. Fully restart WoW so the addon appears in the AddOns list.
 3. Enable VanillaVarnish and open `/vv`.
 
-The [1.0.16 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.16.zip) contains the installable folder. Other WoW client families have not been validated.
+The [1.0.17 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.17.zip) contains the installable folder. Other WoW client families have not been validated.
 
 ### Importing settings from the original addons
 

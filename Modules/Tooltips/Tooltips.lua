@@ -119,7 +119,14 @@ end
 local palette = { impossible = {r=1,g=0.1,b=0.1}, verydifficult = {r=1,g=0.5,b=0.25},
     difficult = {r=1,g=1,b=0}, standard = {r=0.25,g=0.75,b=0.25}, trivial = {r=0.5,g=0.5,b=0.5} }
 
-local function Difficulty(level)
+local function Difficulty(unit, level)
+    -- Match TargetFrame's creature difficulty, including dungeon units.
+    -- Cosmetic fallbacks use only readable levels when native APIs fail.
+    local difficulty = Read(C_PlayerInfo and C_PlayerInfo.GetContentDifficultyCreatureForPlayer, unit)
+    if difficulty ~= nil then
+        local code = ColorCode(Read(GetDifficultyColor, difficulty))
+        if code then return code end
+    end
     local playerLevel = Read(UnitLevel, "player")
     if type(playerLevel) ~= "number" or playerLevel <= 0 then return end
     local difference, key = level - playerLevel
@@ -202,6 +209,34 @@ local function Tint(text, phrase, code)
     return text:sub(1, first - 1) .. code .. phrase .. "|r" .. text:sub(last + 1)
 end
 
+local function LevelLines(tooltip, data)
+    local indices = {}
+    local levelType = Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.UnitLevel
+    data = Known(data) or Read(tooltip.GetPrimaryTooltipData, tooltip)
+    if not levelType or type(data) ~= "table" then return indices end
+    local lines = Read(function() return data.lines end)
+    if type(lines) ~= "table" then return indices end
+    pcall(function()
+        for _, line in ipairs(lines) do
+            if type(Known(line)) == "table" and Known(line.type) == levelType then
+                local index = Known(line.lineIndex)
+                if type(index) == "number" then indices[index] = true end
+            end
+        end
+    end)
+    return indices
+end
+
+local function TintLevelNumber(text, level, code)
+    if not code then return text end
+    -- Mask color codes without moving text offsets; a level must not match
+    -- digits inside markup or a different number (19 versus 190).
+    local searchable = text:gsub("|c%x%x%x%x%x%x%x%x", function(markup) return string.rep(" ", #markup) end)
+    local first, last = searchable:find("%f[%d]" .. level .. "%f[%D]")
+    if not first then return text end
+    return text:sub(1, first - 1) .. code .. text:sub(first, last) .. "|r" .. text:sub(last + 1)
+end
+
 local function ColorUnit(tooltip, data)
     if not Enabled() or not addon.db.unitColors or not hooked[tooltip] or not Allowed(tooltip) then return end
     local unit = DisplayedUnit(tooltip, data)
@@ -231,7 +266,8 @@ local function ColorUnit(tooltip, data)
     local level = Read(UnitLevel, unit)
     local levelText = type(level) == "number" and level > 0 and LevelText(level) or nil
     local hostile = Read(UnitCanAttack, "player", unit) == true or Read(UnitIsEnemy, "player", unit) == true
-    local levelCode = hostile and levelText and Difficulty(level) or nil
+    local levelCode = hostile and levelText and Difficulty(unit, level) or nil
+    local levelLines = LevelLines(tooltip, data)
     local count, tooltipName = Read(tooltip.NumLines, tooltip), Read(tooltip.GetName, tooltip)
     if type(count) ~= "number" or type(tooltipName) ~= "string" then return end
     for index = 1, count do
@@ -245,9 +281,12 @@ local function ColorUnit(tooltip, data)
                 colored = Tint(text, text:find(fullName, 1, true) and fullName or name, classCode)
             elseif index > 1 then
                 colored = Tint(colored, levelText, levelCode)
+                if colored == text and levelLines[index] and levelText then
+                    colored = TintLevelNumber(colored, level, levelCode)
+                end
                 -- Do not color class words inside guilds, quest objectives or
                 -- flavor text: only a unit's level/class detail line.
-                if text == className or (levelText and text:find(levelText, 1, true))
+                if text == className or levelLines[index] or (levelText and text:find(levelText, 1, true))
                     or (type(race) == "string" and text == race .. " " .. (className or "")) then
                     colored = Tint(colored, className, classCode)
                 end

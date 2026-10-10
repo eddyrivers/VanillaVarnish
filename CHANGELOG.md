@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.17
+
+- Use the target frame's native creature difficulty result for hostile tooltip levels, with Classic level-based colors as a fallback when native helpers are unavailable or unreadable.
+- Recognize Blizzard's unit-level tooltip lines when elite/dungeon formatting or embedded color codes prevent an exact localized "Level N" match. Preserve classification, creature type, class colors, and unrelated quest numbers.
+- Add level-19 dungeon enemy regressions for native yellow, formatting, repeated refreshes, feature restoration, unavailable player levels, and restricted API data. In-game rendering still needs verification after reloading.
+
 ## 1.0.16
 
 - Fix hover tooltip flicker by applying VV placement at the end of native default/world/bag anchor setup and visible-tooltip refreshes in the same update. Remove next-frame anchor timers while retaining the protection against changing anchor families halfway through bag setup.
