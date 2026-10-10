@@ -1,4 +1,18 @@
 dofile("tests/nameplates/MockWoW.lua")
+WorldFrame = Mock.New(UIParent)
+Mock.timers = {}
+C_Timer = {After=function(_, callback) Mock.timers[#Mock.timers + 1] = callback end}
+function Mock.Flush()
+    local pending = Mock.timers
+    Mock.timers = {}
+    for _, callback in ipairs(pending) do callback() end
+end
+local tick = Mock.Tick
+function Mock.Tick(delta) tick(delta); Mock.Flush() end
+function Mock.Object:IsMouseOver() return self.hovered ~= false end
+function Mock.Object:GetRight() return self.right or 1800 end
+function GetScreenWidth() return 1920 end
+C_TooltipInfo = {GetWorldCursor=function() return Mock.worldCursorData end}
 Mock.unitInfo = { player = {level=30}, mouseover = {level=33, player=true, class="MAGE", name="Ada", surname="Lovelace", hostile=true} }
 function UnitLevel(unit) return (Mock.unitInfo[unit] or {}).level end
 function UnitIsPlayer(unit) return (Mock.unitInfo[unit] or {}).player end
@@ -38,6 +52,7 @@ function Mock.Tooltip(name)
     function tip:GetOwner() return self.owner end
     function tip:GetName() return self.name end
     function tip:GetUnit() return "Ada", self.unit end
+    function tip:GetPrimaryTooltipInfo() return self.info end
     function tip:NumLines() return self.lineCount end
     function tip:FadeOut() self.fading = true end
     function tip:HookScript(event, fn)
@@ -70,8 +85,27 @@ function CreateFromMixins(...) local value = {}; for _, mixin in ipairs({...}) d
 TooltipDataHandlerMixin = {}
 EditModeManagerFrame = { IsEditModeActive=function() return Mock.editing or false end }
 function Mock.Hover(tooltip, owner, anchor, text)
+    tooltip:Hide()
+    tooltip.info, tooltip.unit, tooltip.fading = nil, nil, nil
+    tooltip:SetAlpha(1)
     tooltip:SetOwner(owner, anchor)
     tooltip:SetPoint("LEFT", owner, "RIGHT", 1, 0)
     Mock.Lines(tooltip, {text or "Hover text"})
     tooltip:Show()
+    Mock.Flush()
+end
+function Mock.WorldHover(tooltip, unit)
+    Mock.Hover(tooltip, UIParent, "ANCHOR_NONE")
+    tooltip.info, tooltip.unit = {getterName="GetWorldCursor"}, unit
+    Mock.worldCursorData = {}
+end
+-- Replaced with the actual Forever helper when cached container.lua exists.
+function ContainerFrameItemButton_CalculateItemTooltipAnchors(self, mainTooltip)
+    if self:GetRight() < GetScreenWidth() / 2 then
+        mainTooltip:SetAnchorType("ANCHOR_RIGHT", 0, 0)
+        mainTooltip:SetPoint("BOTTOMLEFT", self, "TOPRIGHT")
+    else
+        mainTooltip:SetAnchorType("ANCHOR_LEFT", 0, 0)
+        mainTooltip:SetPoint("BOTTOMRIGHT", self, "TOPLEFT")
+    end
 end

@@ -11,7 +11,7 @@ from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument("--lua-runtime")
 parser.add_argument("--blizzard-source")
-parser.add_argument("--tooltip-source", help="Optional cached Forever tooltip source directory (shared.lua, tooltip.lua)")
+parser.add_argument("--tooltip-source", help="Optional cached Forever tooltip sources (shared.lua, tooltip.lua, optional container.lua)")
 args = parser.parse_args()
 if args.lua_runtime:
     sys.path.insert(0, args.lua_runtime)
@@ -132,12 +132,19 @@ tooltip.execute((ROOT / "tests/tooltips/mock.lua").read_text())
 if args.tooltip_source:
     for filename in ("shared.lua", "tooltip.lua"):
         tooltip.execute((Path(args.tooltip_source) / filename).read_text(encoding="utf-8-sig"))
+    tooltip.execute("GameTooltip.SetWorldCursor=GameTooltipDataMixin.SetWorldCursor")
+    container = Path(args.tooltip_source) / "container.lua"
+    if container.is_file():
+        source = container.read_text(encoding="utf-8-sig")
+        start = source.index("function ContainerFrameItemButton_CalculateItemTooltipAnchors(")
+        end = source.index("\nfunction ContainerFrameExtendedItemButton_OnEnter(", start)
+        tooltip.execute(source[start:end])
 for path in FILES:
     if path == "Core.lua" or path.startswith("Modules/Tooltips/"):
         load(tooltip, path)
 tooltip.execute("VV_TEST_NS.RegisterOptions=function() end; VV_TEST_NS.Tooltips.RegisterOptions=function() end")
 tooltip.execute((ROOT / "tests/tooltips/test.lua").read_text())
-print("PASS: tooltip hover anchors, offsets, fades, combat/Edit Mode, colors, restricted values, persistence, and conflict checks")
+print("PASS: tooltip bag setup order, immediate hover dismissal, offsets, combat/Edit Mode, colors, restricted values, persistence, and conflicts")
 
 combined = nameplates(full=True)
 combined.execute((ROOT / "tests/test_integration.lua").read_text())

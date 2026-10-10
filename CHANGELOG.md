@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.15
+
+- Remove the instant-hide checkbox and saved preference. Enabled hover tooltips always hide immediately, including native fades, world-hover departure, and leaving UI controls; preserve Blizzard's Edit Mode preview.
+- Defer VV positioning until native tooltip setup finishes and clear explicit anchors before starting cursor tracking. This prevents VV from switching anchor families between Blizzard's bag SetAnchorType and SetPoint calls, a possible cause of the reported Baganator item tooltip error. Baganator is unchanged.
+- Add regressions for both bag anchor directions and combat pause using the cached native Forever bag helper, plus hover departure without FadeOut, restricted queries, and retired-setting migration. Lua 5.1 regressions pass; verify the engine anchor-family error in game after reloading.
+
 ## 1.0.14
 
 - Replace the completed-first checkbox with a Completed quest sorting dropdown: Off, Completed on top, or Completed on bottom within each zone.

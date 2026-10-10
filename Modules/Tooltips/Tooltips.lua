@@ -1,11 +1,14 @@
 local ADDON, VV = ...
 local addon = VV.Tooltips
 addon.defaults = { followMouse = true, offsetX = 34, offsetY = -6,
-    unitColors = true, instantHide = false, pauseInCombat = false }
+    unitColors = true, pauseInCombat = false }
 addon.limits = { offsetX = {-500, 500}, offsetY = {-500, 500} }
 local driver = CreateFrame("Frame")
 local hooked = setmetatable({}, { __mode = "k" })
 local moved = setmetatable({}, { __mode = "k" })
+local anchorQueued = setmetatable({}, { __mode = "k" })
+local worldHover = setmetatable({}, { __mode = "k" })
+local shownAlpha = setmetatable({}, { __mode = "k" })
 local changedLines = setmetatable({}, { __mode = "k" })
 local changingAnchor = false
 
@@ -63,9 +66,11 @@ local function ApplyAnchor(tooltip)
     if changingAnchor or not Enabled() or not Allowed(tooltip) or Editing() then return end
     changingAnchor = true
     -- Native cursor anchoring handles movement, UI scale and edge clamping,
-    -- and leaves the engine's hover/fade timer intact. No per-frame SetPoint.
+    -- without per-frame SetPoint calls. Clear old explicit anchors before
+    -- switching families, after the native setup stack has finished.
     local ok, err = pcall(function()
         if addon.db.followMouse and not Paused() then
+            tooltip:ClearAllPoints()
             tooltip:SetAnchorType("ANCHOR_CURSOR_RIGHT", addon.db.offsetX, addon.db.offsetY)
             moved[tooltip] = true
         elseif Paused() then
@@ -75,6 +80,16 @@ local function ApplyAnchor(tooltip)
     end)
     changingAnchor = false
     if not ok and geterrorhandler then geterrorhandler()(err) end
+end
+
+local function QueueAnchor(tooltip)
+    if changingAnchor or not Enabled() or not Allowed(tooltip) or anchorQueued[tooltip] then return end
+    anchorQueued[tooltip] = true
+    C_Timer.After(0, function()
+        if not anchorQueued[tooltip] then return end
+        anchorQueued[tooltip] = nil
+        if Allowed(tooltip) and Read(tooltip.IsShown, tooltip) == true then ApplyAnchor(tooltip) end
+    end)
 end
 
 local function RestoreColors()
@@ -144,6 +159,37 @@ local function DisplayedUnit(tooltip, data)
     local ok, guid = pcall(function() return Known(data.guid) end)
     local mouseoverGUID = Read(UnitGUID, "mouseover")
     if ok and type(guid) == "string" and guid == mouseoverGUID then return "mouseover" end
+end
+
+local function RememberWorldHover(tooltip)
+    local info = Read(tooltip.GetPrimaryTooltipInfo, tooltip)
+    if type(info) ~= "table" then return end
+    local ok, getter = pcall(function() return Known(info.getterName) end)
+    if ok and type(getter) == "string" then worldHover[tooltip] = getter == "GetWorldCursor" or nil end
+end
+
+local function HideWhenHoverEnds(tooltip)
+    if not Enabled() or not Allowed(tooltip) or Editing() or Read(tooltip.IsShown, tooltip) ~= true then return end
+    RememberWorldHover(tooltip)
+    if worldHover[tooltip] and C_TooltipInfo and type(C_TooltipInfo.GetWorldCursor) == "function" then
+        -- The engine can start its own delayed fade without invoking the Lua
+        -- FadeOut method. Detect departure using the native world-hover query.
+        local ok, data = pcall(C_TooltipInfo.GetWorldCursor)
+        if ok and not (issecretvalue and issecretvalue(data)) and data == nil then
+            tooltip:Hide(); return
+        end
+    end
+    local owner = Read(tooltip.GetOwner, tooltip)
+    if owner == UIParent or owner == WorldFrame then
+        local unit = DisplayedUnit(tooltip)
+        if unit and Read(UnitExists, "mouseover") == false then tooltip:Hide(); return end
+    elseif Allowed(owner) and Read(owner.IsMouseOver, owner) == false then
+        tooltip:Hide(); return
+    end
+    -- Also catch engine-only fades for other hover surfaces. Compare to the
+    -- tooltip's own starting alpha so a stable custom opacity is preserved.
+    local alpha, initial = Read(tooltip.GetAlpha, tooltip), shownAlpha[tooltip]
+    if type(alpha) == "number" and type(initial) == "number" and alpha < initial then tooltip:Hide() end
 end
 
 local function Tint(text, phrase, code)
@@ -220,13 +266,33 @@ local function InstallHooks()
         local tooltip = _G[name]
         if Allowed(tooltip) and not hooked[tooltip] and tooltip.SetAnchorType then
             hooked[tooltip] = true
-            for _, method in ipairs({"SetOwner", "SetAnchorType", "SetPoint"}) do
-                hooksecurefunc(tooltip, method, ApplyAnchor)
+            hooksecurefunc(tooltip, "SetOwner", function(self)
+                worldHover[self] = nil
+                QueueAnchor(self)
+            end)
+            for _, method in ipairs({"SetAnchorType", "SetPoint"}) do
+                -- Bag layouts set the anchor type and then SetPoint. Changing
+                -- families between those calls can make the native SetPoint
+                -- fail before any post-hook runs. Coalesce until setup ends.
+                hooksecurefunc(tooltip, method, QueueAnchor)
             end
-            tooltip:HookScript("OnShow", ApplyAnchor)
+            tooltip:HookScript("OnShow", function(self)
+                shownAlpha[self] = Read(self.GetAlpha, self)
+                RememberWorldHover(self)
+                QueueAnchor(self)
+            end)
+            tooltip:HookScript("OnHide", function(self)
+                anchorQueued[self], worldHover[self], shownAlpha[self] = nil, nil, nil
+            end)
+            tooltip:HookScript("OnUpdate", HideWhenHoverEnds)
+            if tooltip.SetWorldCursor then
+                hooksecurefunc(tooltip, "SetWorldCursor", function(self)
+                    if Read(self.IsShown, self) == true then worldHover[self] = true end
+                end)
+            end
             if tooltip.FadeOut then
                 hooksecurefunc(tooltip, "FadeOut", function(self)
-                    if Enabled() and addon.db.instantHide and Allowed(self) then self:Hide() end
+                    if Enabled() and Allowed(self) then self:Hide() end
                 end)
             end
         end
@@ -236,6 +302,7 @@ end
 function addon.InitDB()
     if not VV.db then VV.InitDB() end
     addon.db = VV.db.tooltips
+    addon.db.instantHide = nil -- Retired: enabled hover tooltips always hide immediately.
     for key, default in pairs(addon.defaults) do
         local value, limits = addon.db[key], addon.limits[key]
         if limits then
@@ -303,6 +370,7 @@ driver:RegisterEvent("ADDON_LOADED")
 driver:RegisterEvent("PLAYER_LOGIN")
 driver:RegisterEvent("PLAYER_REGEN_DISABLED")
 driver:RegisterEvent("PLAYER_REGEN_ENABLED")
+driver:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 driver:SetScript("OnEvent", function(_, event, name)
     if event == "ADDON_LOADED" then
         if name == ADDON then addon.InitDB() end
@@ -313,6 +381,8 @@ driver:SetScript("OnEvent", function(_, event, name)
             TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, ColorUnit)
         end
         addon.RegisterOptions()
+    elseif event == "UPDATE_MOUSEOVER_UNIT" and addon.db then
+        for tooltip in pairs(hooked) do HideWhenHoverEnds(tooltip) end
     elseif addon.db then
         for tooltip in pairs(hooked) do
             if Allowed(tooltip) and Read(tooltip.IsShown, tooltip) == true then ApplyAnchor(tooltip) end

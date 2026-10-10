@@ -25,7 +25,6 @@ function addon.RegisterOptions()
     for index, spec in ipairs({
         {"followMouse", "Follow the mouse", "Move hover tooltips for units, spells, items, auras, and other controls beside the cursor."},
         {"unitColors", "Color unit names, classes, and levels", "Use class colors for player names and class text, and Classic difficulty colors for hostile levels. Restricted information keeps Blizzard's colors."},
-        {"instantHide", "Hide instantly when hovering ends", "Skip the normal fade when you move off a unit or another hover target."},
         {"pauseInCombat", "Pause mouse following in combat", "Use the tooltip position saved in Blizzard's Edit Mode throughout combat. Mouse following resumes when combat ends. Off by default."},
     }) do
         local key = spec[1]
@@ -37,14 +36,14 @@ function addon.RegisterOptions()
         {"offsetY", "Vertical offset", "Positive moves up; negative moves down. UI units relative to the cursor anchor."},
     }) do
         local key, limits = spec[1], addon.limits[spec[1]]
-        controls[key] = UI.Slider(content, "tooltips." .. key, spec[2], -184 - (index - 1) * 44,
+        controls[key] = UI.Slider(content, "tooltips." .. key, spec[2], -144 - (index - 1) * 44,
             limits[1], limits[2], 1, false, function() return addon.db[key] end,
             function(value) addon.SetOption(key, value) end, spec[3])
     end
-    UI.Label(panel, "Enable the Tooltips module on the VanillaVarnish page.\nOffsets apply while following the mouse. Combat pause uses your Edit Mode position.",
-        16, -368, "GameFontHighlightSmall")
+    UI.Label(panel, "Hover tooltips hide immediately when hovering ends.\nEnable the Tooltips module on the VanillaVarnish page.\nOffsets apply while following the mouse. Combat pause uses your Edit Mode position.",
+        16, -328, "GameFontHighlightSmall")
     local reset = UI.Button(panel, "Restore defaults", 144, addon.ResetSettings)
-    reset:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -428)
+    reset:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -404)
     category = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, panel, "Tooltips")
     Settings.RegisterAddOnCategory(category)
     panel:SetScript("OnShow", addon.RefreshOptions)

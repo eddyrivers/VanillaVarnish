@@ -35,13 +35,12 @@ Buffs include stack counts, cooldowns, and hover tooltips. Some layout changes t
 
 ## Tooltips
 
-Open **`/vv tooltips`** for mouse following, colors, and fade options. The module and mouse following start enabled; turn either off to keep the usual hover placement.
+Open **`/vv tooltips`** for mouse following and colors. The module and mouse following start enabled; turn either off to keep the usual hover placement. Enabled hover tooltips disappear immediately when hovering ends.
 
 - **Follow the mouse:** keep hover tooltips for mobs, players, spells, bag items, auras, and other controls beside the cursor, including tooltips normally anchored to a button. Item comparisons stay attached to the main item tooltip.
 - **Horizontal / vertical offset:** adjust the native cursor anchor from -500 to 500 UI units. Positive X moves right; positive Y moves up. Defaults are X **34**, Y **-6**.
 - **Color unit names, classes, and levels:** player names, including Forever surnames, and class text use class colors. Hostile levels use Classic difficulty colors: red, orange, yellow, green, or gray. Restricted information keeps its native colors. Enabled by default.
-- **Hide instantly when hovering ends:** skip the normal tooltip fade. Disabled by default.
-- **Pause mouse following in combat:** put hover tooltips at the position saved in Blizzard's Edit Mode while in combat, then resume mouse following when combat ends. Disabled by default. Unit colors and instant hide still apply when enabled.
+- **Pause mouse following in combat:** put hover tooltips at the position saved in Blizzard's Edit Mode while in combat, then resume mouse following when combat ends. Disabled by default. Unit colors and immediate hiding still apply.
 
 Clicked chat links and embedded tooltip panels retain their own placement. The module uses native cursor tracking and secure hooks, with fresh settings; it does not import ForeverMouseTooltip. If **ForeverMouseTooltip** is loaded, disable it and `/reload` to activate VV's Tooltips module.
 
@@ -51,7 +50,7 @@ Clicked chat links and embedded tooltip panels retain their own placement. The m
 2. Fully restart WoW so the addon appears in the AddOns list.
 3. Enable VanillaVarnish and open `/vv`.
 
-The [1.0.14 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.14.zip) contains the installable folder. Other WoW client families have not been validated.
+The [1.0.15 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.15.zip) contains the installable folder. Other WoW client families have not been validated.
 
 ### Importing settings from the original addons
 

@@ -67,6 +67,7 @@ SlashCmdList.VANILLAVARNISH("tooltips on")
 assert(vv.db.tooltips.offsetX == 24 and vv.db.tooltips.offsetY == -30)
 SlashCmdList.VANILLAVARNISH("tooltips")
 assert(vv.Tooltips.optionsPanel:IsShown())
+assert(vv.Tooltips.optionControls.instantHide == nil and vv.db.tooltips.instantHide == nil)
 local tooltipCheck = vv.Tooltips.optionControls.pauseInCombat.button
 tooltipCheck:SetChecked(true); tooltipCheck.scripts.OnClick(tooltipCheck)
 assert(vv.db.tooltips.pauseInCombat)
