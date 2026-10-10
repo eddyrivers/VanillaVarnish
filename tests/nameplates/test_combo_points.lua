@@ -16,6 +16,9 @@ Mock.Event("ADDON_LOADED", "VanillaVarnish")
 Mock.Event("PLAYER_LOGIN")
 local target = Mock.Plate("nameplate1")
 target.UnitFrame.HealthBarsContainer.healthBar = Mock.New(target.UnitFrame.HealthBarsContainer)
+target.UnitFrame.CastBarsContainer = Mock.New(target.UnitFrame)
+target.UnitFrame.CastBarsContainer.castBar = Mock.New(target.UnitFrame.CastBarsContainer)
+target.UnitFrame.CastBarsContainer.castBar:SetFrameLevel(100)
 Mock.plates.target, Mock.units.target, Mock.units.nameplate1 = target, true, true
 local other = Mock.Plate("nameplate2")
 Mock.plates.softenemy, Mock.units.softenemy = other, true
@@ -26,6 +29,11 @@ Mock.Event("UNIT_POWER_UPDATE", "player", "COMBO_POINTS")
 local row = assert(Row(target))
 Check(row:IsShown() and row.dots[3]:IsShown() and not row.dots[4]:IsShown(), "Only earned points appear")
 local anchor = target.UnitFrame.HealthBarsContainer.healthBar
+local cast = target.UnitFrame.CastBarsContainer.castBar
+Check(row:GetFrameLevel() > cast:GetFrameLevel(), "Combo row draws above native cast artwork")
+for _, dot in ipairs(row.dots) do
+    Check(dot:GetFrameLevel() > cast:GetFrameLevel(), "Dot artwork is visible over the cast bar")
+end
 Check(row.points[1][2] == anchor and row.points[1][3] == "BOTTOM" and row.points[1][5] == 0,
     "Dots overlap the visible health bar halfway")
 Check(row.width == 76 and row.height == 12, "Default five-point row has spaced dots")
@@ -97,6 +105,10 @@ for _, sample in ipairs({swingSample, comboSample}) do
     Check(sample.swingStack:IsShown(), "Both previews show enabled swing bars")
     Check(sample.comboRow.points[1][2] == combo.HealthAnchor(sample.nativeFrame, sample.healthBar),
         "Preview uses the same visible health anchor")
+    local sampleCast = sample.nativeFrame and sample.nativeFrame.CastBarsContainer.castBar or sample.castBar
+    for _, dot in ipairs(sample.comboRow.dots) do
+        Check(dot:GetFrameLevel() > sampleCast:GetFrameLevel(), "Both previews draw dots above cast artwork")
+    end
 end
 ns.SetFeature("swingsEnabled", false)
 for _, sample in ipairs({swingSample, comboSample}) do

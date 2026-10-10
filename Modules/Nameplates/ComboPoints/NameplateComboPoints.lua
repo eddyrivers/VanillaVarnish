@@ -69,7 +69,7 @@ function combo.CreateRow(parent)
     return row
 end
 
-function combo.LayoutRow(row, anchor, count)
+function combo.LayoutRow(row, anchor, count, castBar)
     local db = combo.db
     local width = 5 * db.size + 4 * db.gap
     row:SetSize(width, db.size)
@@ -77,8 +77,14 @@ function combo.LayoutRow(row, anchor, count)
     -- Positive Y moves down, matching swing timer controls. At zero, half of
     -- each dot overlaps the bottom edge of the visible health bar.
     row:SetPoint("CENTER", anchor, "BOTTOM", db.x, -db.y)
-    row:SetFrameLevel(anchor:GetFrameLevel() + 10)
+    -- Blizzard's cast bar uses frame level 100, independently of health.
+    -- Dots overlap both bars, so their artwork must draw above either one.
+    local healthLevel = ns.Number(Read(anchor.GetFrameLevel, anchor), 0, 10000) or 0
+    local castLevel = castBar and ns.Number(Read(castBar.GetFrameLevel, castBar), 0, 10000) or 0
+    local level = math.max(healthLevel, castLevel) + 10
+    row:SetFrameLevel(level)
     for index, dot in ipairs(row.dots) do
+        dot:SetFrameLevel(level + 1)
         dot:SetSize(db.size, db.size)
         dot:ClearAllPoints()
         dot:SetPoint("LEFT", row, "LEFT", (index - 1) * (db.size + db.gap), 0)
@@ -95,6 +101,11 @@ end
 function combo.HealthAnchor(frame, fallback)
     local container = frame and frame.HealthBarsContainer
     return container and (container.healthBar or container) or frame and frame.healthBar or fallback
+end
+
+function combo.CastBar(frame)
+    local container = frame and frame.CastBarsContainer
+    return container and container.castBar or frame and frame.castBar
 end
 
 function combo.Refresh()
@@ -114,7 +125,7 @@ function combo.Refresh()
     local row = rows[plate]
     if not row then row = combo.CreateRow(plate); rows[plate] = row end
     row.unitToken = Read(plate.GetUnit, plate)
-    combo.LayoutRow(row, anchor, count)
+    combo.LayoutRow(row, anchor, count, combo.CastBar(frame))
     current = row
 end
 

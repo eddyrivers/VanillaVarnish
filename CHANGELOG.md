@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.8
+
+- Keep combo-point dots visible above cast-bar artwork in both settings previews and on live nameplates. Health-bar placement and saved offsets stay unchanged.
+- Match Blizzard's native cast-bar frame level in preview tests and check the draw order of every dot.
+
 ## 1.0.7
 
 - Add target nameplate combo points using Blizzard's red personal-resource artwork. Dots overlap the health bar's bottom edge halfway by default.

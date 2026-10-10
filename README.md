@@ -39,7 +39,7 @@ Buffs include stack counts, cooldowns, and hover tooltips. Some layout changes t
 2. Fully restart WoW so the addon appears in the AddOns list.
 3. Enable VanillaVarnish and open `/vv`.
 
-The [1.0.7 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.7.zip) contains the installable folder. Other WoW client families have not been validated.
+The [1.0.8 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.8.zip) contains the installable folder. Other WoW client families have not been validated.
 
 ### Importing settings from the original addons
 

@@ -125,6 +125,8 @@ function CreateFrame(kind, name, parent, template)
     health:SetScript('OnValueChanged', function(self) self:UpdateTextString() end)
     local cast = Frame(frame.CastBarsContainer)
     frame.CastBarsContainer.castBar = cast
+    -- Match the XML: cast artwork draws well above the health frame.
+    cast:SetFrameLevel(100)
     Mixin(cast, NamePlateCastingBarMixin)
     Fields(cast, 'Text CastTargetNameText', Text)
     Fields(cast, 'Background Border BorderShield CastTargetIndicator ImportantCastIndicator Icon Spark Flash', Texture)

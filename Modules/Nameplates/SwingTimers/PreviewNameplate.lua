@@ -357,7 +357,8 @@ function ns.DrawMenuFeaturePreview(plate)
         ns.CastClearance(plate.nativeFrame or plate, anchor, plate.swingStack))
     ns.RenderStack(plate.swingStack, now, function(key, time) return (time / swingPeriods[key]) % 1 end)
     local health = ns.ComboPoints.HealthAnchor(plate.nativeFrame, plate.healthBar)
-    ns.ComboPoints.LayoutRow(plate.comboRow, health, ns.tweaksDB.comboPointsEnabled and 5 or 0)
+    ns.ComboPoints.LayoutRow(plate.comboRow, health, ns.tweaksDB.comboPointsEnabled and 5 or 0,
+        ns.ComboPoints.CastBar(plate.nativeFrame or plate))
 end
 
 function ns.StopMenuFeaturePreview(plate)
