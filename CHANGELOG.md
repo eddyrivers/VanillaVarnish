@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.10
+
+- Set default combo-point offsets to 17 horizontal and 25 vertical.
+- Set default swing bars to 200 wide and 10 high, with offsets of 20 horizontal and 46 vertical and 2 between bars. Pulse strength defaults to 50%.
+- Keep saved preferences; use Restore defaults to apply these values to an existing character.
+
 ## 1.0.9
 
 - Show five empty combo-point circles at zero points, using Blizzard's personal-resource artwork. Circles fill red as points are earned and empty when spent.

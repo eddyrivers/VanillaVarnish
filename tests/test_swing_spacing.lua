@@ -68,6 +68,7 @@ for _, geometry in ipairs({{768, 1}, {1080, 0.8}, {1440, 1.15}, {2160, 0.65}, {7
 end
 -- Live anchoring and the menu use the same readable cast-clearance calculation.
 ns.ResetSettings()
+ns.SetValue("y", 20) -- Exercise cast clearance with an offset inside the cast artwork.
 Mock.screenHeight = 768; stack:SetScale(1)
 local plate = Mock.Plate("nameplate1")
 local frame, health = plate.UnitFrame, plate.UnitFrame.HealthBarsContainer

@@ -2,7 +2,7 @@ local ADDON, VV = ...
 local ns = VV.Nameplates
 local combo = {}
 ns.ComboPoints = combo
-combo.defaults = { size = 12, x = 0, y = 0, gap = 4 }
+combo.defaults = { size = 12, x = 17, y = 25, gap = 4 }
 combo.limits = { size = {4, 40}, x = {-300, 300}, y = {-100, 200}, gap = {0, 30} }
 local driver = CreateFrame("Frame")
 local rows = setmetatable({}, { __mode = "k" })

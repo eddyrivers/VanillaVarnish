@@ -3,7 +3,7 @@ local ns = VV.Nameplates
 
 ns.order = { "main", "offhand", "ranged" }
 ns.defaults = {
-    width = 135, height = 10, x = 0, y = 20, gap = 2,
+    width = 200, height = 10, x = 20, y = 46, gap = 2,
     visibility = "swing", effectAlpha = 0.5, borderAlpha = 0.3,
     borderColor = "white", gradientLeft = 0.40, gradientRight = 0.85,
     spark = true, sparkAlpha = 1, sparkSize = 12, borderRadius = 5,
@@ -169,8 +169,8 @@ local function Help()
     ns.Print("/nt swings - open swing timer settings with live preview.")
     ns.Print("/nt main on   /nt offhand off   /nt ranged toggle   /nt all on")
     ns.Print("/nt show swing - while swinging (default); other modes: always, combat.")
-    ns.Print("/nt x 0   /nt y 20 - positive X moves right; positive Y moves down.")
-    ns.Print("/nt width 135   /nt height 10   /nt gap 2")
+    ns.Print("/nt x 20   /nt y 46 - positive X moves right; positive Y moves down.")
+    ns.Print("/nt width 200   /nt height 10   /nt gap 2")
     ns.Print("/nt color main red - Blizzard hostile red; replace main with offhand, ranged, or all.")
     ns.Print("/nt color ranged #FFD36B 1 - optional fill opacity, from 0 to 1.")
     ns.Print("/nt bordercolor white   /nt borderalpha 0.3")
