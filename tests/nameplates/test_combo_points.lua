@@ -8,6 +8,9 @@ local function Row(plate)
     end
 end
 local points = 0
+local class, powerType = "ROGUE", 3
+UnitClass = function() return class, class end
+UnitPowerType = function() return powerType end
 GetComboPoints = function(player, target)
     Check(player == "player" and target == "target", "Points use the target-bound Forever API")
     return points
@@ -23,11 +26,16 @@ Mock.plates.target, Mock.units.target, Mock.units.nameplate1 = target, true, tru
 local other = Mock.Plate("nameplate2")
 Mock.plates.softenemy, Mock.units.softenemy = other, true
 Mock.Event("PLAYER_TARGET_CHANGED")
-Check(not Row(target), "No dots without points")
+local row = assert(Row(target))
+Check(row:IsShown(), "Five empty circles remain visible at zero points")
+for _, dot in ipairs(row.dots) do
+    Check(dot:IsShown() and dot.inactive:IsShown() and not dot.active:IsShown() and not dot.icon:IsShown(),
+        "Zero points use native empty artwork in every slot")
+end
 points = 3
 Mock.Event("UNIT_POWER_UPDATE", "player", "COMBO_POINTS")
-local row = assert(Row(target))
-Check(row:IsShown() and row.dots[3]:IsShown() and not row.dots[4]:IsShown(), "Only earned points appear")
+Check(row:IsShown() and row.dots[3].icon:IsShown() and row.dots[4].inactive:IsShown()
+    and not row.dots[4].icon:IsShown(), "Earned points fill red while remaining circles stay empty")
 local anchor = target.UnitFrame.HealthBarsContainer.healthBar
 local cast = target.UnitFrame.CastBarsContainer.castBar
 Check(row:GetFrameLevel() > cast:GetFrameLevel(), "Combo row draws above native cast artwork")
@@ -39,13 +47,35 @@ Check(row.points[1][2] == anchor and row.points[1][3] == "BOTTOM" and row.points
 Check(row.width == 76 and row.height == 12, "Default five-point row has spaced dots")
 Check(row.dots[1].layers[3].atlas == "uf-roguecp-icon-red", "Use the native personal-resource red graphic")
 Check(row.dots[1].layers[2].atlas == "uf-roguecp-bg", "Use its native active background")
+Check(row.dots[1].inactive.atlas == "uf-roguecp-bg-dis", "Use the personal-resource display's native empty circle")
 local x = row.dots[3].points[1][4]
 points = 5
 Mock.Event("COMBO_TARGET_CHANGED")
-Check(row.dots[5]:IsShown() and row.dots[3].points[1][4] == x, "Point positions stay fixed as points change")
+Check(row.dots[5].icon:IsShown() and not row.dots[5].inactive:IsShown()
+    and row.dots[3].points[1][4] == x, "Point positions stay fixed as points fill")
 points = 1
 Mock.Event("PLAYER_TARGET_CHANGED")
-Check(not row.dots[2]:IsShown(), "Target changes clear old points immediately")
+Check(row.dots[2]:IsShown() and row.dots[2].inactive:IsShown() and not row.dots[2].icon:IsShown(),
+    "Target changes return spent slots to empty circles")
+points = 0
+Mock.Event("UNIT_POWER_UPDATE", "player", "COMBO_POINTS")
+Check(row:IsShown() and row.dots[1].inactive:IsShown() and not row.dots[1].icon:IsShown(),
+    "Spending all points leaves the five empty circles visible")
+Check(row.dots[3].points[1][4] == x, "Spending points does not move the circle row")
+class = "WARRIOR"
+Mock.Tick(0.11)
+Check(not row:IsShown(), "Classes without combo points do not get an empty row")
+class, powerType = "DRUID", 0
+Mock.Event("UPDATE_SHAPESHIFT_FORM")
+Check(not row:IsShown(), "Druid circles wait for Cat Form")
+powerType = 3
+Mock.Event("UNIT_DISPLAYPOWER", "player")
+Check(row:IsShown() and row.dots[1].inactive:IsShown(), "Cat Form shows empty circles before earning points")
+powerType = 1
+Mock.Event("UPDATE_SHAPESHIFT_FORM")
+Check(not row:IsShown(), "Leaving Cat Form hides the combo row")
+class = "ROGUE"
+Mock.Tick(0.11)
 Mock.plates.target = other
 Mock.Event("PLAYER_TARGET_CHANGED")
 Check(not row:IsShown() and Row(other):IsShown(), "Only the new target shows points")
@@ -102,6 +132,8 @@ local comboSample = combo.previewNameplate
 Check(combo.optionsPanel:IsShown(), "Separate combo page opens")
 for _, sample in ipairs({swingSample, comboSample}) do
     Check(sample.comboRow:IsShown() and sample.comboRow.dots[5]:IsShown(), "Both previews show five sample dots")
+    Check(sample.comboRow.dots[3].icon:IsShown() and sample.comboRow.dots[4].inactive:IsShown(),
+        "Both previews show filled and empty circles together")
     Check(sample.swingStack:IsShown(), "Both previews show enabled swing bars")
     Check(sample.comboRow.points[1][2] == combo.HealthAnchor(sample.nativeFrame, sample.healthBar),
         "Preview uses the same visible health anchor")

@@ -38,7 +38,7 @@ function ns.RegisterComboOptions()
     controls.enabled = UI.Check(content, "combo.enabled", "Show combo points", 0,
         function() return ns.tweaksDB.comboPointsEnabled end,
         function(value) ns.SetFeature("comboPointsEnabled", value) end,
-        "Show a red dot for each combo point on your current target.")
+        "Show five circles on your target. They fill red as you gain combo points. For rogues and druids in Cat Form.")
     local y = -40
     for _, spec in ipairs({
         {"size", "Dot size", "Size of each dot in UI units."},

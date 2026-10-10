@@ -14,6 +14,17 @@ local function Read(func, ...)
     if ok then return ns.Known(value) end
 end
 
+local function UsesComboPoints()
+    if not UnitClass then return false end
+    local ok, _, class = pcall(UnitClass, "player")
+    class = ok and ns.Known(class)
+    if class == "ROGUE" then return true end
+    if class == "DRUID" then
+        return Read(UnitPowerType, "player") == (Enum and Enum.PowerType and Enum.PowerType.Energy or 3)
+    end
+    return false
+end
+
 function combo.InitDB()
     if not ns.tweaksDB then ns.InitializeTweaks() end
     if type(ns.tweaksDB.comboPoints) ~= "table" then ns.tweaksDB.comboPoints = {} end
@@ -47,13 +58,14 @@ function combo.CreateRow(parent)
         local dot = CreateFrame("Frame", nil, row)
         dot:EnableMouse(false)
         dot.layers = {}
-        -- Static active layers from Forever's personal-resource display:
+        -- Static empty/filled layers from Forever's personal-resource display:
         -- Blizzard_UnitFrame/Mainline/RogueComboPoint.xml. Keep native colors
         -- and atlas proportions; no generated dot artwork or recoloring.
         for _, spec in ipairs({
-            {"uf-roguecp-bg-shadow", "BACKGROUND", -4},
-            {"uf-roguecp-bg", "BACKGROUND", 0},
-            {"uf-roguecp-icon-red", "ARTWORK", 0},
+            {"uf-roguecp-bg-shadow", "BACKGROUND", -4, "shadow"},
+            {"uf-roguecp-bg", "BACKGROUND", 0, "active"},
+            {"uf-roguecp-icon-red", "ARTWORK", 0, "icon"},
+            {"uf-roguecp-bg-dis", "BACKGROUND", 0, "inactive"},
         }) do
             local texture = dot:CreateTexture(nil, spec[2])
             texture:SetAtlas(spec[1], true)
@@ -62,6 +74,7 @@ function combo.CreateRow(parent)
             texture.nativeHeight = info and ns.Number(info.height, 1, 200) or 20
             texture.offsetY = spec[3]
             dot.layers[#dot.layers + 1] = texture
+            dot[spec[4]] = texture
         end
         row.dots[index] = dot
     end
@@ -93,9 +106,14 @@ function combo.LayoutRow(row, anchor, count, castBar)
             texture:ClearAllPoints()
             texture:SetPoint("CENTER", dot, "CENTER", 0, texture.offsetY * db.size / 20)
         end
-        dot:SetShown(index <= count)
+        local filled = count ~= nil and index <= count
+        dot.active:SetShown(filled)
+        dot.icon:SetShown(filled)
+        dot.inactive:SetShown(not filled)
+        dot:Show()
     end
-    row:SetShown(count > 0)
+    -- Zero points is a visible empty row; nil means the feature is disabled.
+    row:SetShown(count ~= nil)
 end
 
 function combo.HealthAnchor(frame, fallback)
@@ -111,11 +129,12 @@ end
 function combo.Refresh()
     if current then current:Hide(); current = nil end
     if not combo.db or not VV.IsModuleEnabled("nameplates") or not ns.tweaksDB.comboPointsEnabled then return end
+    if not UsesComboPoints() then return end
     -- Forever points belong to the hard target. Never attach its count to a
     -- soft target, or retain a count when the API result is unavailable.
     if Read(UnitExists, "target") ~= true then return end
     local count = ns.Number(Read(GetComboPoints, "player", "target"), 0, 5)
-    if not count or count == 0 or count ~= math.floor(count) then return end
+    if not count or count ~= math.floor(count) then return end
     local plate = Read(C_NamePlate and C_NamePlate.GetNamePlateForUnit, "target")
     if not plate or Read(plate.IsForbidden, plate) ~= false or Read(plate.IsShown, plate) ~= true then return end
     local frame = plate.UnitFrame
@@ -141,7 +160,7 @@ driver:SetScript("OnEvent", function(_, event, unit)
             if removed and row.unitToken == removed then row:Hide() end
         end
         return
-    elseif event == "UNIT_POWER_UPDATE" or event == "UNIT_POWER_FREQUENT" then
+    elseif event == "UNIT_POWER_UPDATE" or event == "UNIT_POWER_FREQUENT" or event == "UNIT_DISPLAYPOWER" then
         unit = ns.Known(unit)
         if unit and unit ~= "player" then return end
     end
@@ -154,7 +173,7 @@ driver:SetScript("OnUpdate", function(_, delta)
 end)
 driver:RegisterEvent("ADDON_LOADED")
 for _, event in ipairs({"PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED",
-    "COMBO_TARGET_CHANGED", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT",
+    "COMBO_TARGET_CHANGED", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_DISPLAYPOWER", "UPDATE_SHAPESHIFT_FORM",
     "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED", "PLAYER_DEAD", "CVAR_UPDATE"}) do
     pcall(driver.RegisterEvent, driver, event)
 end

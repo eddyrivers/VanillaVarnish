@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.9
+
+- Show five empty combo-point circles at zero points, using Blizzard's personal-resource artwork. Circles fill red as points are earned and empty when spent.
+- Keep live combo circles visible for rogues and druids in Cat Form; show filled and empty circles together in both settings previews.
+- Add checks for zero points, filling and spending, stable positions, and class/form visibility.
+
 ## 1.0.8
 
 - Keep combo-point dots visible above cast-bar artwork in both settings previews and on live nameplates. Health-bar placement and saved offsets stay unchanged.

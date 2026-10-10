@@ -9,11 +9,11 @@ Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. Choose which mod
 - **Range check:** fade units beyond the range of your chosen damage or friendly spell. Choose how faint their nameplates become. Melee abilities use melee reach; when range is unavailable, opacity stays unchanged.
 - **Quest icons:** white icons mark units you need to loot, defeat, or interact with. Questie can help identify item drops and fill in missing quest information when installed.
 - **Swing timers:** follow main-hand, off-hand, and ranged swings beneath your target's nameplate. Without a selected target, timers can follow your action target. Adjust each bar's appearance, labels, and visibility.
-- **Combo points:** red dots show earned points on your selected target. They use Blizzard's personal resource artwork and overlap the bottom edge of the health bar halfway by default. Adjust dot size, spacing, and horizontal or vertical position on the **Combo points** page.
+- **Combo points:** five circles on your selected target fill red as you earn points. For rogues and druids in Cat Form. They use Blizzard's personal resource artwork and overlap the bottom edge of the health bar halfway by default. Adjust dot size, spacing, and horizontal or vertical position on the **Combo points** page.
 
 Each feature has a switch on the **Nameplates** page. The **Swing timers** and **Combo points** pages share a live nameplate preview showing both enabled features, so you can arrange them together. The preview remains available when the module is off.
 
-Positive horizontal offsets move right; positive vertical offsets move down. Combo points stay in fixed slots as you earn or spend them, and disappear when none remain. Swing timers move down as needed to clear the cast bar when their vertical offset is 0 or higher. Negative offsets allow overlap. A spacing value of 0 makes bars or dots touch; swing sparks and large labels may extend into the gap.
+Positive horizontal offsets move right; positive vertical offsets move down. Combo circles stay in fixed slots as you earn or spend points; at zero points, all five circles are empty. Swing timers move down as needed to clear the cast bar when their vertical offset is 0 or higher. Negative offsets allow overlap. A spacing value of 0 makes bars or dots touch; swing sparks and large labels may extend into the gap.
 
 ## Quest tracker
 
@@ -39,7 +39,7 @@ Buffs include stack counts, cooldowns, and hover tooltips. Some layout changes t
 2. Fully restart WoW so the addon appears in the AddOns list.
 3. Enable VanillaVarnish and open `/vv`.
 
-The [1.0.8 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.8.zip) contains the installable folder. Other WoW client families have not been validated.
+The [1.0.9 release archive](https://github.com/eddyrivers/VanillaVarnish/blob/main/dist/VanillaVarnish-1.0.9.zip) contains the installable folder. Other WoW client families have not been validated.
 
 ### Importing settings from the original addons
 

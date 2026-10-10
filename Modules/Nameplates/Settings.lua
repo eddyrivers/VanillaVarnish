@@ -59,7 +59,7 @@ function ns.RegisterFeatureOptions()
     FeatureCheck(root, "swingsEnabled", "Swing timers", -166, "swingsEnabled",
         "Show weapon swing timers beneath your target's nameplate.")
     FeatureCheck(root, "comboPointsEnabled", "Combo points", -206, "comboPointsEnabled",
-        "Show red combo-point dots on your target's health bar.")
+        "Show five circles that fill red as you gain combo points.")
     VV.RegisterOptions()
     ns.rootCategory = VV.rootCategory
     ns.nameplateCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, root, "Nameplates")
