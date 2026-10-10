@@ -4,7 +4,7 @@ local ns = VV.Nameplates
 ns.order = { "main", "offhand", "ranged" }
 ns.defaults = {
     width = 200, height = 10, x = 20, y = 46, gap = 2,
-    visibility = "swing", effectAlpha = 0.5, borderAlpha = 0.3,
+    visibility = "swing", effectAlpha = 0.35, borderAlpha = 0.3,
     borderColor = "white", gradientLeft = 0.40, gradientRight = 0.85,
     spark = true, sparkAlpha = 1, sparkSize = 12, borderRadius = 5,
     bars = {
@@ -175,7 +175,7 @@ local function Help()
     ns.Print("/nt color ranged #FFD36B 1 - optional fill opacity, from 0 to 1.")
     ns.Print("/nt bordercolor white   /nt borderalpha 0.3")
     ns.Print("/nt effect pulse - choose off or pulse.")
-    ns.Print("/nt effect ranged pulse   /nt effectalpha 0.5")
+    ns.Print("/nt effect ranged pulse   /nt effectalpha 0.35")
     ns.Print("/nt gradientleft 0.40   /nt gradientright 0.85")
     ns.Print("/nt spark on   /nt sparkalpha 1   /nt sparksize 12   /nt borderradius 5")
     ns.Print("/nt label main on   /nt labelfont all arial   /nt labelsize main 14")

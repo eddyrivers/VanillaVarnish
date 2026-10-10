@@ -290,7 +290,7 @@ local function RenderBar(bar, key, value)
     local r, g, b = unpack(bar.color)
     -- The swing's fill is the animation clock: highlight builds continuously
     -- to its maximum at full, then resets with the next swing. Keep the additive
-    -- white tint without a separate flashing or dimming cycle.
+    -- pale gold tint without a separate flashing or dimming cycle.
     local opacity = bar.effect == "pulse" and bar.effectOpacity * ns.PulseStrength(value) or 0
     bar.pulseOpacity = opacity
     local count = math.floor(bar.innerHeight / bar.pixel + 0.5)
@@ -311,7 +311,7 @@ local function RenderBar(bar, key, value)
         local right = (db.gradientLeft + delta * (width > 0 and (width - inset) / width or 1)) * config.alpha
         row[1]:SetGradient("HORIZONTAL", CreateColor(r, g, b, left), CreateColor(r, g, b, right))
         if span > 0 then
-            row[2]:SetVertexColor(1, 1, 1, opacity)
+            row[2]:SetVertexColor(1, 0.96, 0.82, opacity)
             row[2]:SetShown(opacity > 0)
         end
     end

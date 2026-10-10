@@ -311,7 +311,7 @@ local function BuildPanel()
         "Round the bar's corners. Larger values make softer corners, up to half the bar height.")
     GlobalSlider("gradientLeft", "Fill opacity at left", 0.01, true, "How solid the fill looks at its left edge.")
     GlobalSlider("gradientRight", "Fill opacity at right", 0.01, true, "How solid the fill looks at its moving right edge.")
-    GlobalSlider("effectAlpha", "Pulse strength", 0.01, true, "Brightness of the highlight that builds with each swing.")
+    GlobalSlider("effectAlpha", "Pulse strength", 0.01, true, "Brightness of the pale gold highlight that builds with each swing. Defaults to 35%.")
     Check(content, "spark", "Show spark at the fill edge", y, function() return ns.db.spark end,
         function(value) ns.SetValue("spark", value) end, "Add a flickering spark at the moving edge of the bar.")
     y = y - 36

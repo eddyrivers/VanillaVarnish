@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.13
+
+- Change swing-bar pulse highlights from white to a bright, pale gold tint so the bar warms gradually as it fills, in game and in settings previews.
+- Lower default pulse strength to 35%. Keep saved strengths; use `/nt effectalpha 0.35` to apply the new strength to an existing character.
+
 ## 1.0.12
 
 - Set default tooltip offsets to 34 horizontal and -6 vertical.

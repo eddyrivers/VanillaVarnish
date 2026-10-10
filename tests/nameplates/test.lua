@@ -11,7 +11,7 @@ Mock.Event("ADDON_LOADED", "VanillaVarnish")
 Mock.Event("PLAYER_LOGIN")
 Check(SLASH_NAMEPLATETWEAKS1 == "/nt" and SLASH_NAMEPLATESWINGTIMERS1 == nil
     and SLASH_NAMEPLATESWINGTIMERS2 == nil and SlashCmdList.NAMEPLATESWINGTIMERS == nil, "Only the unified slash handler is registered")
-Check(ns.db.width == 200 and ns.db.height == 10 and ns.db.y == 46 and ns.db.x == 20 and ns.db.gap == 2 and ns.db.effectAlpha == 0.5)
+Check(ns.db.width == 200 and ns.db.height == 10 and ns.db.y == 46 and ns.db.x == 20 and ns.db.gap == 2 and ns.db.effectAlpha == 0.35)
 Check(ns.db.visibility == "swing", "While swinging is the default visibility")
 Cmd("show combat")
 Check(ns.db.borderRadius == 5 and ns.db.bars.main.color == "red" and ns.db.bars.offhand.color == "red"
@@ -127,7 +127,7 @@ Check(stack.bars.ranged.offset == 20 and stack.height == 27 and stack.points[1][
 for _, command in ipairs({ "width 0", "width 401", "height -1", "y 201", "gap -2",
     "effectalpha nan", "borderalpha 2", "width 120 extra" }) do Cmd(command) end
 Check(ns.db.width == 160 and ns.db.height == 7 and ns.db.y == 20 and ns.db.gap == 3)
-Check(ns.db.effectAlpha == 0.5 and ns.db.sparkAlpha == 1 and ns.db.borderAlpha == 0.3)
+Check(ns.db.effectAlpha == 0.35 and ns.db.sparkAlpha == 1 and ns.db.borderAlpha == 0.3)
 Cmd("y -10")
 Check(stack.points[1][5] == 10, "Negative Y moves upward")
 Cmd("color main steelblue")
@@ -215,6 +215,8 @@ ns.LayoutStack(pulseStack, {main = true}, UIParent)
 ns.RenderStack(pulseStack, 0, function() return 0.9 end)
 local defaultLight = PulsePixel(pulseStack.bars.main)
 Check(defaultLight[2] > 0.1, "Default pulse preserves visible tint on Blizzard red")
+Check(defaultLight[2] > defaultLight[3] + 0.02 and defaultLight[2] < defaultLight[3] * 1.25,
+    "Default pulse adds a subtle gold warmth instead of a white or saturated yellow highlight")
 for _, progress in ipairs({0, 0.5, 0.9, 1}) do
     for _, now in ipairs({0, 0.3, 1.2, 17, 100000}) do
         ns.RenderStack(pulseStack, now, function() return progress end)
@@ -474,7 +476,7 @@ VV_TEST_NS.db.nameplates.swingTimers.effectAlpha = 0.045
 VV_TEST_NS.db.nameplates.swingTimers.bars.main = { enabled = false, color = "coral", alpha = 0.12, effect = "flow" }
 VV_TEST_NS.db.nameplates.swingTimers.bars.ranged.color = "transparent"
 ns.InitDB()
-Check(ns.db.width == 200 and ns.db.effectAlpha == 0.5, "Migrate old defaults")
+Check(ns.db.width == 200 and ns.db.effectAlpha == 0.35, "Migrate old defaults")
 Check(ns.db.bars.main.color == "coral" and ns.db.bars.main.alpha == 1 and not ns.db.bars.main.enabled, "Migrate chosen background color to fill")
 Check(ns.db.bars.ranged.color == "warmyellow" and ns.db.bars.ranged.alpha == 1)
 Check(ns.db.bars.main.effect == "pulse", "Removed saved effects migrate to pulse")
@@ -887,7 +889,7 @@ ns.db.y, ns.db.visibility = 15, "combat"; ns.InitDB()
 Check(ns.db.y == 15 and ns.db.visibility == "combat", "Only apply the default migration once")
 VV_TEST_NS.db.nameplates.swingTimers = {appearanceVersion = 7, y = 10, effectAlpha = 0.18, sparkAlpha = 0.65}
 ns.InitDB()
-Check(ns.db.effectAlpha == 0.5 and ns.db.sparkAlpha == 1 and ns.db.y == 46, "Upgrade the prior pulse, spark, and offset defaults")
+Check(ns.db.effectAlpha == 0.35 and ns.db.sparkAlpha == 1 and ns.db.y == 46, "Upgrade the prior pulse, spark, and offset defaults")
 VV_TEST_NS.db.nameplates.swingTimers = {appearanceVersion = 7, effectAlpha = 0.77, sparkAlpha = 0.3}
 ns.InitDB()
 Check(ns.db.effectAlpha == 0.77 and ns.db.sparkAlpha == 0.3, "Preserve customized effect strengths")
