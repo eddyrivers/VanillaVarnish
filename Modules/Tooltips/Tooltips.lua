@@ -1,6 +1,6 @@
 local ADDON, VV = ...
 local addon = VV.Tooltips
-addon.defaults = { followMouse = true, offsetX = 12, offsetY = -12,
+addon.defaults = { followMouse = true, offsetX = 34, offsetY = -6,
     unitColors = true, instantHide = false, pauseInCombat = false }
 addon.limits = { offsetX = {-500, 500}, offsetY = {-500, 500} }
 local driver = CreateFrame("Frame")

@@ -13,7 +13,7 @@ for _, tooltip in ipairs({tip, BuffFrameTooltip, GameSmallHeaderTooltip, GameNoH
         local before = tooltip.ownerCalls or 0
         Mock.Hover(tooltip, owner, "ANCHOR_RIGHT", kind)
         assert(tooltip.anchor == "ANCHOR_CURSOR_RIGHT" and tooltip.ownerCalls == before + 1)
-        assert(tooltip.offsetX == 12 and tooltip.offsetY == -12 and tooltip:GetOwner() == owner)
+        assert(tooltip.offsetX == 34 and tooltip.offsetY == -6 and tooltip:GetOwner() == owner)
     end
 end
 GameTooltip_SetDefaultAnchor(tip, owner)

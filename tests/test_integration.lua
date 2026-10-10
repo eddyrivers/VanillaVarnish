@@ -74,4 +74,4 @@ local offsetBox = vv.Tooltips.optionControls.offsetX.box
 offsetBox:SetText("-45"); offsetBox.scripts.OnEnterPressed(offsetBox)
 assert(vv.db.tooltips.offsetX == -45)
 vv.Tooltips.ResetSettings()
-assert(vv.db.modules.tooltips and vv.db.tooltips.offsetX == 12 and not vv.db.tooltips.pauseInCombat)
+assert(vv.db.modules.tooltips and vv.db.tooltips.offsetX == 34 and vv.db.tooltips.offsetY == -6 and not vv.db.tooltips.pauseInCombat)

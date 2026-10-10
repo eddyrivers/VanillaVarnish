@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.12
+
+- Set default tooltip offsets to 34 horizontal and -6 vertical.
+- Preserve saved offsets; use Restore defaults on the Tooltips page or `/vv tooltips offset 34 -6` to apply this position to an existing character.
+
 ## 1.0.11
 
 - Add an optional Tooltips module with mouse following for world units, spells, bag items, auras, and other hover controls, including explicit button anchors. Native cursor tracking supports configurable X/Y offsets without a per-frame positioning loop.
