@@ -263,6 +263,7 @@ local function SpellInRange(spell, unit)
     if result == true or result == 1 then return true end
     return nil
 end
+ns.SpellInRange = SpellInRange
 
 local function UpdateRange(state)
     if not VV.IsModuleEnabled("nameplates") or not db.rangeEnabled then SetFade(state, false); return end
@@ -331,6 +332,7 @@ local function SetSpell(kind, input)
         Print(string.format("%s range spell set to %s. Out-of-range opacity: %g%%.", kind, name, db.rangeOpacity * 100))
     end
     for _, state in pairs(active) do UpdateRange(state) end
+    if VV.Party.RefreshModule then VV.Party.RefreshModule() end
     if ns.RefreshFeatureOptions then ns.RefreshFeatureOptions() end
 end
 
@@ -338,13 +340,15 @@ function ns.RefreshTweaks()
     questDirty = true
     for _, state in pairs(active) do UpdateRange(state); UpdateMarkers(state) end
     if ns.RefreshThreatColors then ns.RefreshThreatColors() end
+    if ns.RefreshPlayerCastBar then ns.RefreshPlayerCastBar() end
     if ns.RefreshFeatureOptions then ns.RefreshFeatureOptions() end
 end
 
 function ns.SetFeature(key, value)
     if not db or type(value) ~= "boolean" then return false end
     if key ~= "rangeEnabled" and key ~= "markers" and key ~= "swingsEnabled"
-        and key ~= "comboPointsEnabled" and key ~= "questieFallback" and key ~= "threatColorsEnabled" then return false end
+        and key ~= "comboPointsEnabled" and key ~= "questieFallback" and key ~= "threatColorsEnabled"
+        and key ~= "playerCastBarEnabled" then return false end
     db[key] = value
     ns.RefreshTweaks()
     if ns.Refresh then ns.Refresh() end
@@ -358,6 +362,7 @@ function ns.SetRangeOpacity(value)
     if not db or type(value) ~= "number" or value ~= value or value < 0 or value > 1 then return false end
     db.rangeOpacity = value
     ns.RefreshTweaks()
+    if VV.Party.RefreshModule then VV.Party.RefreshModule() end
     return true
 end
 
@@ -379,6 +384,10 @@ local function Slash(message)
         :gsub("|Hspell:(%d+).-|h.-|h", "%1")
     local command, rest = message:match("^%s*(%S*)%s*(.-)%s*$")
     command = command:lower()
+    if command == "cast" or command == "castbar" then
+        ns.PlayerCastBar.HandleSlash(rest)
+        return
+    end
     if command == "rangecheck" then command = "range" end
     if command == "" or command == "options" or command == "config" then
         if ns.OpenOptions then ns.OpenOptions() end
@@ -438,6 +447,7 @@ local function Slash(message)
     Print("/vv nameplates opens settings. Add range, quests, swings, or combo to open a feature page.")
     Print("/vv nameplates range on or off; /vv nameplates quests on or off.")
     Print("/vv nameplates swings on or off; /vv nameplates combo on or off.")
+    Print("/vv nameplates cast opens player cast settings; cast on or off enables the bar.")
     Print("/vv nameplates range damage Moonfire — set enemy range spell")
     Print("/vv nameplates range friendly Healing Touch — set friendly range spell")
     Print("/vv nameplates range opacity 50 — choose out-of-range opacity from 0 to 100 percent.")
@@ -459,6 +469,7 @@ function ns.InitializeTweaks()
     if type(db.swingsEnabled) ~= "boolean" then db.swingsEnabled = true end
     if type(db.comboPointsEnabled) ~= "boolean" then db.comboPointsEnabled = true end
     if type(db.threatColorsEnabled) ~= "boolean" then db.threatColorsEnabled = true end
+    if type(db.playerCastBarEnabled) ~= "boolean" then db.playerCastBarEnabled = false end
     if type(db.questieFallback) ~= "boolean" then db.questieFallback = false end
     local opacity = Known(db.rangeOpacity)
     if type(opacity) ~= "number" or opacity ~= opacity or opacity < 0 or opacity > 1 then db.rangeOpacity = 0.5 end

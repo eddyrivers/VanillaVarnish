@@ -120,6 +120,12 @@ function Object:Hide()
 end
 function Object:SetShown(shown) if shown then self:Show() else self:Hide() end end
 function Object:IsShown() return self.shown end
+function Object:IsVisible() return self.shown and (not self.parent or self.parent:IsVisible()) end
+function Object:RegisterUnitEvent(event, unit)
+    self.events[event] = true
+    self.eventUnits = self.eventUnits or {}
+    self.eventUnits[event] = unit
+end
 function Object:IsForbidden() return self.forbidden or false end
 function Object:GetUnit() return self.unit end
 function Object:RegisterEvent(event) self.events[event] = true end

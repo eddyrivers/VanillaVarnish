@@ -56,8 +56,14 @@ function VV.RegisterOptions()
         function() return VV.db.party.classColors end,
         function(value) VV.Party.SetOption("classColors", value) end,
         "Use each party member's class color for their health bar. Works with both party-frame styles.")
-    UI.Label(party, "Buffs and larger dispellable debuffs need 'Use raid-style party frames' turned off.\nSome layout changes take effect when combat ends.",
-        16, -204, "GameFontHighlightSmall")
+    Check(party, "party.rangeFade", "Fade out-of-range portraits and buffs", -178,
+        function() return VV.db.party.rangeFade end,
+        function(value) VV.Party.SetOption("rangeFade", value) end,
+        "Use the friendly spell and opacity from Nameplates > Range check. No spell or unavailable range leaves portraits and buffs unchanged. Requires portrait-style party frames.")
+    local range = UI.Button(party, "Choose friendly range spell", 210, function() VV.Nameplates.OpenOptions("rangeEnabled") end)
+    range:SetPoint("TOPLEFT", party, "TOPLEFT", 16, -222)
+    UI.Label(party, "Buffs and range fading need 'Use raid-style party frames' turned off.\nHealth and mana bars keep their native opacity. Some layout changes apply after combat.",
+        16, -266, "GameFontHighlightSmall")
     VV.partyCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, party, "Party frames")
     Settings.RegisterAddOnCategory(VV.partyCategory)
     party:SetScript("OnShow", VV.RefreshOptions)

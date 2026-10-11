@@ -4,7 +4,7 @@ Mock.Event("PLAYER_LOGIN")
 assert(vv.Nameplates ~= vv.QuestTracker and vv.Party ~= vv.Nameplates)
 assert(vv.db.nameplates == vv.Nameplates.tweaksDB and vv.db.questTracker == vv.QuestTracker.db)
 assert(vv.Nameplates.db == vv.db.nameplates.swingTimers)
-assert(#Mock.categories == 9 and Mock.categories[1].name == "VanillaVarnish")
+assert(#Mock.categories == 10 and Mock.categories[1].name == "VanillaVarnish")
 assert(vv.rootCategory.shouldSortAlphabetically)
 assert(table.concat(vv.moduleOrder, ",") == "nameplates,party,questTracker,tooltips")
 for index = 2, #Mock.categories do assert(Mock.categories[index].parent == vv.rootCategory) end

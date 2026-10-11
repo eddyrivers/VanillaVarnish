@@ -19,6 +19,8 @@ function Widget:SetAllPoints() end
 function Widget:SetColorTexture(...) self.color = {...} end
 function Widget:SetVertexColor(...) self.color = {...} end
 function Widget:GetVertexColor() return unpack(self.color or {1, 1, 1, 1}) end
+function Widget:SetAlpha(value) self.alpha = value end
+function Widget:GetAlpha() return self.alpha or 1 end
 function Widget:SetTexCoord() end
 function Widget:SetReverse() end
 function Widget:SetDrawEdge() end
@@ -51,6 +53,13 @@ function CreateFrame(kind, name, parent, template)
     frame.kind, frame.template = kind, template
     Mock.frames[#Mock.frames + 1] = frame
     return frame
+end
+function hooksecurefunc(object, method, callback)
+    local original = object[method]
+    object[method] = function(self, ...)
+        original(self, ...)
+        callback(self, ...)
+    end
 end
 function issecretvalue(value) return type(value) == "table" and value.secret == true end
 function InCombatLockdown() return Mock.combat end
@@ -85,6 +94,7 @@ end
 function Mock.Member(unit)
     local member = widget()
     member.native, member.unit = true, unit
+    member.Portrait = widget(member)
     member.HealthBarContainer = {HealthBar = widget(member)}
     member.HealthBarContainer.HealthBar.left = 45
     member.HealthBarContainer.HealthBar.barTexture = widget()

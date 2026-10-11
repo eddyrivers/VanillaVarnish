@@ -1,6 +1,7 @@
 -- UI-engine primitives for running the actual Blizzard nameplate Lua sources.
 -- Run with --blizzard-source pointing at a downloaded client snapshot.
 local Object, New = Mock.Object, Mock.New
+table.wipe = function(value) for key in pairs(value) do value[key] = nil end; return value end
 function Object:UnregisterAllEvents() self.events = {} end
 function Object:RegisterForClicks() end
 function Object:GetParent() return self.parent end
@@ -91,9 +92,24 @@ local function Text(parent) return parent:CreateFontString(nil, 'OVERLAY', 'Syst
 local function Fields(parent, keys, factory)
     for key in keys:gmatch('%S+') do parent[key] = factory(parent) end
 end
+local function NativeCast(cast)
+    Mixin(cast, NamePlateCastingBarMixin)
+    Fields(cast, 'Text CastTargetNameText', Text)
+    Fields(cast, 'Background Border BorderShield CastTargetIndicator ImportantCastIndicator Icon Spark Flash', Texture)
+    Fields(cast, 'ImportantCastFlashAnim FlashAnim FadeOutAnim StandardFinish HoldFadeOutAnim', Frame)
+    cast.Spark:SetPoint('CENTER', cast, 'CENTER', 0, 0)
+    cast.Border:SetTexture('Interface\\Tooltips\\Nameplate-Border-Castbar')
+    cast:OnLoad()
+    cast:SetScript('OnShow', cast.OnShow)
+    cast:SetScript('OnEvent', cast.OnEvent)
+    cast:SetScript('OnUpdate', cast.OnUpdate)
+    return cast
+end
 -- Child keys follow BaseNamePlateUnitFrameTemplate and NamePlateCastingBarTemplate.
 function CreateFrame(kind, name, parent, template)
     local frame = originalCreateFrame(kind, name, parent)
+    frame.template = template
+    if template == 'NamePlateCastingBarTemplate' then return NativeCast(frame) end
     if template == 'NamePlateScriptBaseTemplate' then Mixin(frame, NamePlateScriptBaseMixin) end
     if template ~= 'NamePlateUnitFrameTemplate' then return frame end
     Mock.nativeFrames = (Mock.nativeFrames or 0) + 1
@@ -123,19 +139,10 @@ function CreateFrame(kind, name, parent, template)
     Fields(health, 'barTexture bgTexture selectedBorder deselectedOverlay myHealPrediction otherHealPrediction totalAbsorb totalAbsorbOverlay overAbsorbGlow myHealAbsorb myHealAbsorbLeftShadow myHealAbsorbRightShadow overHealAbsorbGlow', Texture)
     health:OnLoad()
     health:SetScript('OnValueChanged', function(self) self:UpdateTextString() end)
-    local cast = Frame(frame.CastBarsContainer)
+    local cast = NativeCast(Frame(frame.CastBarsContainer))
     frame.CastBarsContainer.castBar = cast
     -- Match the XML: cast artwork draws well above the health frame.
     cast:SetFrameLevel(100)
-    Mixin(cast, NamePlateCastingBarMixin)
-    Fields(cast, 'Text CastTargetNameText', Text)
-    Fields(cast, 'Background Border BorderShield CastTargetIndicator ImportantCastIndicator Icon Spark Flash', Texture)
-    Fields(cast, 'ImportantCastFlashAnim FlashAnim FadeOutAnim StandardFinish', Frame)
-    cast.Spark:SetPoint('CENTER', cast, 'CENTER', 0, 0)
-    cast:OnLoad()
-    cast:SetScript('OnShow', cast.OnShow)
-    cast:SetScript('OnEvent', cast.OnEvent)
-    cast:SetScript('OnUpdate', cast.OnUpdate)
     frame:OnLoad()
     return frame
 end

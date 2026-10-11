@@ -127,6 +127,75 @@ local function memberUnit(member)
     if type(unit) == "string" then return unit end
 end
 
+-- Fade textures and aura children, never the secure unit button or its bars.
+-- Remember native alpha writes (including the low-health portrait pulse) so
+-- disabling range fading restores the current native appearance.
+local fades = setmetatable({}, {__mode = "k"})
+local function applyFade(widget, factor)
+    if not widget or not widget.SetAlpha or not widget.GetAlpha then return end
+    local fade = fades[widget]
+    if not fade then
+        if factor == 1 then return end
+        local ok, alpha = attempt(widget.GetAlpha, widget)
+        if not ok then return end
+        fade = {alpha=alpha, factor=1}
+        fades[widget] = fade
+        if hooksecurefunc then
+            hooksecurefunc(widget, "SetAlpha", function(_, alpha)
+                if fade.setting then return end
+                fade.alpha = alpha
+                local value = readable(alpha)
+                if fade.factor < 1 and type(value) == "number" then
+                    fade.setting = true
+                    attempt(widget.SetAlpha, widget, value * fade.factor)
+                    fade.setting = nil
+                end
+            end)
+        end
+    end
+    fade.factor = factor
+    local alpha = readable(fade.alpha)
+    if factor < 1 and type(alpha) ~= "number" then return end
+    fade.setting = true
+    if factor == 1 then attempt(widget.SetAlpha, widget, fade.alpha)
+    else attempt(widget.SetAlpha, widget, alpha * factor) end
+    fade.setting = nil
+end
+
+local function restoreRange(state)
+    for widget in pairs(state.rangeWidgets or {}) do applyFade(widget, 1) end
+    state.rangeWidgets = nil
+end
+
+local function updateRange(state)
+    local ns, config = VV.Nameplates, VV.db.nameplates
+    local unit = memberUnit(state.member)
+    if state.compact or raidStyle() or not state.active or visible(state.member) == false
+        or not feature("rangeFade") or type(config.friendly) ~= "string" or config.friendly == "" or not unit or not ns.SpellInRange
+        or ns.SpellInRange(config.friendly, unit) ~= false then
+        restoreRange(state)
+        return
+    end
+    local opacity = readable(config.rangeOpacity)
+    if type(opacity) ~= "number" or opacity ~= opacity or opacity < 0 or opacity > 1 then opacity = 0.5 end
+    local widgets = {}
+    local function fade(widget)
+        if widget then widgets[widget] = true; applyFade(widget, opacity) end
+    end
+    fade(state.member.Portrait or state.member.portrait)
+    fade(state.row)
+    local pool = state.member.AuraFramePool
+    if pool and pool.EnumerateActive then
+        for icon in pool:EnumerateActive() do
+            if readable(icon.isBuff) == true then fade(icon) end
+        end
+    end
+    for widget in pairs(state.rangeWidgets or {}) do
+        if not widgets[widget] then applyFade(widget, 1) end
+    end
+    state.rangeWidgets = widgets
+end
+
 local function restoreColor(state)
     if not state.tint then return end
     if InCombatLockdown() then return end
@@ -440,6 +509,7 @@ local function refresh()
             if not compact and layoutRow(state) then layoutChanged = true end
             colorHealth(state)
             if not compact then updateBuffs(state); updateDebuffs(state) end
+            updateRange(state)
         end
     end)
     for _, state in pairs(states) do
@@ -448,6 +518,7 @@ local function refresh()
             if restoreHeight(state) then layoutChanged = true end
             restoreColor(state)
             restoreDebuffs(state)
+            restoreRange(state)
         end
     end
     if layoutChanged and _G.PartyFrame and _G.PartyFrame.Layout then
@@ -466,12 +537,12 @@ driver:SetScript("OnEvent", function(_, event, unit)
         if not feature("buffs") then return end
         if secret(unit) then
             -- Refresh known units without inspecting the restricted event token.
-            for _, state in pairs(states) do if state.row then updateBuffs(state); updateDebuffs(state) end end
+            for _, state in pairs(states) do if state.row then updateBuffs(state); updateDebuffs(state); updateRange(state) end end
             C_Timer.After(0, refresh)
             return
         end
         for _, state in pairs(states) do
-            if state.row and memberUnit(state.member) == unit then updateBuffs(state); updateDebuffs(state) end
+            if state.row and memberUnit(state.member) == unit then updateBuffs(state); updateDebuffs(state); updateRange(state) end
         end
         C_Timer.After(0, refresh)
     else
@@ -484,14 +555,17 @@ driver:SetScript("OnUpdate", function(_, delta)
     elapsed, auraElapsed = elapsed + delta, auraElapsed + delta
     if elapsed < 0.2 then return end
     elapsed = 0
-    -- No hooks or assignments to Blizzard's secure methods/mixins. Reapply
+    -- No assignments to Blizzard's secure methods/mixins. Reapply
     -- class colors after native health updates and discover newly pooled frames.
     if auraElapsed >= 1 then
         auraElapsed = 0
         refresh()
     else
         for _, state in pairs(states) do
-            if state.active and visible(state.member) ~= false then colorHealth(state) end
+            if state.active then
+                if visible(state.member) ~= false then colorHealth(state) end
+                updateRange(state)
+            end
         end
     end
 end)
@@ -507,6 +581,7 @@ local function Status()
     VV.Print(count .. " default party frames; up to " .. MAX_BUFFS .. " buffs per member.")
     print("Party module: " .. (VV.IsModuleEnabled("party") and "on" or "off")
         .. "; buffs: " .. (VV.db.party.buffs and "on" or "off")
+        .. "; range fading: " .. (VV.db.party.rangeFade and "on" or "off")
         .. "; combat: " .. (InCombatLockdown() and "yes" or "no"))
     if VV.conflicts.party then print("Party module suppressed by loaded " .. VV.conflicts.party) end
     for _, state in pairs(states) do
@@ -526,7 +601,7 @@ local function Status()
 end
 
 function addon.SetOption(key, value)
-    if key ~= "buffs" and key ~= "classColors" or type(value) ~= "boolean" then return false end
+    if key ~= "buffs" and key ~= "classColors" and key ~= "rangeFade" or type(value) ~= "boolean" then return false end
     VV.db.party[key] = value
     refresh()
     if VV.RefreshOptions then VV.RefreshOptions() end
@@ -536,9 +611,12 @@ end
 function addon.HandleSlash(message)
     local key, mode = (message or ""):lower():match("^%s*(%S*)%s*(.-)%s*$")
     if key == "options" or key == "settings" then VV.OpenOptions("party"); return end
-    key = ({buffs = "buffs", colors = "classColors", classcolors = "classColors"})[key] or key
-    if (key == "buffs" or key == "classColors") and (mode == "on" or mode == "off" or mode == "toggle") then
+    key = ({buffs = "buffs", colors = "classColors", classcolors = "classColors", range = "rangeFade"})[key] or key
+    if (key == "buffs" or key == "classColors" or key == "rangeFade") and (mode == "on" or mode == "off" or mode == "toggle") then
         addon.SetOption(key, mode == "on" or mode == "toggle" and not VV.db.party[key])
+    end
+    if key == "help" then
+        VV.Print("/vv party range on | off | toggle fades portraits and buffs using the friendly spell and range opacity.")
     end
     Status()
 end

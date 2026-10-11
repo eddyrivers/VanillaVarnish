@@ -57,7 +57,7 @@ function VV.InitDB()
     end
     db.questTracker.completedFirst = nil
     if type(db.questTracker.collapsed) ~= "table" then db.questTracker.collapsed = {} end
-    for _, key in ipairs({ "buffs", "classColors" }) do
+    for _, key in ipairs({ "buffs", "classColors", "rangeFade" }) do
         if type(db.party[key]) ~= "boolean" then db.party[key] = true end
     end
     db.schemaVersion = 1

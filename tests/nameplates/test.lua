@@ -483,7 +483,7 @@ Check(ns.db.bars.main.effect == "pulse", "Removed saved effects migrate to pulse
 
 -- Each nameplate feature has its own switch and settings page.
 Cmd("reset")
-Check(#Mock.categories == 7 and Mock.categories[1].name == "VanillaVarnish" and Mock.categories[3].name == "Nameplates")
+Check(#Mock.categories == 8 and Mock.categories[1].name == "VanillaVarnish" and Mock.categories[3].name == "Nameplates")
 for i, name in ipairs({"Range check", "Quest icons", "Swing timers", "Combo points"}) do
     Check(Mock.categories[i + 3].name == name and Mock.categories[i + 3].parent == ns.rootCategory)
 end
