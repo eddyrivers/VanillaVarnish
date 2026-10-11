@@ -71,5 +71,5 @@ assert(GameTooltip.index == 1)
 function C_UnitAuras.GetAuraDataByIndex() error("aura access refused") end
 Mock.Event("UNIT_AURA", "party2")
 assert(not secondIcon:IsShown())
-SlashCmdList.PARTYTWEAKS()
+VV_TEST_NS.Party.HandleSlash()
 assert(Mock.message:find("aura access refused", 1, true))

@@ -48,8 +48,8 @@ assert(not vv.db.party.buffs and vv.db.party.classColors)
 local openCalls = Mock.openCalls or 0
 Mock.lockdown = true
 SlashCmdList.VANILLAVARNISH("")
-SlashCmdList.QUESTTRACKERORGANIZER("")
-SlashCmdList.PARTYTWEAKS("options")
+SlashCmdList.VANILLAVARNISH("tracker")
+SlashCmdList.VANILLAVARNISH("party options")
 assert((Mock.openCalls or 0) == openCalls)
 Mock.lockdown = false
 Mock.Event("PLAYER_REGEN_ENABLED")
@@ -70,6 +70,39 @@ assert(vv.db.tooltips.offsetX == 24 and vv.db.tooltips.offsetY == -30)
 SlashCmdList.VANILLAVARNISH("tooltips")
 assert(vv.Tooltips.optionsPanel:IsShown())
 assert(vv.Tooltips.optionControls.instantHide == nil and vv.db.tooltips.instantHide == nil)
+-- The addon owns one slash namespace, including when legacy addons are absent.
+for key, value in pairs(_G) do
+    if type(key) == "string" and key:match("^SLASH_") then
+        assert(key == "SLASH_VANILLAVARNISH1" and value == "/vv", "Unexpected slash alias: " .. key)
+    end
+end
+for key in pairs(SlashCmdList) do assert(key == "VANILLAVARNISH", "Unexpected slash handler: " .. key) end
+SlashCmdList.VANILLAVARNISH("  NaMePlAtEs range damage Moonfire  ")
+assert(n.tweaksDB.damage == "Moonfire")
+SlashCmdList.VANILLAVARNISH("nameplates combo off")
+assert(not n.tweaksDB.comboPointsEnabled)
+SlashCmdList.VANILLAVARNISH("nameplates threat off")
+assert(not n.tweaksDB.threatColorsEnabled)
+SlashCmdList.VANILLAVARNISH("nameplates threat on")
+assert(n.tweaksDB.threatColorsEnabled)
+SlashCmdList.VANILLAVARNISH("tracker group on")
+SlashCmdList.VANILLAVARNISH("tracker group off")
+assert(not vv.QuestTracker.db.enabled and vv.db.modules.questTracker)
+SlashCmdList.VANILLAVARNISH("tracker group on")
+assert(vv.QuestTracker.db.enabled)
+SlashCmdList.VANILLAVARNISH("party buffs on")
+SlashCmdList.VANILLAVARNISH("party colors off")
+assert(vv.db.party.buffs and not vv.db.party.classColors)
+local messages = #Mock.messages
+SlashCmdList.VANILLAVARNISH("help")
+SlashCmdList.VANILLAVARNISH("nameplates help")
+SlashCmdList.VANILLAVARNISH("tracker help")
+for index = messages + 1, #Mock.messages do
+    local text = Mock.messages[index]
+    assert(not text:find("/nt", 1, true) and not text:find("/qto", 1, true)
+        and not text:find("/qlo", 1, true) and not text:find("/pt", 1, true)
+        and not text:find("/vanillavarnish", 1, true), "Help advertises a removed alias")
+end
 local tooltipCheck = vv.Tooltips.optionControls.pauseInCombat.button
 tooltipCheck:SetChecked(true); tooltipCheck.scripts.OnClick(tooltipCheck)
 assert(vv.db.tooltips.pauseInCombat)

@@ -175,9 +175,9 @@ local swingWidth = ns.db.width
 combo.ResetSettings()
 Check(combo.db.size == 12 and combo.db.x == 17 and combo.db.y == 25 and combo.db.gap == 4
     and ns.tweaksDB.comboPointsEnabled and ns.db.width == swingWidth, "Reset changes only combo layout")
-SlashCmdList.NAMEPLATETWEAKS("combo off")
+VV_TEST_NS.Nameplates.HandleSlash("combo off")
 Check(not ns.tweaksDB.comboPointsEnabled, "Slash feature toggle works")
-SlashCmdList.NAMEPLATETWEAKS("combo")
+VV_TEST_NS.Nameplates.HandleSlash("combo")
 Check(combo.optionsPanel:IsShown(), "Slash opens the combo page")
 Check(not ns.preview, "Settings never enable synthetic world swings")
 NST_COMBO_CHECKS = checks

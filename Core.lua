@@ -113,7 +113,6 @@ local function Status()
 end
 
 SLASH_VANILLAVARNISH1 = "/vv"
-SLASH_VANILLAVARNISH2 = "/vanillavarnish"
 SlashCmdList.VANILLAVARNISH = function(message)
     if not VV.db then return end
     local command, rest = (message or ""):match("^%s*(%S*)%s*(.-)%s*$")
@@ -136,7 +135,7 @@ SlashCmdList.VANILLAVARNISH = function(message)
     end
     VV.Print("/vv opens settings. /vv nameplates, /vv tracker, /vv party, /vv tooltips open module pages.")
     VV.Print("/vv <module> on | off | toggle controls the whole module and preserves its feature settings.")
-    VV.Print("/vv status; /nt, /qto, and /pt retain their feature commands when the originals are disabled.")
+    VV.Print("/vv status shows module status. Use /vv <module> help for feature commands.")
 end
 
 events:RegisterEvent("ADDON_LOADED")

@@ -5,11 +5,11 @@ local function Check(value, message)
     assert(value, message or ("Check " .. checks .. " failed"))
 end
 local function Near(a, b) return math.abs(a - b) < 0.00001 end
-local function Cmd(text) SlashCmdList.NAMEPLATETWEAKS(text) end
+local function Cmd(text) VV_TEST_NS.Nameplates.HandleSlash(text) end
 
 Mock.Event("ADDON_LOADED", "VanillaVarnish")
 Mock.Event("PLAYER_LOGIN")
-Check(SLASH_NAMEPLATETWEAKS1 == "/nt" and SLASH_NAMEPLATESWINGTIMERS1 == nil
+Check(SLASH_VANILLAVARNISH1 == "/vv" and SLASH_NAMEPLATETWEAKS1 == nil and SLASH_NAMEPLATESWINGTIMERS1 == nil
     and SLASH_NAMEPLATESWINGTIMERS2 == nil and SlashCmdList.NAMEPLATESWINGTIMERS == nil, "Only the unified slash handler is registered")
 Check(ns.db.width == 200 and ns.db.height == 10 and ns.db.y == 46 and ns.db.x == 20 and ns.db.gap == 2 and ns.db.effectAlpha == 0.35)
 Check(ns.db.visibility == "swing", "While swinging is the default visibility")
@@ -463,7 +463,7 @@ Check(ui.width.slider.value == 200 and ui.gradientLeft.slider.value == 0.4)
 ns.optionsPanel:Hide()
 Check(not spark.sparkAnim:IsPlaying(), "Closing options stops its preview spark animation")
 Cmd("")
-Check(ns.featurePanels.main:IsShown(), "Bare /nt opens the main page")
+Check(ns.featurePanels.main:IsShown(), "Bare nameplate command opens the main page")
 local firstMessage = #Mock.messages + 1
 Cmd("help")
 for i = firstMessage, #Mock.messages do
@@ -487,7 +487,7 @@ Check(#Mock.categories == 7 and Mock.categories[1].name == "VanillaVarnish" and 
 for i, name in ipairs({"Range check", "Quest icons", "Swing timers", "Combo points"}) do
     Check(Mock.categories[i + 3].name == name and Mock.categories[i + 3].parent == ns.rootCategory)
 end
-local nt = SlashCmdList.NAMEPLATETWEAKS
+local nt = VV_TEST_NS.Nameplates.HandleSlash
 nt(""); Check(ns.featurePanels.main:IsShown())
 nt("range"); Check(ns.featurePanels.rangeEnabled:IsShown())
 Cmd("quests"); Check(ns.featurePanels.markers:IsShown())

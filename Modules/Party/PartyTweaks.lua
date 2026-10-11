@@ -544,8 +544,3 @@ function addon.HandleSlash(message)
 end
 
 addon.RefreshModule = refresh
-if not VV.IsLegacyLoaded("PartyTweaks") then
-    SLASH_PARTYTWEAKS1 = "/partytweaks"
-    SLASH_PARTYTWEAKS2 = "/pt"
-    SlashCmdList.PARTYTWEAKS = addon.HandleSlash
-end

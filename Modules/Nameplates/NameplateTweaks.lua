@@ -337,13 +337,14 @@ end
 function ns.RefreshTweaks()
     questDirty = true
     for _, state in pairs(active) do UpdateRange(state); UpdateMarkers(state) end
+    if ns.RefreshThreatColors then ns.RefreshThreatColors() end
     if ns.RefreshFeatureOptions then ns.RefreshFeatureOptions() end
 end
 
 function ns.SetFeature(key, value)
     if not db or type(value) ~= "boolean" then return false end
     if key ~= "rangeEnabled" and key ~= "markers" and key ~= "swingsEnabled"
-        and key ~= "comboPointsEnabled" and key ~= "questieFallback" then return false end
+        and key ~= "comboPointsEnabled" and key ~= "questieFallback" and key ~= "threatColorsEnabled" then return false end
     db[key] = value
     ns.RefreshTweaks()
     if ns.Refresh then ns.Refresh() end
@@ -367,7 +368,8 @@ local function Status()
         .. "; range check: " .. (db.rangeEnabled and "on" or "off")
         .. "; quest icons: " .. (db.markers and "on" or "off")
         .. "; swing timers: " .. (db.swingsEnabled and "on" or "off")
-        .. "; combo points: " .. (db.comboPointsEnabled and "on" or "off") .. ".")
+        .. "; combo points: " .. (db.comboPointsEnabled and "on" or "off")
+        .. "; threat colors: " .. (db.threatColorsEnabled and "on" or "off") .. ".")
     Print(string.format("Out-of-range opacity: %g%% of normal.", db.rangeOpacity * 100))
 end
 
@@ -384,7 +386,8 @@ local function Slash(message)
     end
     local feature = ({range = "rangeEnabled", quests = "markers", questicons = "markers",
         markers = "markers", swings = "swingsEnabled", swing = "swingsEnabled",
-        combo = "comboPointsEnabled", combos = "comboPointsEnabled"})[command]
+        combo = "comboPointsEnabled", combos = "comboPointsEnabled",
+        threat = "threatColorsEnabled", aggro = "threatColorsEnabled"})[command]
     local mode = rest:lower()
     if feature and (mode == "on" or mode == "off" or mode == "toggle") then
         ns.SetFeature(feature, mode == "on" or mode == "toggle" and not db[feature])
@@ -406,7 +409,7 @@ local function Slash(message)
             local percent = tonumber(spell)
             if percent and ns.SetRangeOpacity(percent / 100) then
                 Print(string.format("Out-of-range opacity: %g%% of normal.", db.rangeOpacity * 100))
-            else Print("Use /nt range opacity <0-100 percent>.") end
+            else Print("Use /vv nameplates range opacity <0-100 percent>.") end
             return
         end
     elseif command == "dmgrange" then SetSpell("damage", rest) return
@@ -432,21 +435,19 @@ local function Slash(message)
         ns.Slash(message)
         return
     end
-    Print("/nt opens settings. /nt range, /nt quests, /nt swings, /nt combo open feature pages.")
-    Print("/nt range on or off; /nt quests on or off; /nt swings on or off; /nt combo on or off.")
-    Print("/nt range damage Moonfire — set enemy range spell")
-    Print("/nt range friendly Healing Touch — set friendly range spell")
-    Print("/nt range opacity 50 — choose out-of-range opacity from 0 to 100 percent.")
+    Print("/vv nameplates opens settings. Add range, quests, swings, or combo to open a feature page.")
+    Print("/vv nameplates range on or off; /vv nameplates quests on or off.")
+    Print("/vv nameplates swings on or off; /vv nameplates combo on or off.")
+    Print("/vv nameplates range damage Moonfire — set enemy range spell")
+    Print("/vv nameplates range friendly Healing Touch — set friendly range spell")
+    Print("/vv nameplates range opacity 50 — choose out-of-range opacity from 0 to 100 percent.")
     Print("Use off to disable either; spell IDs and spell links also work.")
-    Print("/nt markers on or off; /nt questie on or off; /nt status; /nt debug. Settings save per character.")
+    Print("/vv nameplates markers on or off; /vv nameplates questie on or off.")
+    Print("/vv nameplates status; /vv nameplates debug. Settings save per character.")
+    Print("/vv nameplates threat on or off — toggle role-aware threat colors.")
     if ns.SwingHelp then ns.SwingHelp() end
 end
 
-if not VV.IsLegacyLoaded("NameplateTweaks") then
-    SLASH_NAMEPLATETWEAKS1 = "/nt"
-    SLASH_NAMEPLATETWEAKS2 = "/nameplatetweaks"
-    SlashCmdList.NAMEPLATETWEAKS = Slash
-end
 ns.HandleSlash = Slash
 ns.TweaksSlash = Slash
 
@@ -457,6 +458,7 @@ function ns.InitializeTweaks()
     if type(db.rangeEnabled) ~= "boolean" then db.rangeEnabled = true end
     if type(db.swingsEnabled) ~= "boolean" then db.swingsEnabled = true end
     if type(db.comboPointsEnabled) ~= "boolean" then db.comboPointsEnabled = true end
+    if type(db.threatColorsEnabled) ~= "boolean" then db.threatColorsEnabled = true end
     if type(db.questieFallback) ~= "boolean" then db.questieFallback = false end
     local opacity = Known(db.rangeOpacity)
     if type(opacity) ~= "number" or opacity ~= opacity or opacity < 0 or opacity > 1 then db.rangeOpacity = 0.5 end

@@ -1,0 +1,55 @@
+name: Test, package, and publish
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install Lua 5.1 test runtime
+        run: python -m pip install --target .test-deps/lua-runtime lupa==2.8
+      - name: Run Lua regressions
+        run: python tests/run.py --lua-runtime .test-deps/lua-runtime
+      - name: Test release publishing checks
+        run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Verify committed package and rebuild
+        id: package
+        run: python tools/build_release.py --check-committed
+      - name: Verify version tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python tools/publish_curseforge.py --tag "$RELEASE_TAG" --check
+      - name: Save installable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: VanillaVarnish-${{ github.ref_name }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish to CurseForge
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'eddyrivers/VanillaVarnish'
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python tools/publish_curseforge.py --tag "$RELEASE_TAG"

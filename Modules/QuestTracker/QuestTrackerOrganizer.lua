@@ -339,7 +339,7 @@ eventFrame:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then Initialize() end
     if not db then return end
     if not TryInstall() then
-        if event == "PLAYER_LOGIN" then Print("Waiting for the native quest tracker. /qto status shows diagnostics.") end
+        if event == "PLAYER_LOGIN" then Print("Waiting for the native quest tracker. /vv tracker status shows diagnostics.") end
         return
     end
     Refresh()
@@ -351,8 +351,8 @@ local function Slash(message)
     local command = (message or ""):lower():match("^%s*(.-)%s*$")
     if command == "" or command == "options" or command == "settings" then
         addon.OpenOptions()
-    elseif command == "on" or command == "off" then
-        addon.SetOption("enabled", command == "on")
+    elseif command == "group on" or command == "group off" then
+        addon.SetOption("enabled", command == "group on")
         Print(db.enabled and "Native zone grouping enabled." or "Native quest ordering restored.")
     elseif command == "expand" then
         addon.SetAllZonesCollapsed(false)
@@ -365,16 +365,11 @@ local function Slash(message)
         local label = ({off = "off", top = "completed on top", bottom = "completed on bottom"})[db.completedSort]
         Print("Completed quest sorting: " .. label .. ".")
     else
-        Print("/qto opens settings. /qto on | off | expand | collapse | status | help. Click a native zone heading to fold it.")
+        Print("/vv tracker opens settings. /vv tracker group on | group off | expand | collapse | status | help. Click a native zone heading to fold it.")
     end
 end
 
 addon.HandleSlash = Slash
-if not VV.IsLegacyLoaded("QuestTrackerOrganizer") then
-    SLASH_QUESTTRACKERORGANIZER1 = "/qto"
-    SLASH_QUESTTRACKERORGANIZER2 = "/qlo"
-    SlashCmdList.QUESTTRACKERORGANIZER = Slash
-end
 function addon.RefreshModule()
     if not db then return end
     TryInstall()

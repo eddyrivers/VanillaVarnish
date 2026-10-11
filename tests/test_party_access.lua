@@ -59,14 +59,14 @@ assert(not icon:IsShown(), "Restricted empty lists still remove expired buffs")
 -- Status identifies the blocking stage without printing secret aura data.
 local messages = {}
 print = function(value) messages[#messages+1] = value end
-SlashCmdList.PARTYTWEAKS("status")
+VV_TEST_NS.Party.HandleSlash("status")
 assert(table.concat(messages, "\n"):find("party1: no buffs returned; source: list", 1, true))
 Mock.auras.party1 = {{icon=41, auraInstanceID=4, applications=1, duration=0, expirationTime=0}}
 icon.texture.SetTexture = function() error("texture setter refused") end
 Mock.Event("UNIT_AURA", "party1")
 assert(not icon:IsShown(), "Refused required texture hides the failed icon")
 messages = {}
-SlashCmdList.PARTYTWEAKS("status")
+VV_TEST_NS.Party.HandleSlash("status")
 local status = table.concat(messages, "\n")
 assert(status:find("party1: buff rendering refused; source: list", 1, true))
 assert(status:find("texture setter refused", 1, true))
@@ -75,5 +75,5 @@ Mock.auras.party1 = setmetatable({}, {__index=function() error("list indexing re
 C_UnitAuras.GetAuraDataByIndex = function() error("index read refused") end
 Mock.Event("UNIT_AURA", "party1")
 messages = {}
-SlashCmdList.PARTYTWEAKS("status")
+VV_TEST_NS.Party.HandleSlash("status")
 assert(table.concat(messages, "\n"):find("party1: aura read refused; source: index", 1, true))

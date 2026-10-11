@@ -1,123 +1,16 @@
 # Changelog
 
+## 1.0.18
+
+- Bring every command under `/vv`, with matching help and examples.
+- Add role-aware blue threat colors for fighting enemy nameplates, with a feature toggle and restoration of native colors.
+- Publish version tags to CurseForge after Lua 5.1 tests and package validation pass.
+- Streamline the public guide, add contributor instructions and the MIT license, and keep maintainer tooling out of release packages.
+
 ## 1.0.17
 
-- Use the target frame's native creature difficulty result for hostile tooltip levels, with Classic level-based colors as a fallback when native helpers are unavailable or unreadable.
-- Recognize Blizzard's unit-level tooltip lines when elite/dungeon formatting or embedded color codes prevent an exact localized "Level N" match. Preserve classification, creature type, class colors, and unrelated quest numbers.
-- Add level-19 dungeon enemy regressions for native yellow, formatting, repeated refreshes, feature restoration, unavailable player levels, and restricted API data. In-game rendering still needs verification after reloading.
+- Improve hostile tooltip level colors using native creature difficulty and recognize formatted level lines.
 
-## 1.0.16
+## Earlier releases
 
-- Fix hover tooltip flicker by applying VV placement at the end of native default/world/bag anchor setup and visible-tooltip refreshes in the same update. Remove next-frame anchor timers while retaining the protection against changing anchor families halfway through bag setup.
-- Keep a pending-anchor fallback after the tooltip's native OnUpdate for other hover layouts. Preserve mouse offsets, combat pause, immediate dismissal, and native comparison tooltip attachments.
-- Alphabetize the settings sidebar, module switches, and nameplate feature switches using the native Forever settings category sort.
-- Add repeated-refresh regressions with cached native Forever tooltip updates and bag anchoring; Lua 5.1 checks pass. In-game rendering still needs verification after reloading.
-
-## 1.0.15
-
-- Remove the instant-hide checkbox and saved preference. Enabled hover tooltips always hide immediately, including native fades, world-hover departure, and leaving UI controls; preserve Blizzard's Edit Mode preview.
-- Defer VV positioning until native tooltip setup finishes and clear explicit anchors before starting cursor tracking. This prevents VV from switching anchor families between Blizzard's bag SetAnchorType and SetPoint calls, a possible cause of the reported Baganator item tooltip error. Baganator is unchanged.
-- Add regressions for both bag anchor directions and combat pause using the cached native Forever bag helper, plus hover departure without FadeOut, restricted queries, and retired-setting migration. Lua 5.1 regressions pass; verify the engine anchor-family error in game after reloading.
-
-## 1.0.14
-
-- Replace the completed-first checkbox with a Completed quest sorting dropdown: Off, Completed on top, or Completed on bottom within each zone.
-- Keep ascending level/title/ID order within completion groups; Off preserves the usual level sort. Restore defaults selects Off.
-- Migrate existing enabled completed-first preferences to Completed on top and disabled preferences to Off, including imported legacy settings. Preserve new selections across reloads and module switches.
-- Add regressions for all three modes, dropdown selection, completion updates, combat deferral, defaults, persistence, and migration.
-
-## 1.0.13
-
-- Change swing-bar pulse highlights from white to a bright, pale gold tint so the bar warms gradually as it fills, in game and in settings previews.
-- Lower default pulse strength to 35%. Keep saved strengths; use `/nt effectalpha 0.35` to apply the new strength to an existing character.
-
-## 1.0.12
-
-- Set default tooltip offsets to 34 horizontal and -6 vertical.
-- Preserve saved offsets; use Restore defaults on the Tooltips page or `/vv tooltips offset 34 -6` to apply this position to an existing character.
-
-## 1.0.11
-
-- Add an optional Tooltips module with mouse following for world units, spells, bag items, auras, and other hover controls, including explicit button anchors. Native cursor tracking supports configurable X/Y offsets without a per-frame positioning loop.
-- Add class colors for player names (including Forever surnames) and class detail text, plus Classic difficulty colors for hostile unit levels. Preserve native content and skip restricted values.
-- Add instant hide and combat pause options, both off by default. Combat pause anchors current and new hover tooltips to Blizzard's saved Edit Mode position and resumes following after combat.
-- Add a Tooltips settings page, per-character preferences, module switch, restore defaults, and `/vv tooltips` commands. Detect loaded ForeverMouseTooltip to prevent competing tooltip changes; no standalone addon code or saved settings are bundled/imported.
-- Add Lua 5.1 regressions for tooltip anchoring, offsets, combat transitions, fades, colors, restricted data, controls, persistence, and conflicts, with optional native Forever tooltip-source checks. In-game rendering and taint verification remain required.
-
-## 1.0.10
-
-- Set default combo-point offsets to 17 horizontal and 25 vertical.
-- Set default swing bars to 200 wide and 10 high, with offsets of 20 horizontal and 46 vertical and 2 between bars. Pulse strength defaults to 50%.
-- Keep saved preferences; use Restore defaults to apply these values to an existing character.
-
-## 1.0.9
-
-- Show five empty combo-point circles at zero points, using Blizzard's personal-resource artwork. Circles fill red as points are earned and empty when spent.
-- Keep live combo circles visible for rogues and druids in Cat Form; show filled and empty circles together in both settings previews.
-- Add checks for zero points, filling and spending, stable positions, and class/form visibility.
-
-## 1.0.8
-
-- Keep combo-point dots visible above cast-bar artwork in both settings previews and on live nameplates. Health-bar placement and saved offsets stay unchanged.
-- Match Blizzard's native cast-bar frame level in preview tests and check the draw order of every dot.
-
-## 1.0.7
-
-- Add target nameplate combo points using Blizzard's red personal-resource artwork. Dots overlap the health bar's bottom edge halfway by default.
-- Add a Combo points settings page with dot size, horizontal and vertical offsets, spacing, and a switch on the Nameplates page.
-- Show enabled swing timers and combo points together in both settings previews.
-- Simplify settings descriptions, tooltips, and the user guide.
-- Add regression checks for target-bound point updates, toggles, restricted API results, saved settings, and both previews.
-
-## 1.0.6
-
-- Hide added buff rows whenever Use raid-style party frames is selected; tint native raid-style party health bars by class without changing their auras or dimensions.
-- Sort the player's portrait-party buffs first before limiting the row to eight, and enlarge them from 14px to 19px. Double native debuffs the player can dispel and retain type-colored borders (purple curse, green poison, blue magic, brown disease), restoring native geometry when disabled.
-- Clarify the party toggle's description and both supported frame styles.
-- Add an enchanted-dust addon icon and the UI Overhaul category to the Esc > AddOns listing.
-- Make swing gap measure bar borders, so zero touches; keep timer size independent of native nameplate scaling and retain stable cast clearance during combat. Sparks and oversized text may extend into the gap.
-- Accept targeted melee range abilities such as Sinister Strike despite zero max-range metadata; use the native spell range result for combat reach and continue rejecting passive spells.
-- Add regressions for both party styles, buff priority/sizes/tooltips, dispel capability/borders/restoration, melee range, exact swing gaps, and combat scale/geometry changes. Lua 5.1 and cached native Forever nameplate checks pass; in-game taint and visual verification remain necessary.
-
-## 1.0.5
-
-- Removed native party `UpdateMember` calls from class-color restoration. Cosmetic toggles now restore saved display properties without rebuilding unit bindings or health-update state.
-- Restore saved desaturation without comparing a possibly secret boolean.
-- Keep the gap between quest-zone groups constant when either zone expands or collapses; removed the conditional extra 8px gap.
-- Added checks for repeated color toggles, secret display restoration, unchanged native health values/scripts, and all neighboring zone fold combinations. Client taint behavior still requires in-game verification after reloading.
-
-## 1.0.4
-
-- Attempt permitted display reads from restricted party aura lists; fall back to indexed aura reads if list indexing is refused.
-- Keep valid buff textures visible when optional aura metadata cannot be read, and sanitize native frame visibility before branching.
-- Expanded `/pt status` with module/feature/combat state, per-unit aura source and display result, and pending combat initialization.
-- Added regressions for restricted lists, refused optional fields, restricted visibility, fallback reads, removal, and diagnostic output. In-game confirmation remains required.
-
-## 1.0.3
-
-- Fixed swing layout testing a secret native cast-artwork visibility boolean in combat. Restricted visibility now reserves clearance using readable dimensions, while readable hidden artwork is excluded.
-- Added regression coverage for restricted true/false visibility, unavailable visibility getters, and live swing refreshes.
-
-## 1.0.2
-
-- Prevent swing-bar sparks and label outlines from overlapping adjacent swing bars by reserving their visible bounds during layout.
-- Keep spacing stable as swing progress changes and collapse hidden bars without gaps.
-- Automatically clear native cast containers, below-bar text/icons, and cast artwork for nonnegative vertical offsets, in game and in the settings preview. Saved offsets remain unchanged; negative offsets retain manual placement.
-- Added artwork-bound checks across bar heights, spark/label sizes, gaps, visible-bar combinations, resolutions, and UI scales, plus native-style cast-clearance checks.
-
-## 1.0.1
-
-- Fixed party buff rendering rejecting combat-secret AuraData records before their permitted display fields reached widgets.
-- Refresh known party units when UNIT_AURA supplies a restricted event token.
-- Keep valid buff icons visible if a cosmetic stack-count or cooldown setter is refused.
-- Added regressions covering combat-secret aura records, events, removal, and cosmetic API failures.
-
-## 1.0.0
-
-- Consolidated NameplateTweaks 2.0.0, QuestTrackerOrganizer 1.2.0, and PartyTweaks 1.0.1 into VanillaVarnish.
-- Added one AddOns settings parent with independent Nameplates, Quest tracker, and Party frames master switches.
-- Preserved existing nameplate features, swing appearance controls/previews, tracker grouping/folding, and party artwork/aura behavior.
-- Added individual party buff and class-color switches with restoration of native spacing and colors.
-- Added per-character VanillaVarnish settings, one-time copying of loaded legacy preferences, and safeguards against running duplicate legacy modules.
-- Retained legacy feature slash commands and added `/vv` module commands.
-- Centralized combat-deferred settings opening, added combined-module regression checks, and provided a clean release packager.
+Introduced modular nameplates, swing timers, combo points, quest grouping and completion sorting, party buffs and class colors, and cursor-following tooltips. Older release archives remain in `dist`; detailed development history is available in Git.

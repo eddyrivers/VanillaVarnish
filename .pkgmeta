@@ -1,5 +1,12 @@
 package-as: VanillaVarnish
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
 ignore:
+  - .github
+  - Branding
+  - logo.png
+  - CONTRIBUTING.md
   - tests
   - tools
   - dist

@@ -60,6 +60,8 @@ function ns.RegisterFeatureOptions()
         "Fade nameplates when a unit is out of range of your chosen spell.")
     FeatureCheck(root, "swingsEnabled", "Swing timers", -206, "swingsEnabled",
         "Show weapon swing timers beneath your target's nameplate.")
+    FeatureCheck(root, "threatColorsEnabled", "Threat colors", -246, "threatColorsEnabled",
+        "Blue on fighting enemies when tanks hold aggro, or damage dealers and healers do not. Other situations keep the game's colors.")
     VV.RegisterOptions()
     ns.rootCategory = VV.rootCategory
     ns.nameplateCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, root, "Nameplates")

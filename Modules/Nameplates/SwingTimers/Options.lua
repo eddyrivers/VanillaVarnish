@@ -166,22 +166,24 @@ local function EachBar(key, callback)
 end
 
 local function Help()
-    ns.Print("/nt swings - open swing timer settings with live preview.")
-    ns.Print("/nt main on   /nt offhand off   /nt ranged toggle   /nt all on")
-    ns.Print("/nt show swing - while swinging (default); other modes: always, combat.")
-    ns.Print("/nt x 20   /nt y 46 - positive X moves right; positive Y moves down.")
-    ns.Print("/nt width 200   /nt height 10   /nt gap 2")
-    ns.Print("/nt color main red - Blizzard hostile red; replace main with offhand, ranged, or all.")
-    ns.Print("/nt color ranged #FFD36B 1 - optional fill opacity, from 0 to 1.")
-    ns.Print("/nt bordercolor white   /nt borderalpha 0.3")
-    ns.Print("/nt effect pulse - choose off or pulse.")
-    ns.Print("/nt effect ranged pulse   /nt effectalpha 0.35")
-    ns.Print("/nt gradientleft 0.40   /nt gradientright 0.85")
-    ns.Print("/nt spark on   /nt sparkalpha 1   /nt sparksize 12   /nt borderradius 5")
-    ns.Print("/nt label main on   /nt labelfont all arial   /nt labelsize main 14")
-    ns.Print("/nt labelalign main right   /nt labelcolor main white")
-    ns.Print("/nt range on   /nt quests off   /nt swings on; /nt help for range and quest commands.")
-    ns.Print("/nt preview on   /nt preview off   /nt colors   /nt status   /nt reset")
+    ns.Print("/vv nameplates swings - open swing timer settings with live preview.")
+    ns.Print("/vv nameplates main on   /vv nameplates offhand off   /vv nameplates ranged toggle   /vv nameplates all on")
+    ns.Print("/vv nameplates show swing - while swinging (default); other modes: always, combat.")
+    ns.Print("/vv nameplates x 20   /vv nameplates y 46 - positive X moves right; positive Y moves down.")
+    ns.Print("/vv nameplates width 200   /vv nameplates height 10   /vv nameplates gap 2")
+    ns.Print("/vv nameplates color main red - Blizzard hostile red; replace main with offhand, ranged, or all.")
+    ns.Print("/vv nameplates color ranged #FFD36B 1 - optional fill opacity, from 0 to 1.")
+    ns.Print("/vv nameplates bordercolor white   /vv nameplates borderalpha 0.3")
+    ns.Print("/vv nameplates effect pulse - choose off or pulse.")
+    ns.Print("/vv nameplates effect ranged pulse   /vv nameplates effectalpha 0.35")
+    ns.Print("/vv nameplates gradientleft 0.40   /vv nameplates gradientright 0.85")
+    ns.Print("/vv nameplates spark on   /vv nameplates sparkalpha 1")
+    ns.Print("/vv nameplates sparksize 12   /vv nameplates borderradius 5")
+    ns.Print("/vv nameplates label main on   /vv nameplates labelfont all arial   /vv nameplates labelsize main 14")
+    ns.Print("/vv nameplates labelalign main right   /vv nameplates labelcolor main white")
+    ns.Print("/vv nameplates range on   /vv nameplates quests off   /vv nameplates swings on")
+    ns.Print("/vv nameplates preview on or off; /vv nameplates help for all commands.")
+    ns.Print("/vv nameplates colors   /vv nameplates status   /vv nameplates reset")
 end
 
 local function Status()
@@ -281,7 +283,7 @@ function ns.Slash(message)
     if barKey then
         local mode = args[2] or "toggle"
         if mode ~= "on" and mode ~= "off" and mode ~= "toggle" or args[3] then
-            ns.Print("Use /nt " .. command .. " on|off|toggle."); return
+            ns.Print("Use /vv nameplates " .. command .. " on|off|toggle."); return
         end
         -- An all-toggle enables all unless they are already all enabled.
         local enable = mode == "on"
@@ -295,7 +297,7 @@ function ns.Slash(message)
         or command == "always" or command == "combat" then
         local mode = (command == "always" or command == "combat") and command or args[2]
         if mode ~= "always" and mode ~= "combat" and mode ~= "swing" then
-            ns.Print("Use /nt show always|combat|swing."); return
+            ns.Print("Use /vv nameplates show always|combat|swing."); return
         end
         ns.db.visibility = mode
         ns.Print("Visibility: " .. mode)
@@ -303,21 +305,21 @@ function ns.Slash(message)
         local key, name = aliases[args[2]], ns.ParseColor(args[3])
         local alpha = args[4] and ns.Number(tonumber(args[4]), 0, 1) or nil
         if not key or not name or args[4] and not alpha or args[5] then
-            ns.Print("Use /nt color main|offhand|ranged|all <color> [opacity 0-1]. Try /nt colors."); return
+            ns.Print("Use /vv nameplates color main|offhand|ranged|all <color> [opacity 0-1]. Try /vv nameplates colors."); return
         end
         alpha = name == "transparent" and 0 or (alpha or 1)
         EachBar(key, function(bar) bar.color, bar.alpha = name, alpha end)
         ns.Print(key .. " fill: " .. name .. " @ " .. alpha)
     elseif command == "bordercolor" then
         local name = ns.ParseColor(args[2])
-        if not name or args[3] then ns.Print("Use /nt bordercolor white, a named color, or #RRGGBB."); return end
+        if not name or args[3] then ns.Print("Use /vv nameplates bordercolor white, a named color, or #RRGGBB."); return end
         ns.db.borderColor = name
         ns.Print("Border color: " .. name)
     elseif command == "label" or command == "labelfont" or command == "labelsize"
         or command == "labelalign" or command == "labelcolor" then
         local key = aliases[args[2] or ""]
         if not key or not args[3] or args[4] then
-            ns.Print("Use /nt " .. command .. " main|offhand|ranged|all <value>."); return
+            ns.Print("Use /vv nameplates " .. command .. " main|offhand|ranged|all <value>."); return
         end
         local field = ({label = "labelEnabled", labelfont = "labelFont", labelsize = "labelSize",
             labelalign = "labelAlign", labelcolor = "labelColor"})[command]
@@ -336,7 +338,7 @@ function ns.Slash(message)
     elseif command == "spark" then
         local mode = args[2] or "toggle"
         if mode ~= "on" and mode ~= "off" and mode ~= "toggle" then
-            ns.Print("Use /nt spark on or /nt spark off."); return
+            ns.Print("Use /vv nameplates spark on or /vv nameplates spark off."); return
         end
         ns.db.spark = mode == "on" or mode == "toggle" and not ns.db.spark
         ns.Print("Spark: " .. (ns.db.spark and "on" or "off"))
@@ -346,14 +348,14 @@ function ns.Slash(message)
         -- 'off' alone is the effect, rather than the off-hand alias.
         if args[2] == "off" and not args[3] then key, effect = "all", "off" end
         if not ns.effects[effect or ""] or args[4] then
-            ns.Print("Use /nt effect [main|offhand|ranged|all] off|pulse."); return
+            ns.Print("Use /vv nameplates effect [main|offhand|ranged|all] off|pulse."); return
         end
         EachBar(key, function(bar) bar.effect = effect end)
         ns.Print(key .. " effect: " .. effect)
     elseif command == "preview" or command == "test" then
         local mode = args[2] or "toggle"
         if mode ~= "on" and mode ~= "off" and mode ~= "toggle" then
-            ns.Print("Use /nt preview on|off."); return
+            ns.Print("Use /vv nameplates preview on|off."); return
         end
         ns.preview = mode == "on" or mode == "toggle" and not ns.preview
         ns.Print("Preview " .. (ns.preview and "on: synthetic swings, including unequipped weapons." or "off."))
@@ -379,10 +381,10 @@ function ns.Slash(message)
             gradientright = "gradientRight", sparksize = "sparkSize", borderradius = "borderRadius",
             radius = "borderRadius" })[command] or command
         local limits = ns.limits[setting]
-        if not limits then ns.Print("Unknown command. Use /nt help."); return end
+        if not limits then ns.Print("Unknown command. Use /vv nameplates help."); return end
         local value = ns.Number(tonumber(args[2]), limits[1], limits[2])
         if not value or args[3] then
-            ns.Print(string.format("Use /nt %s <number %g to %g>.", command, limits[1], limits[2])); return
+            ns.Print(string.format("Use /vv nameplates %s <number %g to %g>.", command, limits[1], limits[2])); return
         end
         ns.db[setting] = value
         ns.Print(setting .. ": " .. value)

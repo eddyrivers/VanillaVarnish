@@ -75,6 +75,9 @@ print(f"PASS: {spacing.globals().NST_SPACING_CHECKS} swing artwork spacing and c
 melee = nameplates()
 melee.execute((ROOT / "tests/test_melee_range.lua").read_text())
 print("PASS: melee reach range selection, native verdicts, fallback, and restricted results")
+threat = nameplates()
+threat.execute((ROOT / "tests/nameplates/test_threat_colors.lua").read_text())
+print(f"PASS: {threat.globals().NST_THREAT_CHECKS} threat color checks for roles, tank auras, restoration, restricted data, and pooled plates")
 if args.blizzard_source:
     native = nameplates(native=args.blizzard_source)
     native.execute((ROOT / "tests/nameplates/test_native_preview.lua").read_text())

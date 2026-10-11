@@ -281,7 +281,7 @@ for mask = 0, 3 do
     end
 end
 addon.SetAllZonesCollapsed(false); RunMockTimers()
-SlashCmdList.QUESTTRACKERORGANIZER("")
+VV_TEST_NS.QuestTracker.HandleSlash("")
 equal(openedCategory, 123, "bare slash command opens settings")
 local completedSelect = addon.optionControls.completedSort
 local function SelectCompleted(label)
@@ -330,7 +330,7 @@ equal(addon.db.completedSort, "off", "invalid mode preserves saved choice")
 addon.optionsPanel:Hide()
 combat = true
 local opensBefore = settingsOpens
-SlashCmdList.QUESTTRACKERORGANIZER("settings")
+VV_TEST_NS.QuestTracker.HandleSlash("settings")
 equal(settingsOpens, opensBefore, "combat settings open is deferred")
 combat = false
 coreEvents.callback(coreEvents, "PLAYER_REGEN_ENABLED"); events.callback(events, "PLAYER_REGEN_ENABLED")
@@ -360,20 +360,20 @@ equal(native:GetHeight(), collapsedHeight, "stale queued refresh does not change
 heads[2].Icon.scripts.OnClick(heads[2].Icon, "LeftButton"); RunMockTimers()
 equal(blocks[1]:IsShown(), true, "plus icon expands zone")
 equal(heads[2].Icon.normalTexture:match("Minus$"), "Minus", "expanded icon shows minus")
-SlashCmdList.QUESTTRACKERORGANIZER("expand"); RunMockTimers()
+VV_TEST_NS.QuestTracker.HandleSlash("expand"); RunMockTimers()
 equal(blocks[1].ItemButton:IsShown(), true, "expand restores native quest item")
 equal(blocks[1].ProgressBar:IsShown(), true, "expand restores native progress bar")
 container:Update()
 equal(top(blocks[5]) > top(blocks[1]), true, "native rebuild preserves expanded ordering before next frame")
 equal(heads[1]:IsShown(), true, "native rebuild preserves expanded heading before next frame")
 combat = true
-SlashCmdList.QUESTTRACKERORGANIZER("collapse"); RunMockTimers()
+VV_TEST_NS.QuestTracker.HandleSlash("collapse"); RunMockTimers()
 equal(blocks[1]:IsShown(), true, "combat folding deferred")
 combat = false
 coreEvents.callback(coreEvents, "PLAYER_REGEN_ENABLED"); events.callback(events, "PLAYER_REGEN_ENABLED"); RunMockTimers()
 equal(blocks[1]:IsShown(), false, "fold applies after combat")
 equal(heads[1]:IsShown(), true, "collapsed zones keep native headings")
-SlashCmdList.QUESTTRACKERORGANIZER("expand"); RunMockTimers()
+VV_TEST_NS.QuestTracker.HandleSlash("expand"); RunMockTimers()
 heads[2].Icon.scripts.OnClick(heads[2].Icon, "RightButton")
 equal(menu.title, "Westfall", "native zone context menu")
 equal(blocks[1]:IsShown(), true, "right click on icon does not fold zone")
@@ -384,14 +384,14 @@ menu.buttons[2].callback()
 equal(#removed, 0, "zone menu rechecks combat")
 combat = false
 table.remove(watches) -- return to the initial watched set
-SlashCmdList.QUESTTRACKERORGANIZER("off"); RunMockTimers()
+VV_TEST_NS.QuestTracker.HandleSlash("group off"); RunMockTimers()
 equal(native:GetHeight(), nativeHeight, "off restores native frame height")
 equal(blocks[1].HeaderText:GetText(), "Low", "off restores native title")
 equal(blocks[1].HeaderText.size, 14, "off restores native title font")
 equal(heads[1]:IsShown(), false, "off removes headings")
 equal(blocks[1]:IsShown(), true, "off restores native visibility")
 equal(dirty, 1, "off requests native refresh securely")
-SlashCmdList.QUESTTRACKERORGANIZER("on")
+VV_TEST_NS.QuestTracker.HandleSlash("group on")
 container:Update(); RunMockTimers()
 equal(blocks[1].HeaderText:GetText(), "[10] Low", "grouping restores after native rebuild")
 equal(native.contentsHeight, nativeHeight, "rebuild retains native height calculation")
@@ -399,7 +399,7 @@ native.availableHeight = 100
 container:Update(); RunMockTimers()
 equal(native:GetHeight() <= 100, true, "grouped view respects native available height")
 combat = true
-SlashCmdList.QUESTTRACKERORGANIZER("off")
+VV_TEST_NS.QuestTracker.HandleSlash("group off")
 equal(blocks[4].HeaderText.size, 12, "combat off leaves current font until combat ends")
 combat = false
 coreEvents.callback(coreEvents, "PLAYER_REGEN_ENABLED"); events.callback(events, "PLAYER_REGEN_ENABLED"); RunMockTimers()
@@ -407,7 +407,7 @@ equal(blocks[4].HeaderText.size, 14, "combat off restores font after combat")
 equal(heads[1]:IsShown(), false, "combat off removes headings after combat")
 equal(dirty, 3, "deferred off requests native refresh securely")
 -- A freed/reused native block must not receive an old title on the next refresh.
-SlashCmdList.QUESTTRACKERORGANIZER("on")
+VV_TEST_NS.QuestTracker.HandleSlash("group on")
 native.availableHeight = 2000
 container:Update(); RunMockTimers()
 local line = blocks[1].lines[1]
@@ -435,14 +435,14 @@ enabledCheck:SetChecked(false); enabledCheck.scripts.OnClick(enabledCheck); RunM
 equal(heads[1]:IsShown(), false, "settings grouping toggle removes headings")
 equal(blocks[1].HeaderText:GetText(), "Low", "settings grouping toggle restores native title")
 equal(completedSelect.selectionText, "Completed on top", "completion preference stays saved while disabled")
-SlashCmdList.QUESTTRACKERORGANIZER("on"); RunMockTimers()
+VV_TEST_NS.QuestTracker.HandleSlash("group on"); RunMockTimers()
 equal(enabledCheck:GetChecked(), true, "slash command synchronizes settings checkbox")
 equal(top(blocks[4]) > top(blocks[1]), true, "re-enabling applies saved completed-first preference")
 vv.db.questTracker.enabled = false
 events.callback(events, "PLAYER_LOGIN"); RunMockTimers()
 equal(vv.db.questTracker.enabled, false, "saved disabled grouping survives initialization")
 equal(vv.db.questTracker.completedSort, "top", "saved completion order survives initialization")
-addon.optionsPanel:Hide(); SlashCmdList.QUESTTRACKERORGANIZER("options")
+addon.optionsPanel:Hide(); VV_TEST_NS.QuestTracker.HandleSlash("options")
 equal(enabledCheck:GetChecked(), false, "settings controls refresh on reopen")
 equal(completedSelect.selectionText, "Completed on top", "settings reopen retains completion preference")
 actions["Restore defaults"].scripts.OnClick(); RunMockTimers()
