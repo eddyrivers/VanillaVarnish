@@ -17,7 +17,9 @@ Optional native source snapshots stay in `.test-deps` or another local cache. Pa
 
 Before release, check changed features in game after `/reload`: combat transitions, settings and saved preferences, native nameplate styles, secure quest items, and party targeting. For threat colors, check tanks holding and losing aggro, damage/healer roles, tank forms/stances, tapped or dead enemies, and the feature switch. Mocks cannot validate taint, rendered artwork, or cursor behavior.
 
-For party range fading, cross the friendly spell's range boundary, clear the spell, and change party-frame styles. Verify portraits and buffs fade together while health, mana, and debuffs stay unchanged, including in combat. For the player cast bar, enable `/vv nameplates cast on`, cast and channel while targeting a casting enemy, interrupt a cast, change targets, and try the native nameplate styles/sizes. Check X/Y/width, native bar height, the menu preview, offscreen targets, and both feature/master switches. The native-source suite exercises the real casting mixin across all styles and sizes; it does not replace a rendered in-game check.
+For party range fading, cross the friendly spell's range boundary, clear the spell, and change party-frame styles. Verify portraits and buffs fade together while health, mana, and debuffs stay unchanged, including in combat.
+
+For party buff priority, show more than eight buffs, eat and drink, and verify recovery effects appear before player buffs with correct tooltips in both rows. For profiles, save a name, change settings, load the saved snapshot, and log into a second character. Check that designs transfer, local changes do not overwrite snapshots, quest folds remain personal, and loading is disabled during combat.
 
 ## Publish a release
 
@@ -28,7 +30,7 @@ Maintainer setup: store a CurseForge author API token as the repository Actions 
 1. Update the TOC version and add concise release notes to `CHANGELOG.md`.
 2. Run the checks and build with `python tools/build_release.py`.
 3. Commit the source, docs, and generated `dist/VanillaVarnish-<version>.zip`, then push.
-4. Create and push the matching tag, for example `git tag v1.0.19` and `git push origin v1.0.19`.
+4. Create and push the matching tag, for example `git tag v1.0.20` and `git push origin v1.0.20`.
 5. Check the Actions run and the CurseForge file status. New projects and uploads may need moderation before becoming visible in the app.
 
 The workflow verifies that the tag matches the TOC and that the committed ZIP matches the freshly built package. Alpha or beta suffixes in the version select the corresponding CurseForge release type; ordinary versions publish as Release.

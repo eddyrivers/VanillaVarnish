@@ -207,6 +207,7 @@ function ns.Changed()
     if ns.RefreshComboPoints then ns.RefreshComboPoints() end
     if ns.RefreshOptions then ns.RefreshOptions() end
     if ns.RefreshFeatureOptions then ns.RefreshFeatureOptions() end
+    if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
 end
 
 function ns.SetValue(key, value)

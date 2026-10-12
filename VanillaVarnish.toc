@@ -2,18 +2,19 @@
 ## Title: VanillaVarnish
 ## Notes: Modular improvements to Blizzard nameplates, quest tracking, party frames, and tooltips.
 ## Author: Eddy Rivers
-## Version: 1.0.19
+## Version: 1.0.20
 ## Category: UI Overhaul
 ## X-Curse-Project-ID: 1736142
 ## IconTexture: Interface\Icons\INV_Enchant_DustIllusion
 ## SavedVariablesPerCharacter: VanillaVarnishDB
+## SavedVariables: VanillaVarnishProfilesDB
 ## OptionalDeps: Blizzard_ObjectiveTracker, QuestieDB, Questie, NameplateTweaks, QuestTrackerOrganizer, PartyTweaks, NameplateSwingTimers, ForeverMouseTooltip
 
 Core.lua
+Profiles.lua
 Modules\Nameplates\QuestDrops.lua
 Modules\Nameplates\NameplateTweaks.lua
 Modules\Nameplates\ThreatColors.lua
-Modules\Nameplates\PlayerCastBar.lua
 Modules\Nameplates\SwingTimers\Options.lua
 Modules\Nameplates\ComboPoints\NameplateComboPoints.lua
 Modules\Nameplates\SwingTimers\Bars.lua
@@ -21,7 +22,6 @@ Modules\Nameplates\SwingTimers\PreviewNameplate.lua
 Modules\Nameplates\SwingTimers\SettingsUI.lua
 Modules\Nameplates\Settings.lua
 Modules\Nameplates\ComboPoints\Settings.lua
-Modules\Nameplates\PlayerCastSettings.lua
 Modules\Nameplates\SwingTimers\NameplateSwingTimers.lua
 Modules\QuestTracker\Model.lua
 Modules\QuestTracker\QuestTrackerOrganizer.lua

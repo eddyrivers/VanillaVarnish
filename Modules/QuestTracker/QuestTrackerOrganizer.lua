@@ -312,6 +312,7 @@ function addon.SetOption(key, value)
     else return false end
     db[key] = value
     addon.RefreshOptions()
+    if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
     Refresh()
     return true
 end
@@ -328,6 +329,7 @@ end
 function addon.ResetOptions()
     db.enabled, db.completedSort, db.collapsed = true, "off", {}
     addon.RefreshOptions()
+    if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
     Refresh()
 end
 

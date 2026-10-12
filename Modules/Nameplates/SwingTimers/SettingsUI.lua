@@ -383,7 +383,6 @@ function ns.RegisterOptions()
     Settings.RegisterAddOnCategory(category)
     ns.optionsCategory = category
     ns.RegisterComboOptions()
-    ns.RegisterPlayerCastOptions()
     panel:SetScript("OnShow", function()
         ns.RefreshOptions()
     end)

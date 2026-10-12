@@ -15,7 +15,7 @@ Mock.auras.party1 = {{secret = true, icon = secretValue, auraInstanceID = 2,
 Mock.Event("UNIT_AURA", "party1")
 assert(icon:IsShown(), "Combat AuraData records must not be dropped solely because they are secret")
 assert(icon.texture.textureValue == secretValue and icon.count.text == "3")
-assert(icon.cooldown.durationObject == "native duration" and member:GetHeight() == 74)
+assert(icon.cooldown.durationObject == "native duration" and member:GetHeight() == 95)
 -- A secret UNIT_AURA unit cannot be compared: refresh known party units.
 Mock.auras.party1 = {{secret = true, icon = 21, auraInstanceID = 3,
     applications = 1, duration = 0, expirationTime = 0}}

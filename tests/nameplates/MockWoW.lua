@@ -60,6 +60,8 @@ function Object:SetText(text)
 end
 function Object:SetFont(path, size, flags) self.font, self.fontSize, self.fontFlags = path, size, flags; return true end
 function Object:SetTextColor(...) self.textColor = {...} end
+function Object:SetEnabled(enabled) self.enabled = enabled end
+function Object:IsEnabled() return self.enabled ~= false end
 function Object:SetJustifyV(value) self.justifyV = value end
 function Object:GetAlpha() return self.alpha or 1 end
 function Object:GetWidth() return self.width end

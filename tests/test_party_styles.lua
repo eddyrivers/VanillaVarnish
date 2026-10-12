@@ -86,7 +86,7 @@ assert(raidMember.healthBar.color[1] == 0 and raidMember.healthBar.color[2] == 1
 Mock.raidStyle = false
 compact:Hide()
 Mock.Event("EDIT_MODE_LAYOUTS_UPDATED")
-assert(row:IsShown() and member:GetHeight() == 74, "Switching back restores portrait buffs")
+assert(row:IsShown() and member:GetHeight() == 95, "Switching back restores portrait buffs")
 -- Frame discovery in combat needs no aura widgets or secure unit mutations.
 local newcomer = Mock.Member("party3")
 Mock.active[#Mock.active] = nil
@@ -96,7 +96,7 @@ compact.memberUnitFrames[2] = newcomer
 Mock.raidStyle, Mock.combat = true, true
 vv.Party.SetOption("classColors", true)
 assert(newcomer.healthBar.color[1] == RAID_CLASS_COLORS.MAGE.r and Mock.Row(newcomer) == nil)
-assert(not row:IsShown() and member:GetHeight() == 74, "Combat switch hides rows immediately while protected spacing waits")
+assert(not row:IsShown() and member:GetHeight() == 95, "Combat switch hides rows immediately while protected spacing waits")
 Mock.combat = false
 Mock.Event("PLAYER_REGEN_ENABLED")
 assert(member:GetHeight() == 53)

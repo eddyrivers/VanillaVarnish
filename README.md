@@ -8,24 +8,22 @@ Built for **WoW Forever 1.60.x / Interface 16001**. Other WoW clients have not b
 
 Download from [CurseForge](https://www.curseforge.com/wow/addons/vanilla-varnish), or extract an archive from [dist](https://github.com/eddyrivers/VanillaVarnish/tree/main/dist) into `Interface/AddOns`. The installed folder should be `VanillaVarnish`, with `VanillaVarnish.toc` directly inside it. Fully restart WoW after installation.
 
-Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. Settings save per character. Each module has a master switch that preserves its feature settings when turned off.
+Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. Active settings save per character. Named profiles are shared across your account. Each module has a master switch that preserves its feature settings when turned off.
 
 ## Features
 
 | Module | What it adds |
 | --- | --- |
-| Nameplates | Spell-range fading, quest icons, swing timers, combo points, threat colors, and an optional player cast bar |
+| Nameplates | Spell-range fading, quest icons, swing timers, combo points, threat colors |
 | Quest tracker | Quests grouped by zone, collapsible headings, and optional completed-first or completed-last sorting |
-| Party frames | Up to eight buffs, larger player buffs and dispellable debuffs, class-colored health bars, and friendly-spell range fading |
+| Party frames | Up to 16 buffs in two rows, larger player buffs and dispellable debuffs, class-colored health bars, and friendly-spell range fading |
 | Tooltips | Mouse following, configurable offsets, class/difficulty colors, immediate hover dismissal, and optional combat pause |
 
 **Nameplates:** choose damage and friendly range spells; unreadable range results keep normal opacity. Questie is optional and can supply extra quest information. Swing timers and combo points share a live preview. Positive X moves right; positive Y moves down. Threat colors turn fighting enemies blue when you hold aggro as a tank, or when you avoid aggro as a damage dealer or healer. Other situations keep the game's colors.
 
-**Player cast bar:** optional and off by default. Shows your own casts and channels beneath your target's nameplate, using Blizzard's native cast-bar artwork and behavior. Set its X/Y offsets and width; height, icon size, and font size follow your nameplate style and size. The normal player cast bar and the target's cast bar remain available. A visible target nameplate is required; soft enemy targeting works when you have no hard target. The settings page previews your bar alongside the enabled swing timers and combo points.
-
 **Quest tracker:** click a zone heading to fold it; right-click to track or untrack its quests. Collapsing a zone keeps its quests tracked. Move and resize the tracker in Edit Mode. Combat layout changes apply after combat ends.
 
-**Party frames:** extra buffs and range fading require portrait-style party frames; class colors also support raid-style frames. Buffs include counts, cooldowns, and tooltips. Range fading uses the friendly spell and opacity from **Nameplates > Range check**, independently of the nameplate range switch. Only portraits and buffs fade; health, mana, and debuffs retain their opacity. No friendly spell or unavailable range means no fading. Addons that replace Blizzard's frames manage their own appearance.
+**Party frames:** extra buffs and range fading require portrait-style party frames; class colors also support raid-style frames. Buffs include counts, cooldowns, and tooltips. Active eating and drinking effects come first, followed by your buffs, then other buffs in native order. Your buffs remain larger; each row holds eight icons. Range fading uses the friendly spell and opacity from **Nameplates > Range check**, independently of the nameplate range switch. Only portraits and buffs fade; health, mana, and debuffs retain their opacity. No friendly spell or unavailable range means no fading. Addons that replace Blizzard's frames manage their own appearance.
 
 **Tooltips:** item comparisons stay beside the main tooltip. Defaults are X `34`, Y `-6`; positive Y moves up. Combat pause uses the position saved in Edit Mode. Clicked chat links keep their usual placement.
 
@@ -38,11 +36,8 @@ All VanillaVarnish commands start with `/vv`.
 | `/vv` | Open settings |
 | `/vv nameplates`, `/vv tracker`, `/vv party`, `/vv tooltips` | Open a module page |
 | `/vv <module> on`, `off`, or `toggle` | Enable or disable a whole module |
-| `/vv nameplates range`, `quests`, `swings`, `combo`, or `cast` | Open a nameplate feature page |
+| `/vv nameplates range`, `quests`, `swings`, or `combo` | Open a nameplate feature page |
 | `/vv nameplates combo off`, `/vv nameplates threat on` | Switch an individual feature |
-| `/vv nameplates cast on`, `/vv nameplates cast off` | Switch the player cast bar |
-| `/vv nameplates cast x 20`, `/vv nameplates cast y 90`, `/vv nameplates cast width 200` | Position and size the player cast bar; positive Y moves down |
-| `/vv nameplates cast reset` | Restore player cast-bar placement without changing its switch |
 | `/vv nameplates range damage Moonfire` | Choose an enemy range spell; names, IDs, and links work |
 | `/vv nameplates range friendly Healing Touch` | Choose a friendly range spell |
 | `/vv nameplates range opacity 35` | Set nameplate and party portrait/buff out-of-range opacity to 35% |
@@ -58,6 +53,12 @@ All VanillaVarnish commands start with `/vv`.
 | `/vv status`, `/vv <module> status`, `/vv nameplates debug` | Show status and diagnostics |
 
 Settings requested in combat open after combat ends. **Restore defaults** resets only its settings page; module switches stay as you set them.
+
+## Profiles
+
+Open `/vv` and use **Profiles** on the main page. Enter a name under **Save as**, then click **Save profile**. To use the design on another character, select it in **Load profile** and click **Load** outside combat. Profiles become available on your other characters after you reload or log out of the character that saved them.
+
+A profile is a snapshot of VanillaVarnish's module switches and settings, including appearance, range spells, and quest sorting. Loading replaces the current character's addon settings. Later changes stay local until you save again; saving an existing name updates its snapshot. Save a new name to keep both designs. Collapsed quest zones remain specific to each character. Blizzard's Edit Mode layout and native nameplate style are managed by the game and are not stored in these profiles. Check range spells when sharing between different classes.
 
 ## Existing standalone addons
 

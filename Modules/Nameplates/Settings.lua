@@ -62,8 +62,6 @@ function ns.RegisterFeatureOptions()
         "Show weapon swing timers beneath your target's nameplate.")
     FeatureCheck(root, "threatColorsEnabled", "Threat colors", -246, "threatColorsEnabled",
         "Blue on fighting enemies when tanks hold aggro, or damage dealers and healers do not. Other situations keep the game's colors.")
-    FeatureCheck(root, "playerCastBarEnabled", "Player cast bar", -286, "playerCastBarEnabled",
-        "Show your own casts and channels beneath your target's nameplate, using the game's nameplate artwork and height.")
     VV.RegisterOptions()
     ns.rootCategory = VV.rootCategory
     ns.nameplateCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, root, "Nameplates")
@@ -109,7 +107,6 @@ function ns.OpenOptions(page)
     if not ns.nameplateCategory then ns.RegisterOptions() end
     if page == "swingsEnabled" or page == "swings" then ns.OpenSwingOptions(); return end
     if page == "comboPointsEnabled" or page == "combo" then ns.OpenComboOptions(); return end
-    if page == "playerCastBarEnabled" or page == "cast" then ns.PlayerCastBar.OpenOptions(); return end
     local category = page == "rangeEnabled" and ns.rangeCategory
         or page == "markers" and ns.questCategory or ns.nameplateCategory
     ns.OpenSettingsCategory(category)

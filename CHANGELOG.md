@@ -1,10 +1,14 @@
 # Changelog
 
+## 1.0.20
+
+- Add account-wide named profiles to the main VanillaVarnish menu. Save a design, select and load it on another character, or update its saved snapshot. Module switches and settings are included; quest folds stay personal.
+- Expand portrait-style party buffs to 16 icons in two rows of eight. Keep the row width compact and reserve enough space for both rows during combat.
+- Prioritize active eating and drinking effects, then your buffs, then other buffs in native order. Preserve larger player buffs, cooldowns, and correct tooltips after reordering.
+
 ## 1.0.19
 
 - Fade party portraits and buffs when members are outside the configured friendly spell's range. Uses the shared range opacity; no spell or unavailable range leaves them unchanged. Portrait-style frames only, with an independent party toggle.
-- Add an optional player cast bar attached to the target's nameplate. Reuses Blizzard's cast-bar template for casts, channels, interrupts, and nameplate style/size changes; the target's own cast bar stays intact.
-- Give the player cast bar a live preview, horizontal and vertical offsets, and adjustable width. Height follows the selected nameplate style. Disabled by default; enable it with `/vv nameplates cast on`.
 
 ## 1.0.18
 

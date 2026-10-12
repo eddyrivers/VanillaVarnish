@@ -66,6 +66,7 @@ function VV.InitDB()
         if VV.IsLegacyLoaded(name) then VV.conflicts[key] = name end
     end
     VV.swingConflict = VV.IsLegacyLoaded("NameplateSwingTimers")
+    if VV.InitProfiles then VV.InitProfiles() end
 end
 
 function VV.GetModule(key)

@@ -48,7 +48,7 @@ def nameplates(full=False, native=None, seed=None):
     if seed:
         lua.execute(seed)
     for path in FILES:
-        if full or path in ("Core.lua", "Settings.lua") or path.startswith("Modules/Nameplates/"):
+        if full or path in ("Core.lua", "Profiles.lua", "Settings.lua") or path.startswith("Modules/Nameplates/"):
             load(lua, path)
     lua.execute("NST_TEST_NS = VV_TEST_NS.Nameplates")
     return lua
@@ -78,10 +78,6 @@ print("PASS: melee reach range selection, native verdicts, fallback, and restric
 threat = nameplates()
 threat.execute((ROOT / "tests/nameplates/test_threat_colors.lua").read_text())
 print(f"PASS: {threat.globals().NST_THREAT_CHECKS} threat color checks for roles, tank auras, restoration, restricted data, and pooled plates")
-player_cast = nameplates()
-player_cast.execute((ROOT / "tests/nameplates/CastBarMock.lua").read_text())
-player_cast.execute((ROOT / "tests/nameplates/test_player_cast.lua").read_text())
-print(f"PASS: {player_cast.globals().VV_PLAYER_CAST_CHECKS} player cast-bar binding, settings, target changes, and restoration checks")
 if args.blizzard_source:
     native = nameplates(native=args.blizzard_source)
     native.execute((ROOT / "tests/nameplates/test_native_preview.lua").read_text())
@@ -89,9 +85,6 @@ if args.blizzard_source:
     native_combo = nameplates(native=args.blizzard_source)
     native_combo.execute((ROOT / "tests/nameplates/test_combo_points.lua").read_text())
     print(f"PASS: {native_combo.globals().NST_COMBO_CHECKS} combo-point checks with native Blizzard previews")
-    native_cast = nameplates(native=args.blizzard_source)
-    native_cast.execute((ROOT / "tests/nameplates/test_player_cast.lua").read_text())
-    print(f"PASS: {native_cast.globals().VV_PLAYER_CAST_CHECKS} player cast checks using native casting events and every style/size")
 
 tracker = runtime()
 tracker.execute((ROOT / "tests/tracker/test_tracker.lua").read_text())
@@ -146,6 +139,14 @@ load(party_range, "Modules/Party/PartyTweaks.lua")
 party_range.execute((ROOT / "tests/test_party_range.lua").read_text())
 print(f"PASS: {party_range.globals().VV_PARTY_RANGE_CHECKS} party range, native alpha restoration, combat, and pooling checks")
 
+party_priority = runtime()
+party_priority.execute((ROOT / "tests/party/mock.lua").read_text())
+load(party_priority, "Core.lua")
+party_priority.execute("VV_TEST_NS.RegisterOptions = function() end; VV_TEST_NS.InitDB()")
+load(party_priority, "Modules/Party/PartyTweaks.lua")
+party_priority.execute((ROOT / "tests/test_party_buff_priority.lua").read_text())
+print(f"PASS: {party_priority.globals().VV_PARTY_PRIORITY_CHECKS} party buff capacity, recovery priority, wrapping, locale, and tooltip checks")
+
 tooltip = runtime()
 tooltip.execute((ROOT / "tests/tooltips/mock.lua").read_text())
 if args.tooltip_source:
@@ -169,6 +170,10 @@ print("PASS: tooltip same-frame refreshes, bag setup order, immediate hover dism
 combined = nameplates(full=True)
 combined.execute((ROOT / "tests/test_integration.lua").read_text())
 print("PASS: combined TOC load, namespace isolation, shared menu, master switches, and persistence")
+
+profiles = nameplates(full=True)
+profiles.execute((ROOT / "tests/test_profiles.lua").read_text())
+print(f"PASS: {profiles.globals().VV_PROFILE_CHECKS} account profiles, cross-character loading, isolation, controls, and combat checks")
 
 # Import uses loaded globals only, copies nested tables, and never rewrites them.
 migration = nameplates(full=True, seed='''
@@ -238,6 +243,6 @@ end
 Mock.Event("PLAYER_LOGIN")
 assert(VV_TEST_NS.Nameplates.tweaksDB == VV_TEST_NS.db.nameplates)
 assert(VV_TEST_NS.Nameplates.db == VV_TEST_NS.db.nameplates.swingTimers)
-assert(#Mock.categories == 10)
+assert(#Mock.categories == 9)
 ''')
 print("PASS: modules disabled at startup can be enabled later; initialization is independent of event dispatch order")

@@ -2,9 +2,11 @@ local _, VV = ...
 local addon = VV.Party
 -- WoW Forever: decorate Blizzard's frames without replacing their artwork,
 -- unit buttons, event handlers, or secure mixin methods.
-local ICON_SIZE, ICON_GAP, MAX_BUFFS = 14, 2, 8
+local ICON_SIZE, ICON_GAP, BUFFS_PER_ROW, MAX_BUFFS = 14, 2, 8, 16
 local PLAYER_ICON_SIZE, AURA_SCAN_LIMIT = ICON_SIZE + 5, 40
-local EXTRA_HEIGHT = PLAYER_ICON_SIZE + 2
+local ROW_STEP = PLAYER_ICON_SIZE + ICON_GAP
+local ROW_HEIGHT = PLAYER_ICON_SIZE * 2 + ICON_GAP
+local EXTRA_HEIGHT = ROW_HEIGHT + 2
 -- Blizzard's DebuffTypeColor values (FrameXML/BuffFrame.lua). Prefer the
 -- client's table when present, including any accessibility customization.
 local debuffColors = {
@@ -82,14 +84,15 @@ end
 
 local function createState(member)
     local row = CreateFrame("Frame", nil, member)
-    row:SetSize(MAX_BUFFS * (PLAYER_ICON_SIZE + ICON_GAP) - ICON_GAP, PLAYER_ICON_SIZE)
+    row:SetSize(BUFFS_PER_ROW * ROW_STEP - ICON_GAP, ROW_HEIGHT)
     row:SetFrameLevel(member:GetFrameLevel() + 5)
     row:Hide()
     local state = { member = member, row = row, icons = {}, baseHeight = member:GetHeight() }
     for index = 1, MAX_BUFFS do
         local icon = CreateFrame("Frame", nil, row)
         icon:SetSize(ICON_SIZE, ICON_SIZE)
-        icon:SetPoint("TOPLEFT", row, "TOPLEFT", (index - 1) * (ICON_SIZE + ICON_GAP), 0)
+        icon:SetPoint("TOPLEFT", row, "TOPLEFT", ((index - 1) % BUFFS_PER_ROW) * (ICON_SIZE + ICON_GAP),
+            -math.floor((index - 1) / BUFFS_PER_ROW) * ROW_STEP)
         icon.border = icon:CreateTexture(nil, "BACKGROUND")
         icon.border:SetAllPoints()
         icon.border:SetColorTexture(0.08, 0.08, 0.08, 1)
@@ -270,6 +273,45 @@ local function setAura(icon, unit, aura, index)
     if GameTooltip:IsOwned(icon) then tooltip(icon) end
 end
 
+local restNames
+local function spellName(id)
+    local api = C_Spell and C_Spell.GetSpellName
+    if api then
+        local ok, name = attempt(api, id)
+        if ok and type(readable(name)) == "string" then return readable(name) end
+    end
+    if C_Spell and C_Spell.GetSpellInfo then
+        local ok, info = attempt(C_Spell.GetSpellInfo, id)
+        if ok and type(info) == "table" then
+            local name = auraField(info, "name")
+            if type(name) == "string" then return name end
+        end
+    end
+    if GetSpellInfo then
+        local ok, name = attempt(GetSpellInfo, id)
+        if ok and type(readable(name)) == "string" then return readable(name) end
+    end
+end
+
+local function resting(aura)
+    -- Food and Drink ranks share their localized aura names. Match active
+    -- recovery effects, never lasting Well Fed bonuses or arbitrary names
+    -- containing "food". Unknown/restricted names retain normal priority.
+    if not restNames then
+        restNames = {Food=true, Drink=true}
+        for _, id in ipairs({433, 430}) do
+            local name = spellName(id)
+            if name then restNames[name] = true end
+        end
+    end
+    local name = auraField(aura, "name")
+    if type(name) ~= "string" then
+        local id = auraField(aura, "spellId")
+        if type(id) == "number" then name = spellName(id) end
+    end
+    return type(name) == "string" and restNames[name] == true
+end
+
 local function updateBuffs(state)
     state.buffCount, state.buffSource, state.buffReadFailed = 0, nil, false
     if not feature("buffs") then state.buffStatus = "buffs disabled"; clearRow(state); return end
@@ -311,10 +353,9 @@ local function updateBuffs(state)
         end
     end
     if not list then state.buffStatus = "aura read unavailable/refused"; clearRow(state); return end
-    -- Stable partition before limiting the row: a player's buff beyond the
-    -- first eight still belongs at the front. Restricted ownership stays in
-    -- native order and continues to display through the widget-only path.
-    local ordered, others = {}, {}
+    -- Stable priority groups are built before applying the display limit:
+    -- active food/drink, the player's buffs, then other buffs in native order.
+    local recovery, ownBuffs, others = {}, {}, {}
     for index = 1, AURA_SCAN_LIMIT do
         local aura = list[index]
         if type(aura) == "table" then
@@ -325,10 +366,12 @@ local function updateBuffs(state)
                 own = ok and readable(value) == true
             end
             local entry = {aura=aura, index=index, own=own}
-            local destination = own and ordered or others
+            local destination = resting(aura) and recovery or own and ownBuffs or others
             destination[#destination + 1] = entry
         end
     end
+    local ordered = recovery
+    for _, entry in ipairs(ownBuffs) do ordered[#ordered + 1] = entry end
     for _, entry in ipairs(others) do ordered[#ordered + 1] = entry end
     local received = 0
     local x = 0
@@ -339,11 +382,12 @@ local function updateBuffs(state)
         -- Do not compare or filter them: attempt permitted field-to-widget
         -- display, retaining the guards on secret counts, IDs, and durations.
         if type(aura) == "table" then
+            if (index - 1) % BUFFS_PER_ROW == 0 then x = 0 end
             received = received + 1
             local size = entry.own and PLAYER_ICON_SIZE or ICON_SIZE
             icon:SetSize(size, size)
             icon:ClearAllPoints()
-            icon:SetPoint("TOPLEFT", state.row, "TOPLEFT", x, 0)
+            icon:SetPoint("TOPLEFT", state.row, "TOPLEFT", x, -math.floor((index - 1) / BUFFS_PER_ROW) * ROW_STEP)
             x = x + size + ICON_GAP
             if attempt(setAura, icon, unit, aura, indexed and entry.index or nil) then
                 state.buffCount = state.buffCount + 1

@@ -398,6 +398,7 @@ function addon.RefreshModule()
         end
     end
     if addon.RefreshOptions then addon.RefreshOptions() end
+    if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
 end
 
 function addon.SetOption(key, value)
