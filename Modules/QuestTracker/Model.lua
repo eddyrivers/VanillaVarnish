@@ -78,6 +78,16 @@ function addon.GetZoneQuestIDs(zone)
     return ids
 end
 
+local function IsCompletedForSorting(index, info)
+    if not C_QuestLog.IsComplete(info.questID) then return false end
+    if info.isAutoComplete then return true end
+    -- Forever also marks delivery/talk-to quests complete. Match the native
+    -- tracker's Ready for turn-in branch instead of its question-mark icon.
+    -- Inspect API presence, never localized wording or native cached blocks.
+    if GetQuestLogCompletionText(index) then return false end
+    return not C_QuestLog.GetNextWaypointText(info.questID)
+end
+
 function addon.ReadMetadata()
     local metadata = {}
     local zone = "Other Quests"
@@ -89,7 +99,7 @@ function addon.ReadMetadata()
             elseif info.questID and info.questID > 0 then
                 metadata[info.questID] = {
                     zone = zone, level = info.level, title = info.title,
-                    completed = C_QuestLog.IsComplete(info.questID),
+                    completed = IsCompletedForSorting(index, info),
                 }
             end
         end

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.21
+
+- Fix completed quest sorting so ready-for-turn-in quests stay together at the top or bottom of each zone. Delivery and talk-to quests with remaining instructions no longer split that group, even when the game gives them a question-mark icon.
+- Keep lower-level quests first within each group, and clarify the completion rule in the quest tracker options.
+
 ## 1.0.20
 
 - Add account-wide named profiles to the main VanillaVarnish menu. Save a design, select and load it on another character, or update its saved snapshot. Module switches and settings are included; quest folds stay personal.

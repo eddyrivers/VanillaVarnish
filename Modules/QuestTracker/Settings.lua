@@ -65,7 +65,7 @@ function addon.RegisterOptions()
         end
     end)
     controls.completedSort = dropdown
-    Label("Applies within each zone while grouping is on. Off keeps level sorting.",
+    Label("Applies within each zone while grouping is on. Off keeps level sorting.\nCompleted means ready for turn-in; remaining travel or delivery instructions stay in level order.",
         16, -166, "GameFontHighlightSmall")
     Button("Expand all zones", 16, -218, function() addon.SetAllZonesCollapsed(false) end)
     Button("Collapse all zones", 172, -218, function() addon.SetAllZonesCollapsed(true) end)

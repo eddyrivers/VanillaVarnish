@@ -69,11 +69,17 @@ local entries = {
 }
 local watches = { 4, 3, 2, 1, 5, 6 }
 local completed = { [2] = true, [3] = true, [4] = true, [6] = true }
+local completionText, waypointText = {}, {}
+GetQuestLogCompletionText = function(index)
+    assert(entries[index] and entries[index].questID, "completion text uses a quest log index")
+    return completionText[entries[index].questID]
+end
 local added, removed = {}, {}
 C_QuestLog = {
     GetNumQuestLogEntries = function() return #entries end,
     GetInfo = function(index) return entries[index] end,
     IsComplete = function(id) return completed[id] or false end,
+    GetNextWaypointText = function(id) return waypointText[id] end,
     GetNumQuestWatches = function() return #watches end,
     GetQuestIDForQuestWatchIndex = function(index) return watches[index] end,
     AddQuestWatch = function(id) added[#added + 1] = id; watches[#watches + 1] = id; return true end,
@@ -115,6 +121,53 @@ completed[4] = false
 equal(order("top"), "2,6,3,1,4", "unknown incomplete level follows known incomplete levels")
 equal(order("bottom"), "1,4,2,6,3", "unknown incomplete level stays before completed quests in bottom mode")
 completed[4] = true
+
+-- Elwynn screenshot: native IsComplete also flags delivery and talk-to quests.
+-- Only Pie for Billy and The Fargodeep Mine display Ready for turn-in.
+do
+    local originalEntries, originalWatches, originalCompleted = entries, watches, completed
+    entries = {
+        { isHeader = true, title = "Elwynn Forest" },
+        { questID = 101, title = "Gold Dust Exchange", level = 7 },
+        { questID = 102, title = "Kobold Candles", level = 7 },
+        { questID = 103, title = "Princess Must Die!", level = 9 },
+        { questID = 104, title = "Pie for Billy", level = 6 },
+        { questID = 105, title = "Young Lovers", level = 6 },
+        { questID = 106, title = "The Fargodeep Mine", level = 7 },
+        { questID = 107, title = "Further Concerns", level = 10 },
+        { questID = 108, title = "Report to Gryan Stoutmantle", level = 10 },
+    }
+    watches = { 101, 102, 103, 104, 105, 106, 107, 108 }
+    completed = { [104] = true, [105] = true, [106] = true, [107] = true, [108] = true }
+    completionText = {
+        [105] = "Give Maybell's Love Letter to Tommy Joe Stonefield.",
+        [107] = "Marshal Dughan wants you to speak with Guard Thomas.",
+        [108] = "Talk to Gryan Stoutmantle.",
+    }
+    local function elwynnOrder(mode)
+        local result = {}
+        for _, entry in ipairs(addon.ReadWatchGroups(mode)[1].quests) do result[#result + 1] = entry.id end
+        return table.concat(result, ",")
+    end
+    local metadata = addon.ReadMetadata()
+    equal(metadata[104].completed, true, "Pie for Billy is ready for turn-in")
+    equal(metadata[106].completed, true, "The Fargodeep Mine is ready for turn-in")
+    equal(metadata[105].completed, false, "Young Lovers still has delivery instructions")
+    equal(metadata[107].completed, false, "Further Concerns still has travel instructions")
+    equal(metadata[108].completed, false, "Report to Gryan Stoutmantle still has talk-to instructions")
+    equal(elwynnOrder("top"), "104,106,105,101,102,103,107,108", "ready Elwynn quests stay together on top")
+    equal(elwynnOrder("bottom"), "105,101,102,103,107,108,104,106", "ready Elwynn quests stay together on bottom")
+    equal(elwynnOrder("off"), "104,105,101,102,106,103,107,108", "off preserves level and title order")
+    equal(table.concat(watches, ","), "101,102,103,104,105,106,107,108", "screenshot sorting preserves native watches")
+    waypointText[106] = "Continue to the next destination."
+    equal(addon.ReadMetadata()[106].completed, false, "remaining waypoint stays with unfinished quests")
+    entries[7].isAutoComplete = true
+    equal(addon.ReadMetadata()[106].completed, true, "native click-to-complete quest stays completed despite waypoint")
+    completed[106] = false
+    equal(addon.ReadMetadata()[106].completed, false, "unfinished autocomplete quest stays unfinished")
+    entries, watches, completed = originalEntries, originalWatches, originalCompleted
+    completionText, waypointText = {}, {}
+end
 
 local native = CreateFrame("Frame")
 native.ContentsFrame = CreateFrame("Frame", nil, native)
@@ -297,6 +350,12 @@ equal(completedSelect.selectionText, "Completed on top", "dropdown synchronizes 
 equal(top(blocks[2]) > top(blocks[6]), true, "completed equal levels retain ID order")
 equal(top(blocks[6]) > top(blocks[3]), true, "completed equal levels retain title order")
 equal(top(blocks[4]) > top(blocks[1]), true, "unknown-level completed quest precedes incomplete lower-level quest")
+completionText[2] = "Speak with the quest giver."
+events.callback(events, "QUEST_LOG_UPDATE"); RunMockTimers()
+equal(top(blocks[3]) > top(blocks[2]), true, "delivery instructions move the native block out of the completed top group")
+completionText[2] = nil
+events.callback(events, "QUEST_LOG_UPDATE"); RunMockTimers()
+equal(top(blocks[2]) > top(blocks[3]), true, "ready-for-turn-in transition rejoins the completed top group")
 completed[1] = true
 events.callback(events, "QUEST_WATCH_UPDATE"); RunMockTimers()
 equal(top(blocks[1]) > top(blocks[2]), true, "newly completed quest reorders by level on watch update")
@@ -309,6 +368,12 @@ equal(vv.db.questTracker.completedSort, "bottom", "menu saves completed-on-botto
 equal(top(blocks[1]) > top(blocks[2]), true, "incomplete quest precedes completed quests in bottom mode")
 equal(top(blocks[2]) > top(blocks[6]) and top(blocks[6]) > top(blocks[3]), true,
     "completed quests retain title and ID order at the bottom")
+waypointText[3] = "Travel to the next destination."
+events.callback(events, "QUEST_WATCH_UPDATE"); RunMockTimers()
+equal(top(blocks[3]) > top(blocks[2]), true, "remaining waypoint moves the native block above the completed bottom group")
+waypointText[3] = nil
+events.callback(events, "QUEST_LOG_UPDATE"); RunMockTimers()
+equal(top(blocks[2]) > top(blocks[3]), true, "clearing waypoint restores the completed bottom group")
 completed[2] = false
 events.callback(events, "QUEST_WATCH_UPDATE"); RunMockTimers()
 equal(top(blocks[2]) > top(blocks[6]), true, "quest becoming incomplete moves out of the completed bottom group")
