@@ -106,8 +106,16 @@ presets["Swing timer row"].nameplates.swingTimers.layout = "row"
 presets["Swing timer row"].nameplates.swingTimers.y = 37
 presets["Swing timer row"].nameplates.comboPoints.y = 23
 
+local compact = VV.Copy(presets["Default"])
+compact.nameplates.comboPoints = {size=10, x=67, y=25, gap=4}
+local swings = compact.nameplates.swingTimers
+swings.layout, swings.visibility = "row", "swing"
+swings.width, swings.height = 161, 10
+swings.x, swings.y, swings.gap = 1, 21, 2
+presets["Combo point class (compact)"] = compact
+
 function VV.PresetNames()
-    return {"Default", "Default (tight)", "Swing timer row"}
+    return {"Default", "Default (tight)", "Swing timer row", "Combo point class (compact)"}
 end
 
 function VV.GetPreset(name)

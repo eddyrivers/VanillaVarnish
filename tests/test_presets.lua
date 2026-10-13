@@ -4,7 +4,7 @@ local function check(value, message) checks = checks + 1; assert(value, message)
 local function near(a, b) return math.abs(a - b) < 0.00001 end
 Mock.Event("ADDON_LOADED", "VanillaVarnish")
 Mock.Event("PLAYER_LOGIN")
-check(table.concat(vv.PresetNames(), ",") == "Default,Default (tight),Swing timer row", "All built-in presets are available in order")
+check(table.concat(vv.PresetNames(), ",") == "Default,Default (tight),Swing timer row,Combo point class (compact)", "All built-in presets are available in order")
 check(ns.db.y == 37 and ns.ComboPoints.db.y == 24 and vv.db.questTracker.completedSort == "bottom",
     "Fresh characters use the complete new Default design")
 vv.QuestTracker.SetOption("completedSort", "top")

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.27
+
+- Add Combo point class (compact): 10-unit combo dots at X 67 / Y 25 with gap 4, and a 161-by-10 swing-timer row at X 1 / Y 21 with gap 2, shown while swinging.
+
 ## 1.0.26
 
 - Set Swing timer row's combo-point vertical offset to 23 and swing-timer vertical offset to 37.
