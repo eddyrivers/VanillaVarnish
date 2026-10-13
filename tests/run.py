@@ -39,11 +39,15 @@ def nameplates(full=False, native=None, seed=None):
     lua.execute("C_Timer = {After=function(_, fn) fn() end}; GetBuildInfo=function() return '1.60.1', '70291', '', 16001 end")
     if native:
         lua.execute((ROOT / "tests/nameplates/NativeNameplateMock.lua").read_text())
-        for module in ("enum", "constants", "frameopts", "frameoverrides", "component", "castframe", "cast", "health", "level", "unit", "driver"):
+        for module in ("enum", "constants", "frameopts", "frameoverrides", "component", "auras", "classification", "castframe", "cast", "health", "level", "unit", "driver"):
             path = Path(native) / f"{module}.lua"
-            if module in ("frameoverrides", "level") and not path.exists():
+            if module in ("frameoverrides", "level", "auras", "classification") and not path.exists():
                 continue
             lua.execute(path.read_text(encoding="utf-8"))
+        preview_source = Path(native) / "optionspreview.lua"
+        if preview_source.exists():
+            # Only the native preview mixin; the rest registers the game options.
+            lua.execute(preview_source.read_text().split("local function GetPreviewNamePlate()")[0])
         lua.execute('Mock.cvars.nameplateSelectedScale = "1.2"; Mock.cvars.nameplateCastBarDisplay = "31"; Mock.cvars.nameplateInfoDisplay = "3"; Mock.ApplyNameplateStyle(4, 2)')
     if seed:
         lua.execute(seed)

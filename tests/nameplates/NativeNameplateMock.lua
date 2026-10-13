@@ -14,9 +14,47 @@ function Object:GetLineHeight() return self.fontSize or 12 end
 function Object:SetTextureSliceMargins(...) self.sliceMargins = {...} end
 function Object:SetDrawLayer(...) self.drawLayer = {...} end
 function Object:SetStatusBarColor(...) self.statusBarColor = {...} end
+function Object:GetStatusBarColor() return unpack(self.statusBarColor or {1, 1, 1}) end
+function Object:GetTextColor() return unpack(self.textColor or {1, 1, 1}) end
+function Object:GetVertexColor() return unpack(self.color or {1, 1, 1}) end
 function Object:SetStatusBarTexture(texture) self.statusBarTexture = texture end
 function Object:SetPlaying(playing) self.playing = playing end
 function Object:SetActive(active) self.active = active end
+function Object:SetUseAuraDisplayTime(value) self.useAuraDisplayTime = value end
+function Object:SetHideCountdownNumbers(value) self.hideCountdownNumbers = value end
+function CooldownFrame_Set(frame, ...) frame.cooldown = {...} end
+function assertsafe(value) assert(value) end
+function UnitIsUnit(a, b) return a == b end
+AuraUtil = {DefaultAuraCompare=function(a, b) return a.auraInstanceID < b.auraInstanceID end,
+    AuraFilters={Harmful='HARMFUL', Helpful='HELPFUL', IncludeNameplateOnly='INCLUDE_NAME_PLATE_ONLY'},
+    CreateFilterString=function(...) return table.concat({...}, '|') end}
+TableUtil = {Constants={AssociativePriorityTable=1}, CreatePriorityTable=function()
+    local list = {}
+    local function Keys()
+        local keys = {}; for key in pairs(list) do keys[#keys + 1] = key end; table.sort(keys); return keys
+    end
+    return setmetatable(list, {__index={
+        Size=function() return #Keys() end,
+        GetTop=function() local keys = Keys(); return list[keys[1]] end,
+        Iterate=function(_, callback) for _, key in ipairs(Keys()) do if callback(key, list[key]) then break end end end,
+    }})
+end}
+function Pool_HideAndClearAnchors(_, frame) frame:Hide(); frame:ClearAllPoints() end
+function CreateFramePool(kind, parent, template, reset)
+    local pool = {items={}, active={}}
+    function pool:Acquire()
+        local item
+        for _, candidate in ipairs(self.items) do if not self.active[candidate] then item = candidate; break end end
+        if not item then item = CreateFrame(kind, nil, parent, template); self.items[#self.items + 1] = item end
+        self.active[item] = true
+        return item
+    end
+    function pool:ReleaseAll()
+        for item in pairs(self.active) do reset(self, item) end
+        self.active = {}
+    end
+    return pool
+end
 function Object:SetWidth(width) assert(width >= 0); self.width = width end
 function Object:SetHeight(height) assert(height >= 0); self.height = height end
 function Object:HookScript(event, fn)
@@ -59,12 +97,15 @@ end}
 CVarCallbackRegistry = {
     SetCVarCachable = function() end,
     RegisterCallback = function() end,
+    GetCVarValueBool = function(_, key) return GetCVarBool(key) end,
     GetCVarNumberOrDefault = function(_, key) return tonumber(Mock.cvars[key]) or 2 end,
     GetCVarBitfieldIndex = function(_, key, index)
         local value = tonumber(Mock.cvars[key]) or 0
         return math.floor(value / 2 ^ (index - 1)) % 2 == 1
     end,
 }
+Enum.PvPUnitClassification = {FlagCarrierHorde=1, FlagCarrierAlliance=2, FlagCarrierNeutral=3, CartRunnerHorde=4,
+    CartRunnerAlliance=5, AssassinHorde=6, AssassinAlliance=7, OrbCarrierBlue=8, OrbCarrierGreen=9, OrbCarrierOrange=10, OrbCarrierPurple=11}
 for _, method in ipairs({'SetPoint', 'SetSize', 'SetHeight', 'SetWidth'}) do
     PixelUtil[method] = function(object, ...) object[method](object, ...) end
 end
@@ -92,6 +133,32 @@ local function Text(parent) return parent:CreateFontString(nil, 'OVERLAY', 'Syst
 local function Fields(parent, keys, factory)
     for key in keys:gmatch('%S+') do parent[key] = factory(parent) end
 end
+local function NativeAura(item)
+    Mixin(item, NamePlateAuraItemMixin)
+    Fields(item, 'Icon', Texture)
+    Fields(item, 'Cooldown CountFrame', Frame)
+    Fields(item.CountFrame, 'Count', Text)
+    item:OnLoad()
+    item:Hide()
+    return item
+end
+local function NativeAuras(auras)
+    if not NamePlateAurasMixin then return end
+    Mixin(auras, NamePlateAurasMixin)
+    Fields(auras, 'DebuffListFrame BuffListFrame CrowdControlListFrame LossOfControlFrame', Frame)
+    auras.LossOfControlFrame.AuraItemFrame = NativeAura(Frame(auras.LossOfControlFrame))
+    for _, spec in ipairs({{'DebuffListFrame', 12}, {'BuffListFrame', 2}, {'CrowdControlListFrame', 2}}) do
+        local list = auras[spec[1]]
+        list.maxAuraItemsDisplayed, list.needsFixedHeight = spec[2], spec[2] == 2
+        function list:Layout()
+            self.items = {}
+            for item in pairs(auras.auraItemFramePool.active) do if item.parent == self then self.items[#self.items + 1] = item end end
+            table.sort(self.items, function(a, b) return a.layoutIndex < b.layoutIndex end)
+            self.layoutCount = (self.layoutCount or 0) + 1
+        end
+    end
+    auras:OnLoad()
+end
 local function NativeCast(cast)
     Mixin(cast, NamePlateCastingBarMixin)
     Fields(cast, 'Text CastTargetNameText', Text)
@@ -110,6 +177,7 @@ function CreateFrame(kind, name, parent, template)
     local frame = originalCreateFrame(kind, name, parent)
     frame.template = template
     if template == 'NamePlateCastingBarTemplate' then return NativeCast(frame) end
+    if template == 'NameplateAuraItemTemplate' then return NativeAura(frame) end
     if template == 'NamePlateScriptBaseTemplate' then Mixin(frame, NamePlateScriptBaseMixin) end
     if template ~= 'NamePlateUnitFrameTemplate' then return frame end
     Mock.nativeFrames = (Mock.nativeFrames or 0) + 1
@@ -120,7 +188,9 @@ function CreateFrame(kind, name, parent, template)
     Fields(frame, 'LoseAggroAnim AggroHighlightFadeOutAnim AggroHighlightScrollAnim', Frame)
     frame.aggroHighlightTextures = {frame.aggroHighlightBase, frame.aggroHighlightAdditive, frame.aggroHighlightMask}
     Fields(frame.AurasFrame, 'DebuffListFrame CrowdControlListFrame LossOfControlFrame', Frame)
+    NativeAuras(frame.AurasFrame)
     Fields(frame.ClassificationFrame, 'classificationIndicator', Texture)
+    if NamePlateClassificationFrameMixin then Mixin(frame.ClassificationFrame, NamePlateClassificationFrameMixin) end
     Fields(frame.LevelFrame, 'LevelText', Text)
     Fields(frame.LevelFrame, 'HighLevelTexture', Texture)
     if NameplateLevelFrameMixin then

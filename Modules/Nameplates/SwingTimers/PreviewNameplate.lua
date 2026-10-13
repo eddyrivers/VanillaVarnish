@@ -12,6 +12,63 @@ local function CVarNumber(name)
     return ns.Number(tonumber(value), 0, 100)
 end
 
+-- Observe Blizzard's sample without borrowing its globally registered "preview"
+-- nameplate. Both addon pages can draw independently, even after that page hides.
+local sample = {isPlayer=false, isFriend=false}
+local sampleVersion = 0
+local observedDriver
+local threatArtwork = {"aggroFlash", "aggroHighlightBase", "aggroHighlightMask", "aggroHighlightAdditive"}
+local function ReadColor(region, method)
+    if not region or not region[method] then return end
+    local ok, r, g, b = pcall(region[method], region)
+    if ok and ns.Number(r, 0, 1) and ns.Number(g, 0, 1) and ns.Number(b, 0, 1) then return {r, g, b} end
+end
+local function CaptureSample(plate)
+    local frame = plate.UnitFrame
+    if not frame then return end
+    sample = {isPlayer=SafeCall(frame.IsPlayer, frame) == true, isFriend=SafeCall(frame.IsFriend, frame) == true,
+        isSimplified=SafeCall(frame.IsSimplified, frame) == true,
+        isMinion=frame.explicitIsMinion == true, isMinusMob=frame.explicitIsMinusMob == true,
+        classification=frame.ClassificationFrame and frame.ClassificationFrame.explicitClassification,
+        icon=plate.previewIconTexture, auras={}, decorations={},
+        healthColor=ReadColor(frame.HealthBarsContainer.healthBar, "GetStatusBarColor"),
+        nameColor=ReadColor(frame.name, "GetTextColor")}
+    for _, key in ipairs(threatArtwork) do
+        local region = frame[key]
+        sample.decorations[key] = {shown=SafeCall(region and region.IsShown, region) == true,
+            color=ReadColor(region, "GetVertexColor")}
+    end
+    local list = frame.AurasFrame and frame.AurasFrame.explicitAuraList
+    if list then list:Iterate(function(_, aura) sample.auras[#sample.auras + 1] = VV.Copy(aura) end) end
+    sampleVersion = sampleVersion + 1
+end
+
+local function ObserveSettingsPreview()
+    local driver = NamePlateDriverFrame
+    if not driver or not NamePlateConstants or not driver.RegisterScriptNamePlate
+        or not hooksecurefunc or observedDriver == driver then return end
+    observedDriver = driver
+    local function Observe(plate, token)
+        if token ~= NamePlateConstants.PREVIEW_UNIT_TOKEN or plate.vvPreviewObserved then return end
+        plate.vvPreviewObserved = true
+        hooksecurefunc(plate, "SetExplicitValues", CaptureSample)
+        plate:HookScript("OnShow", CaptureSample)
+        -- The first OnShow is already running when registration reaches us.
+        -- Sample once when initialization completes, then only on changes.
+        if C_Timer then C_Timer.After(0, function() if plate:IsShown() then CaptureSample(plate) end end) end
+    end
+    hooksecurefunc(driver, "RegisterScriptNamePlate", function(_, plate, token) Observe(plate, token) end)
+    if driver.IsScriptNamePlateRegistered and driver:IsScriptNamePlateRegistered(NamePlateConstants.PREVIEW_UNIT_TOKEN) then
+        local plate = driver:GetNamePlateForUnit(NamePlateConstants.PREVIEW_UNIT_TOKEN)
+        if plate then Observe(plate, NamePlateConstants.PREVIEW_UNIT_TOKEN); CaptureSample(plate) end
+    end
+end
+
+local observer = CreateFrame("Frame")
+observer:RegisterEvent("ADDON_LOADED")
+observer:RegisterEvent("PLAYER_LOGIN")
+observer:SetScript("OnEvent", ObserveSettingsPreview)
+
 -- Prefer the client's already-scaled setup options. The fallback follows
 -- Blizzard_NamePlates for clients where those globals are not yet available.
 -- https://github.com/Gethe/wow-ui-source/tree/forever/Interface/AddOns/Blizzard_NamePlates
@@ -202,7 +259,13 @@ local function CreateNativePreview(plate)
         level.ShouldDisplay = function() return true end
         plate.nativeLevelBox = level
     end
-    if frame.AurasFrame then frame.AurasFrame:SetActive(false); frame.AurasFrame:UnregisterAllEvents() end
+    if frame.AurasFrame then
+        frame.AurasFrame:SetActive(false)
+        frame.AurasFrame:UnregisterAllEvents()
+        -- A synthetic token lets native visibility rules run; never SetUnit,
+        -- which registers aura events and queries real unit data.
+        frame.AurasFrame.unitToken = NamePlateConstants.PREVIEW_UNIT_TOKEN
+    end
     if frame.ClassificationFrame then frame.ClassificationFrame:UnregisterAllEvents() end
     local cast = frame.CastBarsContainer.castBar
     cast:UnregisterAllEvents()
@@ -218,32 +281,78 @@ local function CreateNativePreview(plate)
 end
 
 local function UpdatePreviewScale(plate)
-    local sample = SafeCall(C_NamePlate and C_NamePlate.GetNamePlateForUnit, "target")
-    local scale
-    if sample and not SafeCall(sample.IsForbidden, sample) and SafeCall(sample.IsShown, sample) then
-        local worldScale = ns.Number(SafeCall(sample.GetEffectiveScale, sample), 0.01, 100)
-        local menuScale = ns.Number(SafeCall(plate.menuParent.GetEffectiveScale, plate.menuParent), 0.01, 100)
-        if worldScale and menuScale then scale = worldScale / menuScale end
+    -- Match the options preview's UI scale, independent of target enlargement
+    -- and world nameplate animations. Native size settings supply the geometry.
+    plate:SetScale(1)
+end
+
+local previewCVars = {"nameplateCastBarDisplay", "nameplateInfoDisplay", "nameplateSize", "nameplateStyle",
+    "nameplateEnemyNpcAuraDisplay", "nameplateEnemyPlayerAuraDisplay", "nameplateFriendlyPlayerAuraDisplay",
+    "nameplateShowDebuffsOnFriendly", "nameplateAuraScale", "nameplateDebuffPadding",
+    "nameplateShowOnlyNameForFriendlyPlayerUnits", "nameplateSimplifiedTypes",
+    "nameplateShowClassColor", "nameplateUseClassColorForFriendlyPlayerUnitNames", "nameplateThreatDisplay"}
+local auraIcons = {"Spell_Nature_Rejuvenation", "Spell_Holy_Renew", "Spell_Shadow_ShadowWordPain",
+    "Spell_Fire_FlameBolt", "Spell_Frost_FrostNova", "Spell_Nature_Polymorph"}
+
+local function UpdateNativeAuras(plate)
+    local auras = plate.nativeFrame.AurasFrame
+    if not auras or not auras.RefreshExplicitAuras or not TableUtil or not AuraUtil then return end
+    if not auras.explicitAuraList or plate.sampleVersion ~= sampleVersion then
+        local list = TableUtil.CreatePriorityTable(AuraUtil.DefaultAuraCompare, TableUtil.Constants.AssociativePriorityTable)
+        for index = 1, 6 do
+            list[index] = sample.auras and sample.auras[index] and VV.Copy(sample.auras[index])
+                or {auraInstanceID=index, sourceUnit="player", applications=1, expirationTime=0, duration=10,
+                    icon="Interface\\Icons\\" .. auraIcons[index]}
+        end
+        auras.explicitAuraList = list
     end
-    -- A swing anchor is a selected target, which is enlarged independently of
-    -- nameplateSize. Apply the same scale to BOTH the plate and swing stack.
-    if not scale then
-        local worldScale = ns.Number(SafeCall(UIParent.GetEffectiveScale, UIParent), 0.01, 100) or 1
-        local menuScale = ns.Number(SafeCall(plate.menuParent.GetEffectiveScale, plate.menuParent), 0.01, 100) or worldScale
-        scale = (CVarNumber("nameplateSelectedScale") or 1) * worldScale / menuScale
-    end
-    plate:SetScale(scale)
+    auras.isPlayer, auras.isFriend = sample.isPlayer, sample.isFriend
+    auras.isSimplified = plate.nativeFrame.isSimplified
+    auras.showOnlyName = plate.nativeFrame.showOnlyName
+    auras:UpdateShownState()
+    auras:UpdateScale(plate.nativeFrame:GetScaleData())
+    auras:RefreshExplicitAuras()
+end
+
+local function BitEnabled(value, index)
+    return index and math.floor((tonumber(value) or 0) / 2 ^ (index - 1)) % 2 == 1
+end
+
+local function IsSimplified(cvars)
+    local types = Enum and Enum.NamePlateSimplifiedType
+    if not types then return sample.isSimplified == true end
+    local value = cvars.nameplateSimplifiedTypes
+    return sample.isMinion and BitEnabled(value, types.Minion)
+        or sample.isMinusMob and BitEnabled(value, types.MinusMob)
+        or sample.isFriend and BitEnabled(value, sample.isPlayer and types.FriendlyPlayer or types.FriendlyNpc)
+        or false
 end
 
 local function NativeLayout(plate)
     local frame, setup = plate.nativeFrame, NamePlateSetupOptions
     local width = ns.Number(SafeCall(C_NamePlate and C_NamePlate.GetNamePlateSize), 30, 2000)
         or (ReadLayout().width + 2 * setup.insetWidth)
-    local castDisplay = SafeCall(C_CVar and C_CVar.GetCVar or GetCVar, "nameplateCastBarDisplay")
-    local changed = width ~= plate.nativeWidth or castDisplay ~= plate.nativeCastDisplay
+    local changed = width ~= plate.nativeWidth or plate.sampleVersion ~= sampleVersion
+    local cvars = {}
+    for _, name in ipairs(previewCVars) do
+        cvars[name] = SafeCall(C_CVar and C_CVar.GetCVar or GetCVar, name)
+        if not plate.nativeCVars or plate.nativeCVars[name] ~= cvars[name] then changed = true end
+    end
     local previous = plate.nativeOptions or {}
     for key, value in pairs(setup) do if previous[key] ~= value then changed = true end end
+    for key, value in pairs(NamePlateEnemyFrameOptions) do
+        if not plate.nativeFrameOptions or plate.nativeFrameOptions[key] ~= value then changed = true end
+    end
     if changed then
+        frame.isPlayer, frame.isFriend = sample.isPlayer, sample.isFriend
+        frame.isSimplified = IsSimplified(cvars)
+        frame.showOnlyName = sample.isPlayer and sample.isFriend and cvars.nameplateShowOnlyNameForFriendlyPlayerUnits == "1"
+        local health = frame.HealthBarsContainer.healthBar
+        health:SetIsPlayer(frame.isPlayer)
+        health:SetIsSimplified(frame.isSimplified)
+        health:SetShowOnlyName(frame.showOnlyName)
+        frame.CastBarsContainer.castBar:SetShowOnlyName(frame.showOnlyName)
+        if plate.nativeLevelBox then plate.nativeLevelBox.ShouldDisplay = function() return not frame.showOnlyName end end
         local castHeight = setup.castBarHeight + (setup.spellNameInsideCastBar and 0 or setup.castIconHeight)
         plate:SetSize(width - 2 * setup.insetWidth, setup.healthBarHeight)
         frame:ClearAllPoints()
@@ -252,25 +361,40 @@ local function NativeLayout(plate)
             -setup.castBarToHealthBarSpacing - castHeight)
         frame:ApplyFrameOptions(setup, NamePlateEnemyFrameOptions)
         frame:UpdateCastBarDisplay()
+        health:UpdateTextDisplay()
+        UpdateNativeAuras(plate)
+        local classification = frame.ClassificationFrame
+        if classification and classification.SetExplicitValues then
+            classification.unitToken = NamePlateConstants.PREVIEW_UNIT_TOKEN
+            classification.showOnlyName = frame.showOnlyName
+            classification:SetOptions(NamePlateEnemyFrameOptions)
+            classification:SetExplicitValues({classification=sample.classification})
+        end
         frame:SetScript("OnUpdate", nil)
         plate.nativeOptions = {}
         for key, value in pairs(setup) do plate.nativeOptions[key] = value end
-        plate.nativeWidth, plate.nativeCastDisplay = width, castDisplay
+        plate.nativeWidth, plate.nativeCVars = width, cvars
+        plate.nativeFrameOptions = {}
+        for key, value in pairs(NamePlateEnemyFrameOptions) do plate.nativeFrameOptions[key] = value end
+        plate.sampleVersion = sampleVersion
         plate.nextCast = nil
     end
     frame:Show()
-    frame.name:SetText("Training Dummy")
-    frame.name:Show()
+    frame.name:SetText(UNIT_NAMEPLATES_TARGET_NAME_PREVIEW or "Training Dummy")
+    frame.name:SetShown(not frame.isSimplified)
+    local legacy = Enum and Enum.NamePlateStyle and CVarNumber("nameplateStyle") == Enum.NamePlateStyle.Legacy
+    local nameColor = sample.nameColor or (legacy and {1, 0, 0} or {1, 1, 1})
+    frame.name:SetTextColor(unpack(nameColor))
     local health = frame.HealthBarsContainer.healthBar
-    health:SetIsTarget(true)
+    health:SetIsTarget(false)
     health:SetMinMaxValues(0, 100)
     health:SetValue(78)
-    health:SetStatusBarColor(0.8, 0.1, 0.1)
-    health:Show()
+    health:SetStatusBarColor(unpack(sample.healthColor or {0.8, 0.1, 0.1}))
+    health:UpdateShownState()
     -- Keep native optional health text and level-box placement. Sample data is
     -- synthetic; no health, cast, target-name, or level API is read from a mob.
     if frame.LevelFrame then
-        frame.LevelFrame:SetShown(NamePlateEnemyFrameOptions.showLevel == true)
+        frame.LevelFrame:SetShown(NamePlateEnemyFrameOptions.showLevel == true and not frame.showOnlyName)
         frame.LevelFrame.LevelText:SetText("60")
         frame.LevelFrame.LevelText:Show()
         Hide(frame.LevelFrame.HighLevelTexture)
@@ -283,16 +407,26 @@ local function NativeLayout(plate)
         level.playerLevelDiffText:SetTextColor(1, 0.82, 0)
         level.playerLevelDiffText:Show()
         Hide(level.highLevelTexture)
-        level:SetIsTarget(true)
-        level:Show()
+        level:SetIsTarget(false)
+        level:SetShown(not frame.showOnlyName)
     else
         Hide(frame.PlayerLevelDiffFrame)
     end
-    for _, key in ipairs({"AurasFrame", "ClassificationFrame", "RaidTargetFrame", "SoftTargetFrame",
-        "WidgetContainer", "behindCameraIcon", "selectionHighlight", "aggroFlash", "aggroHighlightBase", "aggroHighlightMask",
-        "aggroHighlightAdditive", "myHealPrediction", "otherHealPrediction", "totalAbsorb", "totalAbsorbOverlay",
+    if not frame.ClassificationFrame.SetExplicitValues then Hide(frame.ClassificationFrame) end
+    for _, key in ipairs({"RaidTargetFrame", "SoftTargetFrame",
+        "WidgetContainer", "behindCameraIcon", "selectionHighlight", "myHealPrediction", "otherHealPrediction", "totalAbsorb", "totalAbsorbOverlay",
         "overAbsorbGlow", "myHealAbsorb", "myHealAbsorbLeftShadow", "myHealAbsorbRightShadow", "overHealAbsorbGlow"}) do
         Hide(frame[key])
+    end
+    for _, key in ipairs(threatArtwork) do
+        local decoration = sample.decorations and sample.decorations[key]
+        local types = Enum and Enum.NamePlateThreatDisplay or {}
+        local enabled = BitEnabled(cvars.nameplateThreatDisplay, key == "aggroFlash" and types.Flash or types.Progressive)
+        local region = frame[key]
+        if region then
+            region:SetShown(decoration ~= nil and decoration.shown and enabled == true and not frame.showOnlyName)
+            if decoration and decoration.color then region:SetVertexColor(unpack(decoration.color)) end
+        end
     end
     local color = NamePlateEnemyFrameOptions.selectedBorderColor
     if color and frame.HealthBarsContainer.border then
@@ -303,6 +437,7 @@ local function NativeLayout(plate)
 end
 
 function ns.UpdateMenuNameplatePreview(plate, now)
+    ObserveSettingsPreview()
     -- Poll only while the menu preview is drawing, including on reopen. Read
     -- options again so style/size changes work without a target or a reload.
     if not plate.nextLayout or now >= plate.nextLayout then
@@ -313,8 +448,9 @@ function ns.UpdateMenuNameplatePreview(plate, now)
     if plate.nativeFrame then
         local cast = plate.nativeFrame.CastBarsContainer.castBar
         if not plate.nextCast or now >= plate.nextCast then
-            cast:SimulateCast({barType = "standard", iconTexture = "Interface\\Icons\\Spell_Fire_FlameBolt",
-                spellName = "Fireball", targetName = "You", castTime = 3, isImportantSpell = true, isSpellTarget = true})
+            cast:SimulateCast({barType = "standard", iconTexture = sample.icon or "Interface\\Icons\\Spell_Fire_FlameBolt",
+                spellName = UNIT_NAMEPLATES_SPELL_NAME_PREVIEW or "Fireball",
+                targetName = UNIT_NAMEPLATES_TARGET_NAME_PREVIEW or "You", castTime = 3, isImportantSpell = true, isSpellTarget = true})
             plate.nextCast = now + 3
         end
     else

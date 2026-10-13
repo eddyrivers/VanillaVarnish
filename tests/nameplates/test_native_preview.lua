@@ -14,16 +14,16 @@ Check(frame.unit == nil and cast.unit == nil, 'Sample must never bind a live uni
 Check(next(frame.events) == nil and next(cast.events) == nil and not frame.scripts.OnUpdate, 'Detach unit events and updates')
 Check(plate.SetHitTestPoints ~= nil, 'Native layout can set hit-test points safely on the script frame')
 Check(stack.parent == plate and stack.anchor == frame.HealthBarsContainer, 'Native health container anchors scaled swings')
-Check(Near(plate:GetEffectiveScale(), 1.2), 'Selected-target enlargement applies without a target')
-Check(health.value == 78 and health.isTarget and frame.name.text == 'Training Dummy', 'Synthetic native health and name')
+Check(Near(plate:GetEffectiveScale(), 1), 'Use the game options preview scale without target enlargement')
+Check(health.value == 78 and not health.isTarget and frame.name.text == 'Training Dummy', 'Synthetic native health and name')
 Check(health.RightText.text == '78' and health.LeftText.text == '78%', 'Native health display uses selected info settings')
 Check(cast.casting and cast:IsShown() and cast.Text.text == 'Fireball' and cast.CastTargetNameText.text == 'You', 'Native sample includes spell and target')
 Check(cast.Icon:IsShown() and cast.ImportantCastIndicator:IsShown() and cast.CastTargetIndicator:IsShown(), 'Native cast icon and configured highlights')
-Check(not frame.behindCameraIcon:IsShown() and not frame.AurasFrame:IsShown(), 'Hide unit-dependent decorations')
+Check(not frame.behindCameraIcon:IsShown(), 'Hide world-only decorations')
 local level = plate.nativeLevelBox
 if NameplateLevelFrameMixin then
     Check(level == frame.PlayerLevelDiffFrame and level:IsShown(), 'Classic NPC preview displays separate native level box')
-    Check(level.selectedBorder:IsShown() and level.isTarget, 'Native level box uses selected-target border')
+    Check(not level.selectedBorder:IsShown() and not level.isTarget, 'Native level box uses options preview selection state')
     Check(level.playerLevelDiffIcon.atlas == 'ui-hud-nameplates-levelindicator' and
         level.selectedBorder.atlas == 'ui-hud-nameplates-levelindicator-rectangle-selected', 'Use actual Classic level box artwork')
     Check(level.playerLevelDiffText.text == '60' and level.playerLevelDiffText.points[1][2] == level.playerLevelDiffIcon and
@@ -76,13 +76,13 @@ Mock.plates.target = target
 target:SetScale(1.44)
 plate.menuParent:SetScale(0.8)
 Mock.Tick(0.11)
-Check(Near(plate:GetEffectiveScale(), target:GetEffectiveScale()) and Near(stack:GetEffectiveScale(), UIParent:GetEffectiveScale()), 'Plate follows the target while timers retain the same UI scale as live timers')
+Check(Near(plate:GetEffectiveScale(), plate.menuParent:GetEffectiveScale()) and Near(stack:GetEffectiveScale(), UIParent:GetEffectiveScale()), 'Nameplate inherits the options canvas scale while timers retain live UI scale')
 target:SetScale(1.1)
 ns.RefreshOptions()
 Check(Near(stack:GetEffectiveScale(), UIParent:GetEffectiveScale()), 'Control refresh preserves timer scale through native target scaling')
 target:Hide()
 Mock.Tick(0.11)
-Check(Near(plate:GetEffectiveScale(), 1.2), 'Hidden live plate uses selected-scale fallback through menu UI scale')
+Check(Near(plate:GetEffectiveScale(), plate.menuParent:GetEffectiveScale()), 'Hiding the target does not change the options preview scale')
 
 Mock.cvars.nameplateCastBarDisplay = '0'
 Mock.Tick(0.11)
@@ -103,4 +103,115 @@ Check(not late.nativeFrame, 'Menu created before native templates load uses fall
 NamePlateUnitFrameMixin, NamePlateScriptBaseMixin = unitMixin, scriptMixin
 ns.UpdateMenuNameplatePreview(late, GetTime() + 1)
 Check(late.nativeFrame and late.SetHitTestPoints, 'Late-loaded templates safely replace fallback with native layout')
+
+if NamePlateAurasMixin then
+    local auras = frame.AurasFrame
+    local comboPlate = ns.ComboPoints.previewNameplate
+    local comboAuras = comboPlate.nativeFrame.AurasFrame
+    for mask = 0, 7 do
+        Mock.cvars.nameplateEnemyNpcAuraDisplay = tostring(mask)
+        ns.RefreshOptions()
+        Check(auras:IsShown() and auras.isActive == false and auras.unitToken == 'preview', 'Native auras use an inert sample token')
+        for _, previewAuras in ipairs({auras, comboAuras}) do
+            local buffs, debuffs, cc = mask % 2 == 1, math.floor(mask / 2) % 2 == 1, math.floor(mask / 4) % 2 == 1
+            Check(previewAuras.BuffListFrame:IsShown() == buffs and previewAuras.DebuffListFrame:IsShown() == debuffs
+                and previewAuras.CrowdControlListFrame:IsShown() == cc, 'Both feature previews follow every native aura display combination')
+            if buffs then Check(#previewAuras.BuffListFrame.items == 2, 'Native buff list keeps its two-icon limit') end
+            if debuffs then Check(#previewAuras.DebuffListFrame.items == 6, 'Native debuff preview shows six sample icons') end
+            if cc then Check(#previewAuras.CrowdControlListFrame.items == 2, 'Native crowd-control list keeps its two-icon limit') end
+        end
+        Check(next(auras.events) == nil and frame.unit == nil and cast.unit == nil, 'Sample auras never bind live units or events')
+    end
+    for _, auraScale in ipairs({0.7, 1, 1.3}) do
+        Mock.cvars.nameplateAuraScale = tostring(auraScale)
+        Mock.Tick(0.11)
+        Check(Near(auras.auraItemScale, auraScale * frame:GetScaleData().aura), 'Aura size follows native size and aura-scale options')
+        Check(auras.DebuffListFrame.stride == (auraScale == 0.7 and 12 or auraScale == 1 and 8 or 6), 'Native aura wrapping follows the selected scale')
+    end
+    Mock.cvars.nameplateDebuffPadding = '17'
+    Mock.Tick(0.11)
+    Check(auras.DebuffListFrame.points[#auras.DebuffListFrame.points][5] == 17, 'Aura padding changes update without a style or size change')
+    Mock.cvars.nameplateInfoDisplay = '0'
+    Mock.Tick(0.11)
+    Check(health.RightText.text == '' and health.LeftText.text == '', 'Health information choices refresh immediately')
+    local layouts = auras.DebuffListFrame.layoutCount
+    Mock.Tick(0.11)
+    Check(auras.DebuffListFrame.layoutCount == layouts, 'Unchanged options reuse aura widgets without rebuilding each poll')
+    ns.optionsPanel:Hide()
+    Mock.cvars.nameplateEnemyNpcAuraDisplay = '0'
+    ns.OpenSwingOptions()
+    Check(not auras.BuffListFrame:IsShown() and not auras.DebuffListFrame:IsShown() and not auras.CrowdControlListFrame:IsShown(),
+        'Reopening applies aura options changed while the page was hidden')
+
+    if NamePlatePreviewMixin then
+        local source = CreateFrame('Frame', nil, UIParent)
+        source:Hide()
+        source.previewIconTexture = 'same-game-preview-cast-icon'
+        source.UnitFrame = CreateFrame('Button', nil, source, 'NamePlateUnitFrameTemplate')
+        local sourceFrame = source.UnitFrame
+        sourceFrame.SetExplicitValues = function(self, values)
+            self.isPlayer, self.isFriend = values.isPlayer, values.isFriend
+            self.isSimplified, self.showOnlyName = false, false
+            self.ClassificationFrame.explicitClassification = values.classification
+        end
+        sourceFrame.HealthBarsContainer.healthBar:SetStatusBarColor(0.3, 0.6, 0.9)
+        sourceFrame.name:SetTextColor(0.1, 0.4, 0.7)
+        sourceFrame.aggroHighlightBase:Show()
+        sourceFrame.aggroHighlightBase:SetVertexColor(1, 0, 0)
+        source.SetExplicitValues = NamePlatePreviewMixin.SetExplicitValues
+        source.UpdatePreviewText = function() end
+        sourceFrame.AurasFrame.explicitAuraList = TableUtil.CreatePriorityTable()
+        for index = 1, 6 do
+            sourceFrame.AurasFrame.explicitAuraList[index] = {auraInstanceID=index, sourceUnit='player', applications=1,
+                expirationTime=0, duration=10, icon='game-preview-icon-' .. index}
+        end
+        local driver = {scriptNamePlates={}, registrations=0}
+        function driver:RegisterScriptNamePlate(plate, token) self.scriptNamePlates[token] = plate; self.registrations = self.registrations + 1 end
+        function driver:IsScriptNamePlateRegistered(token) return self.scriptNamePlates[token] ~= nil end
+        function driver:GetNamePlateForUnit(token) return self.scriptNamePlates[token] end
+        NamePlateDriverFrame = driver
+        Mock.Event('ADDON_LOADED', 'Blizzard_SettingsDefinitions_Frame')
+        driver:RegisterScriptNamePlate(source, 'preview')
+        source:Show()
+        Mock.cvars.nameplateEnemyPlayerAuraDisplay = '7'
+        Mock.cvars.nameplateThreatDisplay = '7'
+        source:SetExplicitValues({isPlayer=true, isFriend=false})
+        source:Hide()
+        ns.RefreshOptions()
+        Check(auras.isPlayer and not auras.isFriend and auras.LossOfControlFrame:IsShown()
+            and not auras.CrowdControlListFrame:IsShown(), 'Carry the last game-preview unit type into the addon previews')
+        Check(auras.explicitAuraList[1].icon == 'game-preview-icon-1' and comboAuras.explicitAuraList[1].icon == 'game-preview-icon-1'
+            and cast.Icon.texture == 'same-game-preview-cast-icon', 'Both pages retain the exact game-preview sample icons')
+        Check(driver.registrations == 1 and driver.scriptNamePlates.preview == source, 'Addon samples never replace Blizzard\'s registered preview')
+        Check(health.statusBarColor[2] == 0.6 and frame.name.textColor[3] == 0.7 and frame.aggroHighlightBase:IsShown(),
+            'Retain the game preview\'s name, health colors, and enabled threat artwork')
+        Mock.cvars.nameplateThreatDisplay = '0'
+        Mock.Tick(0.11)
+        Check(not frame.aggroHighlightBase:IsShown(), 'Threat display options can hide the captured sample artwork')
+        auras.explicitAuraList[1].icon = 'local-edit'
+        Check(sourceFrame.AurasFrame.explicitAuraList[1].icon == 'game-preview-icon-1'
+            and comboAuras.explicitAuraList[1].icon == 'game-preview-icon-1', 'Sample tables stay isolated between all three previews')
+        source:SetExplicitValues({isPlayer=true, isFriend=true})
+        Mock.cvars.nameplateFriendlyPlayerAuraDisplay = '1'
+        ns.RefreshOptions()
+        Check(auras.isFriend and auras.BuffListFrame:IsShown() and not auras.DebuffListFrame:IsShown(), 'Friendly sample follows friendly aura options')
+        Mock.cvars.nameplateSimplifiedTypes = tostring(2 ^ (Enum.NamePlateSimplifiedType.FriendlyPlayer - 1))
+        Mock.Tick(0.11)
+        Check(not auras:IsShown() and not frame.name:IsShown(), 'Simplified display follows current options for the captured sample type')
+        Mock.cvars.nameplateSimplifiedTypes = '0'
+        Mock.cvars.nameplateShowOnlyNameForFriendlyPlayerUnits = '1'
+        Mock.Tick(0.11)
+        Check(not auras:IsShown() and not health:IsShown(), 'Name-only friendly options hide native bars and auras')
+        Mock.cvars.nameplateShowOnlyNameForFriendlyPlayerUnits = '0'
+        source:SetExplicitValues({isPlayer=false, isFriend=false, classification='elite'})
+        Mock.cvars.nameplateInfoDisplay = '4'
+        NamePlateEnemyFrameOptions.showClassificationIndicator = true
+        ns.RefreshOptions()
+        Check(frame.ClassificationFrame:IsShown() and frame.ClassificationFrame.classificationIndicator.atlas == 'nameplates-icon-elite-gold',
+            'Native rarity display follows the selected sample and client frame options')
+        NamePlateEnemyFrameOptions.showClassificationIndicator = false
+        Mock.Tick(0.11)
+        Check(not frame.ClassificationFrame:IsShown(), 'Client classification overrides refresh even without geometry changes')
+    end
+end
 NST_NATIVE_PREVIEW_CHECKS = checks

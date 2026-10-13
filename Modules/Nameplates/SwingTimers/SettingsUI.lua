@@ -248,14 +248,14 @@ local function BuildPanel()
     viewport = CreateFrame("Frame", nil, panel)
     viewport:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -64)
     viewport:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -16, -64)
-    viewport:SetHeight(210)
+    viewport:SetHeight(250)
     viewport:SetClipsChildren(true)
     local bg = viewport:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(); bg:SetColorTexture(0.025, 0.03, 0.04, 0.9)
     Label(viewport, "Live preview", 12, -10, "GameFontNormal")
-    Label(viewport, "Shows your enabled swing timers and combo points.", 12, -30, "GameFontDisableSmall")
+    Label(viewport, "Follows the game's Nameplates options, with your swing timers and combo points.", 12, -30, "GameFontDisableSmall")
     previewAnchor = ns.CreateMenuFeaturePreview(viewport)
-    previewAnchor:SetPoint("CENTER", viewport, "CENTER", 0, 20)
+    previewAnchor:SetPoint("CENTER", viewport, "CENTER", 0, 0)
     previewStack = previewAnchor.swingStack
     ns.optionsPreview = previewStack
     ns.optionsPreviewNameplate = previewAnchor

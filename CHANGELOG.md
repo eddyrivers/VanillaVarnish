@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.23
+
+- Make swing timer and combo-point previews follow the game's Nameplates options, including native buffs, debuffs, crowd control, aura scale and spacing, health text, and cast display choices.
+- Carry over the last sample type and icons displayed in the game's Nameplates menu. Keep independent preview frames so switching pages never replaces Blizzard's preview or binds live units.
+- Use the game options preview scale, expand the preview area, and refresh display changes when reopening either feature page.
+
 ## 1.0.22
 
 - Give Profiles & Presets its own settings page, with a link from the main menu and `/vv profiles` or `/vv presets` shortcuts.
