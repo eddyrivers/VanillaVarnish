@@ -42,7 +42,7 @@ Check(row:GetFrameLevel() > cast:GetFrameLevel(), "Combo row draws above native 
 for _, dot in ipairs(row.dots) do
     Check(dot:GetFrameLevel() > cast:GetFrameLevel(), "Dot artwork is visible over the cast bar")
 end
-Check(row.points[1][2] == anchor and row.points[1][3] == "BOTTOM" and row.points[1][4] == 17 and row.points[1][5] == -21,
+Check(row.points[1][2] == anchor and row.points[1][3] == "BOTTOM" and row.points[1][4] == 17 and row.points[1][5] == -24,
     "Default offsets position dots relative to the visible health bar")
 Check(row.width == 76 and row.height == 12, "Default five-point row has spaced dots")
 Check(row.dots[1].layers[3].atlas == "uf-roguecp-icon-red", "Use the native personal-resource red graphic")
@@ -173,7 +173,7 @@ vv.InitDB(); combo.InitDB()
 Check(combo.db.size == saved.size and combo.db.x == saved.x, "Choices survive initialization")
 local swingWidth = ns.db.width
 combo.ResetSettings()
-Check(combo.db.size == 12 and combo.db.x == 17 and combo.db.y == 21 and combo.db.gap == 4
+Check(combo.db.size == 12 and combo.db.x == 17 and combo.db.y == 24 and combo.db.gap == 4
     and ns.tweaksDB.comboPointsEnabled and ns.db.width == swingWidth, "Reset changes only combo layout")
 VV_TEST_NS.Nameplates.HandleSlash("combo off")
 Check(not ns.tweaksDB.comboPointsEnabled, "Slash feature toggle works")

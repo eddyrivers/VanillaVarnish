@@ -2,7 +2,7 @@
 ## Title: VanillaVarnish
 ## Notes: Modular improvements to Blizzard nameplates, quest tracking, party frames, and tooltips.
 ## Author: Eddy Rivers
-## Version: 1.0.24
+## Version: 1.0.25
 ## Category: UI Overhaul
 ## X-Curse-Project-ID: 1736142
 ## IconTexture: Interface\Icons\INV_Enchant_DustIllusion

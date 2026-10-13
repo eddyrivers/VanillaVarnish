@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.25
+
+- Move Default's combo points to vertical offset 24. Keep the tighter presets at 14 and use 24 when restoring combo-point defaults.
+
 ## 1.0.24
 
 - Match preview nameplate scale to the live target so swing timers and combo points keep their in-game size and horizontal alignment. Use configured target enlargement when no readable target is visible; preserve native aura and display options.

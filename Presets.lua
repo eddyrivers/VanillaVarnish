@@ -14,7 +14,7 @@ local presets = {
                 ["gap"] = 4,
                 ["size"] = 12,
                 ["x"] = 17,
-                ["y"] = 21,
+                ["y"] = 24,
             },
             ["comboPointsEnabled"] = true,
             ["markers"] = true,
