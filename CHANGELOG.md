@@ -2,7 +2,17 @@
 
 ## 1.0.29
 
-- Replace the misleading import notice with a short conflict warning only when a loaded standalone addon blocks an enabled module. Disabling VanillaVarnish Tooltips silences the ForeverMouseTooltip warning.
+- Add a dedicated **Profiles & Presets** page, linked from the main menu and available through `/vv profiles` or `/vv presets`. Save your own designs and load account-wide profiles from one place.
+- Add four built-in presets:
+  - **Default:** the new starting design, with stacked swing timers at Y 37, combo points at Y 24, and completed quests sorted last.
+  - **Default (tight):** bring stacked swing timers to Y 5 and combo points to Y 14.
+  - **Swing timer row:** three timers share a 200-unit row, with swing timers at Y 37 and combo points at Y 23.
+  - **Combo point class (compact):** 10-unit combo dots at X 67 / Y 25 with gap 4; a 161-by-10 swing-timer row at X 1 / Y 21 with gap 2, shown while swinging.
+- Add **Stacked** and **Row** layouts to swing timer settings. Visible timers collapse upward or pack to the left in weapon order. Row width is the full three-timer span; individual timer widths stay steady when another timer disappears.
+- Expand the shared swing-timer and combo-point previews to use native nameplate artwork and the game's Nameplates display options, including buffs, debuffs, crowd control, aura size and spacing, health text, and cast details. After viewing the game's preview, both addon pages retain its sample type and icons for the session.
+- Match preview scale and horizontal alignment to the live target while keeping swing timers at their normal UI size. Without a visible target, previews use the configured target enlargement.
+- Simplify swing timer settings by removing the in-game test-preview checkbox. Embedded menu previews remain available and update as you adjust settings.
+- Add a [GitHub bug-report template](https://github.com/eddyrivers/VanillaVarnish/issues/new/choose), with blank reports available too.
 
 ## 1.0.28
 
