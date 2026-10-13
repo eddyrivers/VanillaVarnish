@@ -289,10 +289,6 @@ local function BuildPanel()
         function() return ns.db.layout end, function(value) ns.SetValue("layout", value) end,
         "Stack bars vertically or place them in a row. Row divides the full width between three timers; visible timers pack to the left.")
     y = y - 40
-    Check(content, "preview", "Show a test preview in game", y, function() return ns.preview end,
-        function(value) ns.preview = value; ns.Changed() end,
-        "Show sample swings on your target, or near the center of your screen. Turn off to return to live timers.")
-    y = y - 38
     local enable = Button(content, "Enable all bars", 132, function() ns.Slash("all on") end)
     enable:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
     local disable = Button(content, "Disable all bars", 132, function() ns.Slash("all off") end)

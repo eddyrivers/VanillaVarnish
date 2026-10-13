@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.28
+
+- Remove the in-game test-preview checkbox from settings and close the gap in the swing timer controls. Embedded menu previews remain available.
+
 ## 1.0.27
 
 - Add Combo point class (compact): 10-unit combo dots at X 67 / Y 25 with gap 4, and a 161-by-10 swing-timer row at X 1 / Y 21 with gap 2, shown while swinging.
