@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.31
+
+- Tighten the gap between dagger and loot quest icons to six screen pixels, accounting for transparent artwork padding and nameplate scaling.
+
 ## 1.0.30
 
 - Keep quest icons and range fading attached to the correct unit when nameplate frames are recycled. Skip forbidden frames and safely handle restricted quest and tooltip records.

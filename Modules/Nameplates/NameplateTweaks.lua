@@ -263,9 +263,9 @@ local function UpdateMarkers(state)
     local previous
     for _, kind in ipairs({"loot", "kill", "other"}) do
         local marker = state.markers[kind]
+        local pixel = PixelUtil and PixelUtil.GetPixelToUIUnitFactor
+            and PixelUtil.GetPixelToUIUnitFactor() / marker:GetEffectiveScale() or 1
         if kind == "loot" then
-            local pixel = PixelUtil and PixelUtil.GetPixelToUIUnitFactor
-                and PixelUtil.GetPixelToUIUnitFactor() / marker:GetEffectiveScale() or 1
             -- Keep the top edge; lift the bag's bottom by one screen pixel.
             marker.icon:ClearAllPoints()
             marker.icon:SetPoint("TOPLEFT", marker, "TOPLEFT", 0, 0)
@@ -274,9 +274,16 @@ local function UpdateMarkers(state)
             marker.shadow:SetPoint("TOPLEFT", marker.icon, "TOPLEFT", pixel, -pixel)
             marker.shadow:SetPoint("BOTTOMRIGHT", marker.icon, "BOTTOMRIGHT", pixel, -pixel)
         end
+        local gap = 4
+        if previous and previous.kind == "loot" and kind == "kill" then
+            -- The 16-unit artwork has 2 units of left padding on the bag and
+            -- 1.5 of right padding on the dagger. Keep visible edges 6 screen
+            -- pixels apart, including on enlarged target nameplates.
+            gap = 6 * pixel - 3.5
+        end
         marker:ClearAllPoints()
         marker:SetPoint("RIGHT", previous or anchor, previous and "LEFT" or point,
-            previous and -4 or offset, 0)
+            previous and -gap or offset, 0)
         marker:SetShown(kinds[kind] == true)
         if kinds[kind] then previous = marker end
     end
