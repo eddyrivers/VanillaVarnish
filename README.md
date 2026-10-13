@@ -66,7 +66,7 @@ Open `/vv` and follow **Profiles & Presets**, or use `/vv profiles`. Choose a bu
 | --- | --- |
 | Default | The starting design for new characters: stacked swing timers, combo points, and completed quests sorted last |
 | Default (tight) | Bring swing timers and combo points closer to the nameplate |
-| Swing timer row | Use the tight design with three swing timers sharing the same 200-unit horizontal span |
+| Swing timer row | Three swing timers share a 200-unit horizontal span, with swing Y at 37 and combo-point Y at 23 |
 
 **Nameplates > Swing timers > Bar layout** offers **Stacked** and **Row** for any design. Stacked timers collapse upward; row timers collapse to the left in main-hand, off-hand, ranged order. Row width is the full three-timer span including gaps. Hidden timers leave no gaps, and visible timers keep their individual widths. The live preview follows your chosen layout.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.26
+
+- Set Swing timer row's combo-point vertical offset to 23 and swing-timer vertical offset to 37.
+
 ## 1.0.25
 
 - Move Default's combo points to vertical offset 24. Keep the tighter presets at 14 and use 24 when restoring combo-point defaults.

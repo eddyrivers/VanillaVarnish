@@ -36,8 +36,8 @@ for _, choice in ipairs(Mock.Menu(ui.dropdown)) do
 end
 check(ns.db.layout == "stack" and vv.selectedPreset == "Swing timer row", "Selecting a preset waits for Apply")
 ui.apply.scripts.OnClick()
-check(ns.db.layout == "row" and ns.db.width == 200 and ns.db.y == 5 and ns.ComboPoints.db.y == 14,
-    "Row preset retains the tight design and total span")
+check(ns.db.layout == "row" and ns.db.width == 200 and ns.db.y == 37 and ns.ComboPoints.db.y == 23,
+    "Row preset applies its vertical offsets and retains the total span")
 check(vv.db.questTracker.collapsed.Elwynn and ns.db == refs[2] and ns.db.bars.main == refs[3]
     and vv.db.nameplates == refs[1] and ns.ComboPoints.db == refs[4] and vv.db.questTracker == refs[5]
     and vv.Tooltips.db == refs[6], "Applying presets preserves personal quest folds and module table references")

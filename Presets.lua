@@ -103,6 +103,8 @@ presets["Default (tight)"].nameplates.comboPoints.y = 14
 
 presets["Swing timer row"] = VV.Copy(presets["Default (tight)"])
 presets["Swing timer row"].nameplates.swingTimers.layout = "row"
+presets["Swing timer row"].nameplates.swingTimers.y = 37
+presets["Swing timer row"].nameplates.comboPoints.y = 23
 
 function VV.PresetNames()
     return {"Default", "Default (tight)", "Swing timer row"}
