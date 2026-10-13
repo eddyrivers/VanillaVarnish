@@ -157,9 +157,9 @@ events:SetScript("OnEvent", function(_, event, name)
         VV.RegisterOptions()
         VV.Print("Loaded. Type /vv to configure Nameplates, Quest tracker, Party frames, and Tooltips.")
         for _, key in ipairs(VV.moduleOrder) do
-            if VV.conflicts[key] then
-                VV.Print("Imported settings where available. Disable " .. VV.conflicts[key]
-                    .. " and /reload to activate " .. VV.moduleLabels[key] .. ".")
+            if VV.conflicts[key] and VV.db.modules[key] then
+                VV.Print(VV.moduleLabels[key] .. " paused: " .. VV.conflicts[key]
+                    .. " is loaded. Disable it and /reload to activate " .. VV.moduleLabels[key] .. ".")
             end
         end
         if VV.swingConflict then VV.Print("Disable NameplateSwingTimers and /reload to activate bundled swing timers.") end

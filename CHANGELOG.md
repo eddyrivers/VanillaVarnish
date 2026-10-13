@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.29
+
+- Replace the misleading import notice with a short conflict warning only when a loaded standalone addon blocks an enabled module. Disabling VanillaVarnish Tooltips silences the ForeverMouseTooltip warning.
+
 ## 1.0.28
 
 - Remove the in-game test-preview checkbox from settings and close the gap in the swing timer controls. Embedded menu previews remain available.

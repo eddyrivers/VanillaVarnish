@@ -359,3 +359,22 @@ assert(vv.conflicts.tooltips == "ForeverMouseTooltip" and not vv.IsModuleEnabled
 Mock.Hover(tip, owner, "ANCHOR_TOP")
 Mock.colorCallback(tip)
 assert(tip.anchor == "ANCHOR_TOP" and addon.db.offsetX == -25 and ForeverMouseTooltipDB.offsetX == 222)
+
+local function ConflictNotices(first)
+    local count = 0
+    for index = first + 1, #Mock.messages do
+        local text = Mock.messages[index]
+        if text:find("ForeverMouseTooltip", 1, true) then
+            assert(not text:lower():find("import", 1, true), "Tooltip conflict notice must not claim settings were imported")
+            count = count + 1
+        end
+    end
+    return count
+end
+local first = #Mock.messages
+Mock.Event("PLAYER_LOGIN")
+assert(ConflictNotices(first) == 1, "Warn when a loaded addon blocks the enabled Tooltips module")
+vv.SetModuleEnabled("tooltips", false)
+first = #Mock.messages
+Mock.Event("PLAYER_LOGIN")
+assert(ConflictNotices(first) == 0, "A disabled Tooltips module needs no reload conflict notice")
