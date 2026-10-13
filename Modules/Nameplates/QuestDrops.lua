@@ -1,11 +1,9 @@
 local _, VV = ...
 local ns = VV.Nameplates
 
--- Quest item classification is irrelevant here: trade goods, food, and ordinary
--- loot can all be required by a quest. Read actual objectives and NPC drop data.
-local knownQuests = {
-    [4161] = {item = 5465, count = 7, npcs = {1998, 1999, 2000, 2001}},
-}
+-- Item classification does not establish a quest relationship. The bundled
+-- baseline supplies IDs; the live quest log supplies progress and completion.
+local bundled = ns.QuestDropData
 local requestedItems = {}
 
 local function Known(value)
@@ -91,6 +89,32 @@ function ns.QuestDropSources(questID, nativeObjectives, complete, database)
     local sources = {}
     if complete == true or complete == 1 then return sources end
     local objectives = NativeItemObjectives(nativeObjectives)
+    local requiredItems = bundled and bundled.quests[questID]
+    if requiredItems then
+        for _, itemID in ipairs(requiredItems) do
+            local drops = bundled.items[itemID]
+            if drops then
+                local name = Read(C_Item and C_Item.GetItemNameByID or GetItemInfo, itemID)
+                local objective = MatchObjective(itemID, nil, name, objectives)
+                -- Cardinality helps while the item cache is empty. A readable
+                -- mismatched name is evidence of changed requirements, not a match.
+                if not objective and not name and #requiredItems == 1 and #objectives == 1 then
+                    local nativeID = Known(objectives[1].itemID) or Known(objectives[1].objectID)
+                    if nativeID == nil then objective = objectives[1] end
+                end
+                if not objective and not name and not requestedItems[itemID] and C_Item and C_Item.RequestLoadItemDataByID then
+                    requestedItems[itemID] = true
+                    pcall(C_Item.RequestLoadItemDataByID, itemID)
+                end
+                if objective and Needed(itemID, objective) then
+                    for _, npcID in ipairs(drops) do sources[npcID] = true end
+                end
+            end
+        end
+        -- Reviewed bundled requirements take precedence over an optional
+        -- provider's older requirements. Unknown quests can use that provider.
+        return sources
+    end
     if database then
         local questRead = database.QueryQuestSingle or database.Quest.Get
         local itemRead = database.QueryItemSingle or database.Item.Get
@@ -130,11 +154,6 @@ function ns.QuestDropSources(questID, nativeObjectives, complete, database)
                 end
             end
         end
-    end
-    -- Small built-in fallback when no drop database is available.
-    local known = knownQuests[questID]
-    if known and Needed(known.item, objectives[1], known.count) then
-        for _, npcID in ipairs(known.npcs) do sources[npcID] = true end
     end
     return sources
 end

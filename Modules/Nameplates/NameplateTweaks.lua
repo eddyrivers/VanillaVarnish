@@ -138,7 +138,8 @@ local function QuestieKinds(unit)
                     or icon == Questie.ICON_TYPE_OBJECT))) and "loot"
                     or (objective.Type == "monster" or (icon and icon == Questie.ICON_TYPE_SLAY)) and "kill"
                     or "other"
-                kinds[kind] = true
+                local reviewed = ns.QuestDropData and ns.QuestDropData.reviewed[entry.questId]
+                if kind ~= "loot" or not reviewed then kinds[kind] = true end
             end
         end
     end
@@ -466,8 +467,8 @@ local function Slash(message)
         return
     elseif command == "debug" then
         Status()
-        Print("Quest sources: native tooltip, " .. (ns.QuestDropDatabase and ns.QuestDropDatabase()
-            and "item drop database available" or "item drop database unavailable")
+        Print("Quest sources: native tooltip, bundled item drops, " .. (ns.QuestDropDatabase and ns.QuestDropDatabase()
+            and "optional drop database available" or "optional drop database unavailable")
             .. "; optional Questie tooltip fallback " .. (db.questieFallback and "on" or "off") .. ".")
         local damage, friendly = SpellInRange(db.damage, "target"), SpellInRange(db.friendly, "target")
         Print("Target range: damage=" .. tostring(damage) .. ", friendly=" .. tostring(friendly) .. " (nil means unavailable).")

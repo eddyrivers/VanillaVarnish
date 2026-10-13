@@ -48,3 +48,20 @@ The workflow verifies that the tag matches the TOC and that the committed ZIP ma
 Release archives contain runtime code, assets, the user guide, release notes, and licenses. Tests, automation, branding, local maintainer instructions, caches, and Git metadata stay out of installed packages. Retain existing archives for users who need an earlier release.
 
 Write commit messages and documentation for the public reader: describe the behavior and its purpose, keep the useful details, and leave the debugging diary behind. A little varnish goes a long way.
+
+## Quest-drop data
+
+`Modules/Nameplates/QuestDropData.lua` is a generated, ID-only projection of pfQuest Vanilla's quest-item and NPC-loot relationships. The pinned revision and input SHA-256 hashes are in `tools/data/pfquest-source.json`; the [pfQuest MIT license](Licenses/pfQuest-MIT.txt) ships in every release. Native objectives supply counts, completion and localized names. No quest text, NPC names, map coordinates, drop rates, vendors, objects or collected player data are bundled.
+
+Download `db/quests.lua`, `db/items.lua` and `db/refloot.lua` from the manifest's exact pfQuest revision into a local cache, preserving the `db/` paths. Then generate or verify:
+
+```sh
+python tools/build_quest_drops.py --source-directory .test-deps/pfquest-source --lua-runtime .test-deps/lua-runtime
+python tools/build_quest_drops.py --source-directory .test-deps/pfquest-source --lua-runtime .test-deps/lua-runtime --check
+```
+
+Generation verifies all input hashes and runs the data tables in an empty Lua 5.1 environment. The generator includes every item objective of retained quests, even vendor-only or object-only items, so mixed quests cannot become ambiguous single-item matches. NPC lists are shared by item; reference loot is expanded and vendor relationships excluded. Lupa and upstream source caches are development dependencies, not release files.
+
+Reviewed Forever corrections live in `tools/data/quest-drops-forever.json`, with evidence URLs, review dates and explicit deferred gaps. Replacements supersede old requirements rather than merging them. The initial review corrects all nine Zul'Gurub class enchants and adds My First Real Potion using the existing Murloc Eye sources. It does not establish live-client validation or complete new Forever content. In particular, Restocking the Larders still needs verified Highlands NPC IDs. Never infer a new drop source from proximity, a similar NPC name, an item class, or a missing tooltip line.
+
+An optional QuestieDB provider supplies quests absent from the bundle. The separately enabled Questie tooltip fallback cannot restore obsolete loot requirements for source-reviewed quests. Native tooltip detection remains active for every quest. To check a reported discrepancy, compare the native quest objectives, the mob's native tooltip, the expected bundled IDs and an observed loot source. This release does not collect or upload gameplay diagnostics.

@@ -12,7 +12,7 @@ version = re.search(r"^## Version: ([\w.\-]+)$", source, re.MULTILINE).group(1)
 runtime = [ROOT / line.replace("\\", "/") for line in source.splitlines()
            if line.strip() and not line.startswith("#")]
 files = [toc, ROOT / "README.md", ROOT / "CHANGELOG.md", ROOT / "LICENSE", *runtime]
-for folder in ("Media", "Textures"):
+for folder in ("Media", "Textures", "Licenses"):
     files.extend(path for path in (ROOT / folder).iterdir() if path.is_file())
 for path in files:
     if not path.is_file():
@@ -48,6 +48,7 @@ with ZipFile(out) as archive:
     assert "VanillaVarnish/VanillaVarnish.toc" in names
     assert "VanillaVarnish/Media/Montserrat-OFL.txt" in names
     assert "VanillaVarnish/LICENSE" in names
+    assert "VanillaVarnish/Licenses/pfQuest-MIT.txt" in names
     assert not any(part in {"tests", "tools", ".test-deps", "dist", ".git", ".github", "Branding"}
                    for name in names for part in name.split("/"))
     assert not any(name.endswith((".exe", ".pyd", ".pyc", ".py")) for name in names)

@@ -635,15 +635,26 @@ questieObjective.Collected = 0; questieObjective.Update = function() error("Unav
 Mock.Tick(1); Check(loot:IsShown() and kill:IsShown(), "Unavailable optional updates cannot break native markers")
 Questie.API.isReady = false; Mock.Tick(1)
 Check(not loot:IsShown() and kill:IsShown(), "Wait for optional Questie initialization")
+Questie.API.isReady = true
+tooltipModule.lookupByKey.m_123 = {{questId = 8184, objective = {Type = "item", Collected = 0, Needed = 1}}}
+Mock.questEntries = {{questID = 8184}}
+Mock.questObjectives = {[8184] = {
+    {itemID = 22637, type = "item", finished = true},
+    {itemID = 19813, type = "item", finished = false},
+}}
+Mock.tooltipLines = {}
+Mock.Event("QUEST_LOG_UPDATE"); Mock.Tick(0.2)
+Check(not loot:IsShown(), "Optional Questie tooltips cannot reintroduce obsolete reviewed loot requirements")
+Mock.questEntries, Mock.questObjectives = nil, nil
 Questie, QuestieLoader, Mock.tooltipLines = nil, nil, nil
 nt("questie off"); Mock.Event("QUEST_LOG_UPDATE"); Mock.Tick(0.2)
 
 -- General database coverage: cooking and other item objectives use the same
 -- path, with individual counts and localized names rather than item class.
 local definitions = {
-    [9001] = {[3] = {{10001}, {10002}}},
-    [9002] = {[3] = {{10003}}},
-    [9003] = {[3] = {{10004}}},
+    [900001] = {[3] = {{10001}, {10002}}},
+    [900002] = {[3] = {{10003}}},
+    [900003] = {[3] = {{10004}}},
 }
 local itemData = {
     [10001] = {name = "Raw Meat", npcDrops = {3001, 3999}, vendors = {3999}},
@@ -659,14 +670,14 @@ local function ItemRead(id, field)
 end
 LibQuestieDB = {RequireContract = function(version) return version == 1 end,
     Quest = {Get = QuestRead}, Item = {Get = ItemRead}}
-Mock.questEntries = {{questID = 9001}, {questID = 9002}, {questID = 9003, isComplete = true}}
+Mock.questEntries = {{questID = 900001}, {questID = 900002}, {questID = 900003, isComplete = true}}
 Mock.questObjectives = {
-    [9001] = {
+    [900001] = {
         {text = "Viande crue: 0/4", type = "item", numFulfilled = 0, numRequired = 4, finished = false},
         {text = "Cuir: 0/3", type = "item", numFulfilled = 0, numRequired = 3, finished = false},
     },
-    [9002] = {{text = "Uncached translated cloth: 0/2", type = "item", finished = false}},
-    [9003] = {{text = "Ore: 0/2", type = "item", finished = false}},
+    [900002] = {{text = "Uncached translated cloth: 0/2", type = "item", finished = false}},
+    [900003] = {{text = "Ore: 0/2", type = "item", finished = false}},
 }
 Mock.itemNames = {[10001] = "Viande crue", [10002] = "Cuir"}
 Mock.itemCounts = {[10001] = 4, [10002] = 2, [10003] = 0, [10004] = 0}
@@ -678,7 +689,7 @@ Mock.guids.nameplate1 = "Creature-0-0-0-0-3001-0"; Mock.Tick(1)
 Check(not loot:IsShown(), "An already-collected ingredient does not mark its source")
 Mock.itemCounts[10001] = 3; Mock.Event("BAG_UPDATE_DELAYED"); Mock.Tick(0.2)
 Check(loot:IsShown(), "Spending an ordinary cooking ingredient restores its icon")
-Mock.questObjectives[9001][1].finished = true; Mock.Event("QUEST_LOG_UPDATE"); Mock.Tick(0.2)
+Mock.questObjectives[900001][1].finished = true; Mock.Event("QUEST_LOG_UPDATE"); Mock.Tick(0.2)
 Check(not loot:IsShown(), "Completed individual objectives are respected even when required items have been consumed")
 Mock.guids.nameplate1 = "Creature-0-0-0-0-3002-0"; Mock.Tick(1)
 Check(loot:IsShown(), "Another unfinished item in the same quest remains marked")
@@ -699,8 +710,8 @@ Check(not loot:IsShown(), "Removing item quests clears all generic sources")
 
 -- Ambiguous translated names wait for the client item cache, rather than
 -- attributing the wrong count to a source. Item load events retry the lookup.
-Mock.questEntries = {{questID = 9001}}
-Mock.questObjectives[9001][1].finished = false
+Mock.questEntries = {{questID = 900001}}
+Mock.questObjectives[900001][1].finished = false
 Mock.itemNames, Mock.itemCounts = {}, {[10001] = 0, [10002] = 0}
 Mock.Event("QUEST_LOG_UPDATE"); Mock.Tick(0.2)
 Check(not loot:IsShown() and Mock.itemRequests[10001] == 1 and Mock.itemRequests[10002] == 1,

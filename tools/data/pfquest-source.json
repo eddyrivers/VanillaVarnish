@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/shagu/pfQuest",
+  "revision": "104f35678ca39ab1fb78b655f815cc7016f5e0c8",
+  "files": {
+    "db/quests.lua": "2cc49447b4c18f0a680612a79b4c199f0c46a1dbebdc6f4d78a27035e99c0d93",
+    "db/items.lua": "b173e338ff04fdece3b4bfcbb1b66aff4bb9d23fa7a13890311ea2cbc447d808",
+    "db/refloot.lua": "5e4bd7d8480a45c1d450ab1090693b532d9ac8bc3e524d63046a34d6b0f796cf"
+  }
+}

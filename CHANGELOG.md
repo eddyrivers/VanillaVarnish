@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.32
+
+- Show quest loot icons from a compact bundled pfQuest baseline without requiring Questie or QuestieDB. Native objectives and tooltips still control progress and completion.
+- Review Forever's Zul'Gurub enchant requirements and add My First Real Potion. Match each item objective separately, wait for localized item names when necessary, and exclude vendor and object sources from hostile loot markers.
+- Include the pfQuest license and reproducible data-generation tools with pinned source checksums. New Forever drop sources still require verification.
+
 ## 1.0.31
 
 - Tighten the gap between dagger and loot quest icons to six screen pixels, accounting for transparent artwork padding and nameplate scaling.
