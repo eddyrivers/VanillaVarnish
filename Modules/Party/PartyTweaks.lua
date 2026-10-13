@@ -16,6 +16,10 @@ local debuffColors = {
 local states, lastError = {}, nil
 local driver = CreateFrame("Frame")
 local ready, elapsed, auraElapsed = false, 0, 0
+local refreshQueued = false
+local colorRecords = setmetatable({}, {__mode="k"})
+local desaturationRecords = setmetatable({}, {__mode="k"})
+local debuffHooks = setmetatable({}, {__mode="k"})
 
 local function feature(key)
     return VV.IsModuleEnabled("party") and VV.db.party[key]
@@ -203,10 +207,15 @@ local function restoreColor(state)
     if not state.tint then return end
     if InCombatLockdown() then return end
     local tint = state.tint
-    if tint.texture and tint.desaturation then
-        attempt(tint.texture.SetDesaturated, tint.texture, unpack(tint.desaturation))
+    tint.setting = true
+    local desaturation = tint.desaturation
+    if tint.texture and desaturation then
+        desaturation.setting = true
+        attempt(tint.texture.SetDesaturated, tint.texture, unpack(desaturation.value))
+        desaturation.setting = nil
     end
     if tint.color then attempt(tint.bar.SetStatusBarColor, tint.bar, unpack(tint.color)) end
+    tint.setting = nil
     state.tint = nil
     -- Native UpdateMember also rebinds units and rewrites health update state.
     -- Never run that routine from a cosmetic toggle, even via securecallfunction.
@@ -233,16 +242,45 @@ local function colorHealth(state)
     if bar and color then
         -- Do not read/compare health, percentages, or Blizzard's secret colors.
         local texture = bar:GetStatusBarTexture()
+        if state.tint and (state.tint.bar ~= bar or state.tint.texture ~= texture) then
+            restoreColor(state)
+            if state.tint then return end -- Restoration waits for combat to end.
+        end
         if not state.tint then
             -- Store display values without comparisons/arithmetic. Widget
             -- setters can consume secret color channels when restoring them.
-            state.tint = { bar = bar, texture = texture }
-            if bar.GetStatusBarColor then state.tint.color = { bar:GetStatusBarColor() } end
+            local tint = colorRecords[bar]
+            if not tint then
+                tint = {bar=bar}
+                colorRecords[bar] = tint
+                hooksecurefunc(bar, "SetStatusBarColor", function(_, ...)
+                    if not tint.setting then tint.color = {...} end
+                end)
+            end
+            tint.color = bar.GetStatusBarColor and {bar:GetStatusBarColor()} or nil
+            tint.texture, tint.desaturation = texture, nil
+            state.tint = tint
             -- A wrapper records presence without branching on a secret boolean.
-            if texture and texture.IsDesaturated then state.tint.desaturation = { texture:IsDesaturated() } end
+            if texture and texture.IsDesaturated then
+                local record = desaturationRecords[texture]
+                if not record then
+                    record = {}
+                    desaturationRecords[texture] = record
+                    hooksecurefunc(texture, "SetDesaturated", function(_, ...)
+                        if not record.setting then record.value = {...} end
+                    end)
+                end
+                record.value = {texture:IsDesaturated()}
+                tint.desaturation = record
+            end
         end
+        local tint = state.tint
+        tint.setting = true
+        if tint.desaturation then tint.desaturation.setting = true end
         if texture then attempt(texture.SetDesaturated, texture, true) end
         attempt(bar.SetStatusBarColor, bar, color.r, color.g, color.b)
+        if tint.desaturation then tint.desaturation.setting = nil end
+        tint.setting = nil
     end
 end
 
@@ -501,6 +539,25 @@ local function updateDebuffs(state)
                     original.color = {icon.DebuffBorder:GetVertexColor()}
                 end
                 state.debuffStyles[icon] = original
+                if not debuffHooks[icon] then
+                    debuffHooks[icon] = true
+                    icon:HookScript("OnHide", function()
+                        local saved = state.debuffStyles and state.debuffStyles[icon]
+                        if not saved then return end
+                        -- OnHide also runs when the parent disappears. Restore
+                        -- the entire decoration here; the pool's resetter then
+                        -- clears anchors before another aura acquires the frame.
+                        attempt(icon.SetSize, icon, saved.width, saved.height)
+                        attempt(function()
+                            icon:ClearAllPoints()
+                            for _, point in ipairs(saved.points) do icon:SetPoint(unpack(point)) end
+                        end)
+                        if saved.color and icon.DebuffBorder then
+                            attempt(icon.DebuffBorder.SetVertexColor, icon.DebuffBorder, unpack(saved.color))
+                        end
+                        state.debuffStyles[icon] = nil
+                    end)
+                end
             end
             icon:SetSize(original.width * (color and 2 or 1), original.height * (color and 2 or 1))
             if previous then
@@ -570,6 +627,15 @@ local function refresh()
     end
 end
 
+local function queueRefresh()
+    if refreshQueued then return end
+    refreshQueued = true
+    C_Timer.After(0, function()
+        refreshQueued = false
+        refresh()
+    end)
+end
+
 for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "GROUP_ROSTER_UPDATE",
     "PLAYER_REGEN_ENABLED", "UNIT_AURA", "UNIT_CONNECTION", "UNIT_PET", "CVAR_UPDATE", "EDIT_MODE_LAYOUTS_UPDATED" }) do
     driver:RegisterEvent(event)
@@ -582,16 +648,20 @@ driver:SetScript("OnEvent", function(_, event, unit)
         if secret(unit) then
             -- Refresh known units without inspecting the restricted event token.
             for _, state in pairs(states) do if state.row then updateBuffs(state); updateDebuffs(state); updateRange(state) end end
-            C_Timer.After(0, refresh)
+            queueRefresh()
             return
         end
+        local relevant = false
         for _, state in pairs(states) do
-            if state.row and memberUnit(state.member) == unit then updateBuffs(state); updateDebuffs(state); updateRange(state) end
+            if state.row and memberUnit(state.member) == unit then
+                relevant = true
+                updateBuffs(state); updateDebuffs(state); updateRange(state)
+            end
         end
-        C_Timer.After(0, refresh)
+        if relevant then queueRefresh() end
     else
         -- Run after Blizzard has processed this event and assigned pooled units.
-        C_Timer.After(0, refresh)
+        queueRefresh()
     end
 end)
 driver:SetScript("OnUpdate", function(_, delta)

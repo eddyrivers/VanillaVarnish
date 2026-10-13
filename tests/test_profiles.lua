@@ -94,4 +94,21 @@ ui.name:SetText("Alpha"); ui.name.scripts.OnTextChanged()
 check(ui.save:GetText() == "Update profile", "Existing names visibly identify the update action")
 vv.profileStore.Bad = {version=1, settings={modules={}}}
 check(not vv.LoadProfile("Bad") and vv.db.profileName == "New design", "Malformed profiles cannot partially replace settings")
+local malformed = vv.Copy(vv.profileStore["New design"])
+malformed.settings.nameplates = 7
+vv.profileStore.Broken = malformed
+vv.db.profileName = "Broken"
+local ok, modified = pcall(vv.ProfileModified)
+check(ok and modified, "Malformed saved sections cannot break profile status")
+vv.db.profileName = "New design"
+malformed.settings.nameplates = vv.Copy(vv.db.nameplates)
+malformed.settings.nameplates.swingTimers = "broken"
+local before = vv.Copy(vv.db)
+check(not vv.LoadProfile("Broken") and vv.db.profileName == before.profileName
+    and ns.db.width == before.nameplates.swingTimers.width,
+    "Malformed nested profiles are rejected before changing active settings")
+ns.tweaksDB.damage, ns.tweaksDB.friendly = {}, 123
+ns.InitializeTweaks()
+check(ns.tweaksDB.damage == nil and ns.tweaksDB.friendly == nil,
+    "Invalid saved range spells are cleared before settings or range APIs use them")
 VV_PROFILE_CHECKS = checks

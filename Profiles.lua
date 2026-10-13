@@ -7,6 +7,28 @@ local fields = {
     tooltips = {"followMouse", "offsetX", "offsetY", "unitColors", "pauseInCombat"},
 }
 
+local function validSettings(settings)
+    if type(settings) ~= "table" or type(settings.modules) ~= "table" then return false end
+    for section in pairs(fields) do
+        if type(settings[section]) ~= "table" then return false end
+    end
+    local plates = settings.nameplates
+    for _, key in ipairs({"swingTimers", "comboPoints"}) do
+        if plates[key] ~= nil and type(plates[key]) ~= "table" then return false end
+    end
+    for _, key in ipairs({"damage", "friendly"}) do
+        if plates[key] ~= nil and type(plates[key]) ~= "string" then return false end
+    end
+    local bars = plates.swingTimers and plates.swingTimers.bars
+    if bars ~= nil then
+        if type(bars) ~= "table" then return false end
+        for _, key in ipairs({"main", "offhand", "ranged"}) do
+            if bars[key] ~= nil and type(bars[key]) ~= "table" then return false end
+        end
+    end
+    return true
+end
+
 function VV.InitProfiles()
     if type(VanillaVarnishProfilesDB) ~= "table" then VanillaVarnishProfilesDB = {} end
     if type(VanillaVarnishProfilesDB.profiles) ~= "table" then VanillaVarnishProfilesDB.profiles = {} end
@@ -35,7 +57,7 @@ function VV.ProfileNames()
     VV.InitProfiles()
     local names = {}
     for name, record in pairs(VV.profileStore) do
-        if VV.ProfileName(name) and type(record) == "table" and type(record.settings) == "table" then
+        if VV.ProfileName(name) and type(record) == "table" and record.version == 1 and validSettings(record.settings) then
             names[#names + 1] = name
         end
     end
@@ -66,7 +88,7 @@ end
 function VV.ProfileModified()
     local name = VV.FindProfile(VV.db.profileName)
     local record = name and VV.profileStore[name]
-    if type(record) ~= "table" or type(record.settings) ~= "table" then return true end
+    if type(record) ~= "table" or record.version ~= 1 or not validSettings(record.settings) then return true end
     local saved = VV.Copy(record.settings)
     -- Profiles saved before row layouts implicitly use the stacked layout.
     local swings = saved.nameplates and saved.nameplates.swingTimers
@@ -103,10 +125,7 @@ local function replace(destination, source)
 end
 
 local function apply(settings, name, preset)
-    if type(settings.modules) ~= "table" then return false, "That profile has invalid settings." end
-    for section in pairs(fields) do
-        if type(settings[section]) ~= "table" then return false, "That profile has invalid settings." end
-    end
+    if not validSettings(settings) then return false, "That profile has invalid settings." end
     local collapsed = VV.db.questTracker.collapsed
     replace(VV.db.modules, settings.modules)
     for section in pairs(fields) do replace(VV.db[section], settings[section]) end

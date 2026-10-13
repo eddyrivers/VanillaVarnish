@@ -21,6 +21,16 @@ For party range fading, cross the friendly spell's range boundary, clear the spe
 
 For party buff priority, show more than eight buffs, eat and drink, and verify recovery effects appear before player buffs with correct tooltips in both rows. For profiles, save a name, change settings, load the saved snapshot, and log into a second character. Check that designs transfer, local changes do not overwrite snapshots, quest folds remain personal, and loading is disabled during combat.
 
+## Review regression checklist
+
+After `/reload` on WoW Forever 1.60.x / Interface 16001:
+
+- **Quest icons and range fading:** choose a damage spell, cross its range boundary, and move quest enemies offscreen and back. Check that loot/kill icons and opacity follow each enemy without lingering on a different unit. Complete or abandon a quest, toggle quest icons off/on, and repeat during combat.
+- **Party colors:** test portrait and raid-style frames, native color changes from disconnects or frame reuse, and class-color toggles. Turn colors off during combat and verify the current native appearance returns after combat ends.
+- **Party auras:** apply/remove buffs and dispellable debuffs repeatedly, reorder or replace party members, and hide/show party frames. Check doubled dispellable icons, spacing, normal sizing after reuse, buff hover tooltips, targeting, and click-casting. Toggle buffs off/on in and out of combat.
+- **Swing timers:** check idle bars in Always mode, then main-hand, off-hand, and ranged swings in stacked and row layouts. Change colors, gradients, sparks, and sizes while idle; clear/reselect the target and reopen both preview pages. Timers should restart cleanly and redraw immediately.
+- **Profiles:** save a design, change it, reload the profile, and apply a preset. Verify settings/status, range spell fields, personal quest folds, and transfer to another character. Loading remains unavailable during combat.
+
 ## Publish a release
 
 GitHub Actions tests and builds pushes to `main`, pull requests, and version tags. Only a pushed version tag publishes to [CurseForge](https://www.curseforge.com/wow/addons/vanilla-varnish). Manual workflow runs validate and package without publishing.

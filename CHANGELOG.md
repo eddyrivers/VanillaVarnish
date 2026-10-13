@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.30
+
+- Keep quest icons and range fading attached to the correct unit when nameplate frames are recycled. Skip forbidden frames and safely handle restricted quest and tooltip records.
+- Stop scanning quest data when quest icons are disabled or no nameplates are active. Reuse unchanged swing-bar artwork while timers are idle.
+- Restore the latest native party health colors when class colors are disabled, and clear debuff sizing and placement before aura frames are reused.
+- Coalesce party refresh requests and ignore aura events for unrelated units while keeping party buff updates immediate.
+- Reject malformed profile sections before loading, keep profile status usable with damaged records, and clear invalid saved range spells.
+
 ## 1.0.29
 
 - Add a dedicated **Profiles & Presets** page, linked from the main menu and available through `/vv profiles` or `/vv presets`. Save your own designs and load account-wide profiles from one place.

@@ -32,7 +32,18 @@ function Widget:RegisterEvent(event) self.events = self.events or {}; self.event
 function Widget:IsShown() return not self.hidden end
 function Widget:IsVisible() return not self.hidden and (not self.parent or self.parent:IsVisible()) end
 function Widget:Show() self.hidden = false end
-function Widget:Hide() self.hidden = true end
+function Widget:Hide()
+    local changed = not self.hidden
+    self.hidden = true
+    if changed and self.scripts.OnHide then self.scripts.OnHide(self) end
+end
+function Widget:HookScript(name, fn)
+    local original = self.scripts[name]
+    self.scripts[name] = function(...)
+        if original then original(...) end
+        fn(...)
+    end
+end
 function Widget:SetTexture(value) self.textureValue = value end
 function Widget:SetText(value) self.text = value end
 function Widget:Clear() self.cooldownValue, self.durationObject = nil, nil end

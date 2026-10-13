@@ -11,6 +11,7 @@ local neededDrops = {}
 local dropDatabase
 local questDirty = true
 local elapsed = 0
+local RemoveUnit
 local textures = "Interface\\AddOns\\VanillaVarnish\\Media\\"
 
 -- Forever can restrict unit data in combat. Unknown results never cause fading.
@@ -23,6 +24,27 @@ local function SafeCall(fn, ...)
     if not fn then return nil end
     local ok, value = pcall(fn, ...)
     if ok then return Known(value) end
+end
+
+local function RecordField(record, key) return record[key] end
+
+local function Field(record, key)
+    if type(record) ~= "table" then return end
+    local ok, value = pcall(RecordField, record, key)
+    if ok and not (issecretvalue and issecretvalue(value)) then return value, true end
+end
+
+local function Records(list)
+    if type(list) ~= "table" then return {} end
+    -- Restricted nested records/lists can refuse indexing even when the
+    -- top-level API succeeded. Unknown quest data contributes no markers.
+    return SafeCall(function()
+        local result = {}
+        for _, record in ipairs(list) do
+            if type(Known(record)) == "table" then result[#result + 1] = record end
+        end
+        return result
+    end) or {}
 end
 
 local function Print(message)
@@ -41,11 +63,12 @@ local function RefreshObjectives()
     dropDatabase = ns.QuestDropDatabase and ns.QuestDropDatabase()
     local function AddDrops(questID, questObjectives, complete)
         if not ns.QuestDropSources then return end
-        local drops = ns.QuestDropSources(questID, questObjectives, complete, dropDatabase)
+        local drops = SafeCall(ns.QuestDropSources, questID, questObjectives, complete, dropDatabase) or {}
         for npcID in pairs(drops) do neededDrops[npcID] = true end
     end
     local function AddObjective(text, kind, finished)
-        if text and not finished then
+        text, kind, finished = Known(text), Known(kind), Known(finished)
+        if type(text) == "string" and not finished then
             local marker = kind == "item" and "loot" or kind == "monster" and "kill" or "other"
             objectives[Normalize(text)] = marker
             local subject = Normalize(text):gsub("%d+%s*/%s*%d+", ""):gsub("%d+%%", "")
@@ -54,16 +77,18 @@ local function RefreshObjectives()
         end
     end
     if C_QuestLog and C_QuestLog.GetInfo and C_QuestLog.GetQuestObjectives then
-        for index = 1, C_QuestLog.GetNumQuestLogEntries() do
-            local info = C_QuestLog.GetInfo(index)
-            if info and not info.isHeader then
-                local questID = Known(info.questID)
-                if questID then activeQuests[questID] = true end
-                local questObjectives = C_QuestLog.GetQuestObjectives(info.questID) or {}
+        local count = SafeCall(C_QuestLog.GetNumQuestLogEntries)
+        for index = 1, type(count) == "number" and count or 0 do
+            local info = SafeCall(C_QuestLog.GetInfo, index)
+            local questID = Field(info, "questID")
+            if type(questID) == "number" and questID > 0 and Field(info, "isHeader") ~= true then
+                activeQuests[questID] = true
+                local questObjectives = Records(SafeCall(C_QuestLog.GetQuestObjectives, questID))
                 for _, objective in ipairs(questObjectives) do
-                    AddObjective(objective.text, objective.type, objective.finished)
+                    local finished, readable = Field(objective, "finished")
+                    if readable then AddObjective(Field(objective, "text"), Field(objective, "type"), finished) end
                 end
-                AddDrops(questID, questObjectives, Known(info.isComplete))
+                AddDrops(questID, questObjectives, Field(info, "isComplete"))
             end
         end
         return
@@ -124,17 +149,18 @@ local function NativeKinds(unit)
     local kinds = {}
     if not (C_TooltipInfo and C_TooltipInfo.GetUnit) then return kinds end
     local info = SafeCall(C_TooltipInfo.GetUnit, unit)
-    if not info or not info.lines then return kinds end
+    local lines = Field(info, "lines")
+    if type(lines) ~= "table" then return kinds end
     local lineTypes = Enum and Enum.TooltipDataLineType
     local ownObjectives = true
     local playerName = SafeCall(UnitName, "player")
-    for _, line in ipairs(info.lines) do
-        local lineType = Known(line.type)
-        local text = Known(line.leftText)
+    for _, line in ipairs(Records(lines)) do
+        local lineType = Field(line, "type")
+        local text = Field(line, "leftText")
         if lineTypes and lineType == lineTypes.QuestTitle then
             ownObjectives = true
         elseif lineTypes and lineType == lineTypes.QuestPlayer then
-            ownObjectives = text == playerName
+            ownObjectives = type(text) == "string" and type(playerName) == "string" and text == playerName
         elseif ownObjectives and type(text) == "string" then
             local kind = objectives[Normalize(text)]
             if not kind then
@@ -193,8 +219,9 @@ local function SetFade(state, faded)
 end
 
 local function StateFor(plate)
+    if SafeCall(plate.IsForbidden, plate) ~= false then return nil end
     local frame = plate.UnitFrame
-    if not frame then return nil end
+    if not frame or SafeCall(frame.IsForbidden, frame) ~= false then return nil end
     local state = frames[frame]
     if not state then
         state = { frame = frame, baseAlpha = Known(frame:GetAlpha()) or 1, markers = {} }
@@ -278,17 +305,19 @@ local function UpdateRange(state)
 end
 
 local function AddUnit(unit)
-    if not VV.IsModuleEnabled("nameplates") then return end
-    local plate = C_NamePlate.GetNamePlateForUnit(unit)
+    if type(unit) ~= "string" or not VV.IsModuleEnabled("nameplates") then return end
+    local plate = SafeCall(C_NamePlate.GetNamePlateForUnit, unit)
     local state = plate and StateFor(plate)
+    if active[unit] and active[unit] ~= state then RemoveUnit(unit) end
     if not state then return end
+    if state.unit and state.unit ~= unit then RemoveUnit(state.unit) end
     state.unit = unit
     active[unit] = state
     UpdateMarkers(state)
     UpdateRange(state)
 end
 
-local function RemoveUnit(unit)
+RemoveUnit = function(unit)
     local state = active[unit]
     if not state then return end
     state.unit = nil
@@ -469,14 +498,18 @@ function ns.InitializeTweaks()
     local opacity = Known(db.rangeOpacity)
     if type(opacity) ~= "number" or opacity ~= opacity or opacity < 0 or opacity > 1 then db.rangeOpacity = 0.5 end
     ns.tweaksDB = db
+    for _, key in ipairs({"damage", "friendly"}) do
+        if type(db[key]) ~= "string" or db[key] == "" then db[key] = nil end
+    end
 end
 
 local events = CreateFrame("Frame")
 for _, event in ipairs({"ADDON_LOADED", "PLAYER_ENTERING_WORLD", "NAME_PLATE_UNIT_ADDED",
-    "NAME_PLATE_UNIT_REMOVED", "QUEST_LOG_UPDATE", "BAG_UPDATE_DELAYED", "ITEM_DATA_LOAD_RESULT", "SPELLS_CHANGED", "UNIT_FACTION"}) do
+    "NAME_PLATE_UNIT_REMOVED", "PLAYER_REGEN_ENABLED", "QUEST_LOG_UPDATE", "BAG_UPDATE_DELAYED", "ITEM_DATA_LOAD_RESULT", "SPELLS_CHANGED", "UNIT_FACTION"}) do
     events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", function(_, event, arg)
+    arg = Known(arg)
     if event == "ADDON_LOADED" then
         if arg ~= ADDON then return end
         ns.InitializeTweaks()
@@ -498,12 +531,12 @@ end)
 
 local questElapsed = 0
 events:SetScript("OnUpdate", function(_, delta)
-    if not db or not VV.IsModuleEnabled("nameplates") then return end
+    if not db or not VV.IsModuleEnabled("nameplates") or not next(active) then return end
     elapsed = elapsed + delta
     questElapsed = questElapsed + delta
     if elapsed < 0.2 then return end
     elapsed = 0
-    local updateQuests = questDirty or questElapsed >= 1
+    local updateQuests = db.markers and (questDirty or questElapsed >= 1)
     if updateQuests then
         if questDirty or (ns.QuestDropDatabase and ns.QuestDropDatabase() ~= dropDatabase) then RefreshObjectives() end
         questDirty = false

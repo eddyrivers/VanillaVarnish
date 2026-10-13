@@ -46,7 +46,9 @@ local function NewBar(parent, index)
         outline:SetTextColor(0, 0, 0, 1)
         bar.labelOutline[i] = outline
     end
-    bar:SetScript("OnHide", function() bar.sparkAnim:Stop(); bar.sparkFrame:Hide() end)
+    bar:SetScript("OnHide", function()
+        bar.sparkAnim:Stop(); bar.sparkFrame:Hide(); bar.renderValue = nil
+    end)
     bar:Hide()
     return bar
 end
@@ -63,7 +65,9 @@ function ns.CreateStack(parent)
     stack.bars = {}
     for index, key in ipairs(ns.order) do stack.bars[key] = NewBar(stack, index) end
     stack:SetScript("OnHide", function()
-        for _, bar in pairs(stack.bars) do bar.sparkAnim:Stop(); bar.sparkFrame:Hide() end
+        for _, bar in pairs(stack.bars) do
+            bar.sparkAnim:Stop(); bar.sparkFrame:Hide(); bar.renderValue = nil
+        end
     end)
     stack:Hide()
     return stack
@@ -129,6 +133,7 @@ function ns.StyleStack(stack)
     local offsets = {{-1,-1},{0,-1},{1,-1},{-1,0},{1,0},{-1,1},{0,1},{1,1}}
     for index, key in ipairs(ns.order) do
         local bar, config = stack.bars[key], db.bars[key]
+        bar.renderValue = nil -- Appearance changes invalidate unchanged progress.
         local width = stack.barWidth
         if stack.layout == "row" and index == 3 then width = stack.totalWidth - 2 * (width + stack.gap) end
         bar:SetSize(width, stack.barHeight)
@@ -307,6 +312,8 @@ function ns.PulseStrength(value)
     return 0.7 + (value - 0.9) * 3
 end
 local function RenderBar(bar, key, value)
+    if bar.renderValue == value then return end
+    bar.renderValue = value
     local config, db = ns.db.bars[key], ns.db
     local width = bar.innerWidth * value
     bar.fill:SetShown(value > 0)
