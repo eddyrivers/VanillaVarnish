@@ -14,7 +14,7 @@ Check(frame.unit == nil and cast.unit == nil, 'Sample must never bind a live uni
 Check(next(frame.events) == nil and next(cast.events) == nil and not frame.scripts.OnUpdate, 'Detach unit events and updates')
 Check(plate.SetHitTestPoints ~= nil, 'Native layout can set hit-test points safely on the script frame')
 Check(stack.parent == plate and stack.anchor == frame.HealthBarsContainer, 'Native health container anchors scaled swings')
-Check(Near(plate:GetEffectiveScale(), 1), 'Use the game options preview scale without target enlargement')
+Check(Near(plate:GetEffectiveScale(), 1.2), 'Use configured target enlargement when no live target is visible')
 Check(health.value == 78 and not health.isTarget and frame.name.text == 'Training Dummy', 'Synthetic native health and name')
 Check(health.RightText.text == '78' and health.LeftText.text == '78%', 'Native health display uses selected info settings')
 Check(cast.casting and cast:IsShown() and cast.Text.text == 'Fireball' and cast.CastTargetNameText.text == 'You', 'Native sample includes spell and target')
@@ -76,13 +76,30 @@ Mock.plates.target = target
 target:SetScale(1.44)
 plate.menuParent:SetScale(0.8)
 Mock.Tick(0.11)
-Check(Near(plate:GetEffectiveScale(), plate.menuParent:GetEffectiveScale()) and Near(stack:GetEffectiveScale(), UIParent:GetEffectiveScale()), 'Nameplate inherits the options canvas scale while timers retain live UI scale')
+Check(Near(plate:GetEffectiveScale(), target:GetEffectiveScale()) and Near(stack:GetEffectiveScale(), UIParent:GetEffectiveScale()), 'Nameplate matches the live target scale while timers retain live UI scale')
 target:SetScale(1.1)
 ns.RefreshOptions()
+Check(Near(plate:GetEffectiveScale(), target:GetEffectiveScale()), 'Control refresh follows changes to live target scale')
 Check(Near(stack:GetEffectiveScale(), UIParent:GetEffectiveScale()), 'Control refresh preserves timer scale through native target scaling')
 target:Hide()
 Mock.Tick(0.11)
-Check(Near(plate:GetEffectiveScale(), plate.menuParent:GetEffectiveScale()), 'Hiding the target does not change the options preview scale')
+Check(Near(plate:GetEffectiveScale(), 1.2 * UIParent:GetEffectiveScale()), 'Hidden targets use configured target enlargement independent of canvas scale')
+local readScale = target.GetEffectiveScale
+target:Show()
+target.forbidden = true
+target.GetEffectiveScale = function() error('Forbidden target geometry must not be read') end
+Mock.Tick(0.11)
+Check(Near(plate:GetEffectiveScale(), 1.2 * UIParent:GetEffectiveScale()), 'Forbidden target uses configured scale without reading its geometry')
+target.forbidden = false
+target.GetEffectiveScale = function() return {secret=true} end
+Mock.Tick(0.11)
+Check(Near(plate:GetEffectiveScale(), 1.2 * UIParent:GetEffectiveScale()), 'Restricted target scale uses the safe configured fallback')
+Mock.cvars.nameplateSelectedScale = '0'
+Mock.Tick(0.11)
+Check(Near(plate:GetEffectiveScale(), UIParent:GetEffectiveScale()), 'Invalid configured enlargement never produces a zero-scale preview')
+Mock.cvars.nameplateSelectedScale = '1.2'
+target.GetEffectiveScale = readScale
+target:Hide()
 
 Mock.cvars.nameplateCastBarDisplay = '0'
 Mock.Tick(0.11)

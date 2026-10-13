@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.24
+
+- Match preview nameplate scale to the live target so swing timers and combo points keep their in-game size and horizontal alignment. Use configured target enlargement when no readable target is visible; preserve native aura and display options.
+- Add a GitHub bug-report template and keep blank reports available.
+
 ## 1.0.23
 
 - Make swing timer and combo-point previews follow the game's Nameplates options, including native buffs, debuffs, crowd control, aura scale and spacing, health text, and cast display choices.

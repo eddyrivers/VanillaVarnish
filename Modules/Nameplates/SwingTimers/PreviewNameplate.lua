@@ -281,9 +281,19 @@ local function CreateNativePreview(plate)
 end
 
 local function UpdatePreviewScale(plate)
-    -- Match the options preview's UI scale, independent of target enlargement
-    -- and world nameplate animations. Native size settings supply the geometry.
-    plate:SetScale(1)
+    -- Native target plates enlarge independently of nameplateSize. Timers stay
+    -- at UI scale, so the sample must use the target's screen scale too: using
+    -- the settings canvas scale changes their size and left-edge relationship.
+    local target = SafeCall(C_NamePlate and C_NamePlate.GetNamePlateForUnit, "target")
+    local scale
+    if target and SafeCall(target.IsForbidden, target) == false and SafeCall(target.IsShown, target) == true then
+        scale = ns.Number(SafeCall(target.GetEffectiveScale, target), 0.01, 100)
+    end
+    local uiScale = ns.Number(SafeCall(UIParent.GetEffectiveScale, UIParent), 0.01, 100) or 1
+    local selectedScale = ns.Number(CVarNumber("nameplateSelectedScale"), 0.01, 100) or 1
+    scale = scale or uiScale * selectedScale
+    local menuScale = ns.Number(SafeCall(plate.menuParent.GetEffectiveScale, plate.menuParent), 0.01, 100) or uiScale
+    plate:SetScale(scale / menuScale)
 end
 
 local previewCVars = {"nameplateCastBarDisplay", "nameplateInfoDisplay", "nameplateSize", "nameplateStyle",

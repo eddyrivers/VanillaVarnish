@@ -21,7 +21,7 @@ Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. Active settings 
 
 **Nameplates:** choose damage and friendly range spells; unreadable range results keep normal opacity. Questie is optional and can supply extra quest information. Swing timers and combo points share a live preview. Positive X moves right; positive Y moves down. Threat colors turn fighting enemies blue when you hold aggro as a tank, or when you avoid aggro as a damage dealer or healer. Other situations keep the game's colors.
 
-Both feature previews follow **Settings > Nameplates**, including style, size, health text, cast details, buffs, debuffs, crowd control, aura size, and spacing. After viewing the game's Nameplates preview, they retain its last enemy/friendly sample type and icons for the session. Before that, they show an enemy NPC sample. Preview frames stay separate from live units; game options update the preview without a reload.
+Both feature previews follow **Settings > Nameplates**, including style, size, health text, cast details, buffs, debuffs, crowd control, aura size, and spacing. After viewing the game's Nameplates preview, they retain its last enemy/friendly sample type and icons for the session. Before that, they show an enemy NPC sample. The preview matches a visible target's scale so timer widths and horizontal alignment reflect the in-game layout; without a target, it uses the configured target enlargement. Preview frames stay separate from live units; game options update the preview without a reload.
 
 **Quest tracker:** click a zone heading to fold it; right-click to track or untrack its quests. Collapsing a zone keeps its quests tracked. Completed sorting groups quests marked ready for turn-in (including click-to-complete quests); quests with remaining travel or delivery instructions stay in level order. Move and resize the tracker in Edit Mode. Combat layout changes apply after combat ends.
 
@@ -80,6 +80,6 @@ If you used NameplateTweaks, QuestTrackerOrganizer, PartyTweaks, or NameplateSwi
 
 ## Development and support
 
-See [CONTRIBUTING.md](https://github.com/eddyrivers/VanillaVarnish/blob/main/CONTRIBUTING.md) for tests and publishing. Report bugs through [GitHub Issues](https://github.com/eddyrivers/VanillaVarnish/issues), including your client build, module, reproduction steps, and any Lua error.
+See [CONTRIBUTING.md](https://github.com/eddyrivers/VanillaVarnish/blob/main/CONTRIBUTING.md) for tests and publishing. Anyone with a GitHub account can [submit a bug report](https://github.com/eddyrivers/VanillaVarnish/issues/new/choose). Include your addon version, client build, module, reproduction steps, and any Lua error or screenshot. The bug-report template helps organize the details; blank reports are welcome too.
 
 Code is licensed under [MIT](LICENSE). Montserrat is bundled under the [SIL Open Font License](Media/Montserrat-OFL.txt); see the [upstream font](https://github.com/JulietaUla/Montserrat).
