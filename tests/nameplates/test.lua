@@ -11,7 +11,7 @@ Mock.Event("ADDON_LOADED", "VanillaVarnish")
 Mock.Event("PLAYER_LOGIN")
 Check(SLASH_VANILLAVARNISH1 == "/vv" and SLASH_NAMEPLATETWEAKS1 == nil and SLASH_NAMEPLATESWINGTIMERS1 == nil
     and SLASH_NAMEPLATESWINGTIMERS2 == nil and SlashCmdList.NAMEPLATESWINGTIMERS == nil, "Only the unified slash handler is registered")
-Check(ns.db.width == 200 and ns.db.height == 10 and ns.db.y == 46 and ns.db.x == 20 and ns.db.gap == 2 and ns.db.effectAlpha == 0.35)
+Check(ns.db.width == 200 and ns.db.height == 10 and ns.db.y == 37 and ns.db.x == 20 and ns.db.gap == 2 and ns.db.effectAlpha == 0.35)
 Check(ns.db.visibility == "swing", "While swinging is the default visibility")
 Cmd("show combat")
 Check(ns.db.borderRadius == 5 and ns.db.bars.main.color == "red" and ns.db.bars.offhand.color == "red"
@@ -28,7 +28,7 @@ Mock.Event("PLAYER_REGEN_DISABLED")
 Check(stack:IsShown() and stack.bars.main:IsShown() and stack.bars.ranged:IsShown())
 Check(not stack.bars.offhand:IsShown(), "No off-hand weapon")
 Check(stack.bars.main.offset == 0 and stack.bars.ranged.offset == 12, "Collapse missing OH")
-Check(stack.height == 22 and stack.points[1][5] == -46)
+Check(stack.height == 22 and stack.points[1][5] == -37)
 Check(stack.anchor == target.UnitFrame.HealthBarsContainer)
 Check(stack.bars.main.fill.alpha == 0)
 Check(stack.bars.main.fillRows[3][1].gradient[2].a == 0.4 and stack.bars.main.fillRows[3][1].gradient[3].a == 0.85)
@@ -327,7 +327,7 @@ Cmd("color main coral 0.16")
 ns.InitDB()
 Check(ns.db.bars.main.color == "coral" and ns.db.bars.main.alpha == 0.16, "Preserve saved configuration")
 Cmd("reset")
-Check(ns.db.visibility == "swing" and ns.db.y == 46 and not ns.preview)
+Check(ns.db.visibility == "swing" and ns.db.y == 37 and not ns.preview)
 Check(ns.db.bars.main.color == "red" and ns.db.bars.ranged.enabled)
 
 -- Border, padding, and corner radius retain physical pixel size at different
@@ -483,9 +483,9 @@ Check(ns.db.bars.main.effect == "pulse", "Removed saved effects migrate to pulse
 
 -- Each nameplate feature has its own switch and settings page.
 Cmd("reset")
-Check(#Mock.categories == 7 and Mock.categories[1].name == "VanillaVarnish" and Mock.categories[3].name == "Nameplates")
+Check(#Mock.categories == 8 and Mock.categories[1].name == "VanillaVarnish" and Mock.categories[4].name == "Nameplates")
 for i, name in ipairs({"Range check", "Quest icons", "Swing timers", "Combo points"}) do
-    Check(Mock.categories[i + 3].name == name and Mock.categories[i + 3].parent == ns.rootCategory)
+    Check(Mock.categories[i + 4].name == name and Mock.categories[i + 4].parent == ns.rootCategory)
 end
 local nt = VV_TEST_NS.Nameplates.HandleSlash
 nt(""); Check(ns.featurePanels.main:IsShown())
@@ -880,7 +880,7 @@ Check(ns.db.bars.main.color == "red" and ns.db.bars.offhand.color == "steelblue"
     "Update the intermediate crimson default while preserving a customized off-hand color")
 VV_TEST_NS.db.nameplates.swingTimers = {appearanceVersion = 6, y = 15, visibility = "combat"}
 ns.InitDB()
-Check(ns.db.y == 46 and ns.db.visibility == "swing" and ns.db.appearanceVersion == 9,
+Check(ns.db.y == 37 and ns.db.visibility == "swing" and ns.db.appearanceVersion == 9,
     "Migrate the prior vertical offset and visibility defaults")
 VV_TEST_NS.db.nameplates.swingTimers = {appearanceVersion = 6, y = 21, visibility = "always"}
 ns.InitDB()
@@ -889,7 +889,7 @@ ns.db.y, ns.db.visibility = 15, "combat"; ns.InitDB()
 Check(ns.db.y == 15 and ns.db.visibility == "combat", "Only apply the default migration once")
 VV_TEST_NS.db.nameplates.swingTimers = {appearanceVersion = 7, y = 10, effectAlpha = 0.18, sparkAlpha = 0.65}
 ns.InitDB()
-Check(ns.db.effectAlpha == 0.35 and ns.db.sparkAlpha == 1 and ns.db.y == 46, "Upgrade the prior pulse, spark, and offset defaults")
+Check(ns.db.effectAlpha == 0.35 and ns.db.sparkAlpha == 1 and ns.db.y == 37, "Upgrade the prior pulse, spark, and offset defaults")
 VV_TEST_NS.db.nameplates.swingTimers = {appearanceVersion = 7, effectAlpha = 0.77, sparkAlpha = 0.3}
 ns.InitDB()
 Check(ns.db.effectAlpha == 0.77 and ns.db.sparkAlpha == 0.3, "Preserve customized effect strengths")

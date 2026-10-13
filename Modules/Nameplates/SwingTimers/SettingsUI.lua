@@ -285,6 +285,10 @@ local function BuildPanel()
         function(value) ns.SetValue("visibility", value) end,
         "Show timers all the time, only in combat, or only while a swing is in progress.")
     y = y - 40
+    Dropdown(content, "layout", "Bar layout", y, {{"stack", "Stacked"}, {"row", "Row"}},
+        function() return ns.db.layout end, function(value) ns.SetValue("layout", value) end,
+        "Stack bars vertically or place them in a row. Row divides the full width between three timers; visible timers pack to the left.")
+    y = y - 40
     Check(content, "preview", "Show a test preview in game", y, function() return ns.preview end,
         function(value) ns.preview = value; ns.Changed() end,
         "Show sample swings on your target, or near the center of your screen. Turn off to return to live timers.")
@@ -296,7 +300,7 @@ local function BuildPanel()
     AddControl("enableAll", { button = enable, Refresh = function() end })
     AddControl("disableAll", { button = disable, Refresh = function() end })
     y = y - 40
-    GlobalSlider("width", "Bar width", 1, false, "Set the width of all swing bars.")
+    GlobalSlider("width", "Bar width / row span", 1, false, "Set each stacked bar's width, or the total row span including gaps.")
     GlobalSlider("height", "Bar height", 1, false, "Set the height of all swing bars.")
     GlobalSlider("x", "Horizontal offset", 1, false, "Positive moves right; negative moves left.")
     GlobalSlider("y", "Vertical offset", 1, false, "Move bars down with positive values or up with negative values. At 0 or higher, bars move farther down if needed to clear the cast bar.")

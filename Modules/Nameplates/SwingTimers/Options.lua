@@ -3,7 +3,7 @@ local ns = VV.Nameplates
 
 ns.order = { "main", "offhand", "ranged" }
 ns.defaults = {
-    width = 200, height = 10, x = 20, y = 46, gap = 2,
+    width = 200, height = 10, x = 20, y = 37, gap = 2, layout = "stack",
     visibility = "swing", effectAlpha = 0.35, borderAlpha = 0.3,
     borderColor = "white", gradientLeft = 0.40, gradientRight = 0.85,
     spark = true, sparkAlpha = 1, sparkSize = 12, borderRadius = 5,
@@ -98,6 +98,7 @@ function ns.InitDB()
             and Copy(NameplateSwingTimersDB) or {}
     end
     local db = NameplateTweaksDB.swingTimers
+    if db.layout ~= "row" then db.layout = "stack" end
     -- Move existing installations using the original default to the taller bar.
     local oldVersion = tonumber(db.appearanceVersion) or 0
     if oldVersion < 2 then
@@ -169,8 +170,9 @@ local function Help()
     ns.Print("/vv nameplates swings - open swing timer settings with live preview.")
     ns.Print("/vv nameplates main on   /vv nameplates offhand off   /vv nameplates ranged toggle   /vv nameplates all on")
     ns.Print("/vv nameplates show swing - while swinging (default); other modes: always, combat.")
-    ns.Print("/vv nameplates x 20   /vv nameplates y 46 - positive X moves right; positive Y moves down.")
+    ns.Print("/vv nameplates x 20   /vv nameplates y 37 - positive X moves right; positive Y moves down.")
     ns.Print("/vv nameplates width 200   /vv nameplates height 10   /vv nameplates gap 2")
+    ns.Print("/vv nameplates layout row or stack - row shares the width; visible timers pack left.")
     ns.Print("/vv nameplates color main red - Blizzard hostile red; replace main with offhand, ranged, or all.")
     ns.Print("/vv nameplates color ranged #FFD36B 1 - optional fill opacity, from 0 to 1.")
     ns.Print("/vv nameplates bordercolor white   /vv nameplates borderalpha 0.3")
@@ -222,6 +224,8 @@ function ns.SetValue(key, value)
         if value ~= "combat" and value ~= "always" and value ~= "swing" then return false end
     elseif key == "spark" then
         if type(value) ~= "boolean" then return false end
+    elseif key == "layout" then
+        if value ~= "row" and value ~= "stack" then return false end
     else return false end
     ns.db[key] = value
     ns.Changed()
@@ -335,6 +339,9 @@ function ns.Slash(message)
             for _, name in ipairs(ns.order) do if not ns.SetBarValue(name, field, value) then valid = false end end
         else valid = ns.SetBarValue(key, field, value) end
         if not valid then ns.Print("Invalid label value. Fonts: montserrat, arial, friz, morpheus; size: 6-24; alignment: left, center, right.") end
+        return
+    elseif command == "layout" then
+        if args[3] or not ns.SetValue("layout", args[2]) then ns.Print("Use /vv nameplates layout stack|row.") end
         return
     elseif command == "spark" then
         local mode = args[2] or "toggle"

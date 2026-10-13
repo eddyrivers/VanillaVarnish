@@ -5,7 +5,9 @@ function VV.RefreshProfileStatus()
     local profile = VV.profileControls
     if not profile or not VV.db then return end
     local name = VV.db.profileName
-    profile.status:SetText(name and ("Current profile: " .. name .. (VV.ProfileModified() and " (modified locally)" or ""))
+    local preset = VV.db.presetName
+    profile.status:SetText(preset and ("Current preset: " .. preset .. (VV.PresetModified() and " (modified locally)" or ""))
+        or name and ("Current profile: " .. name .. (VV.ProfileModified() and " (modified locally)" or ""))
         or "Current settings have not been saved as a profile.")
 end
 
@@ -19,6 +21,11 @@ function VV.RefreshOptions()
         profile.save:SetEnabled(VV.ProfileName(profile.name:GetText()) ~= nil)
         profile.save:SetText(VV.FindProfile(profile.name:GetText()) and "Update profile" or "Save profile")
         VV.RefreshProfileStatus()
+    end
+    local preset = VV.presetControls
+    if preset then
+        preset.dropdown:GenerateMenu()
+        preset.apply:SetEnabled(not InCombatLockdown() and VV.GetPreset(VV.selectedPreset) ~= nil)
     end
 end
 
@@ -50,16 +57,50 @@ function VV.RegisterOptions()
             function(value) VV.SetModuleEnabled(key, value) end,
             "Turn this section on or off. Your settings are kept either way.")
     end
-    UI.Label(root, "Profiles", 16, -276, "GameFontNormalLarge")
+    local profilesLink = UI.Button(root, "Profiles & Presets", 180, function() VV.OpenOptions("profiles") end)
+    profilesLink:SetPoint("TOPLEFT", root, "TOPLEFT", 16, -276)
+    VV.profilesLink = profilesLink
+    local profiles = CreateFrame("Frame", nil, UIParent)
+    profiles:Hide()
+    Heading(profiles, "Profiles & Presets", "Start with a built-in design or save your own settings to share across characters.")
+    VV.profilesCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, profiles, "Profiles & Presets")
+    Settings.RegisterAddOnCategory(VV.profilesCategory)
+    VV.profilesPanel = profiles
+    UI.Label(profiles, "Presets", 16, -86, "GameFontNormalLarge")
+    UI.Label(profiles, "Choose preset", 16, -128)
+    VV.selectedPreset = VV.db.presetName or "Default"
+    local presets = CreateFrame("DropdownButton", nil, profiles, "WowStyle1DropdownTemplate")
+    presets:SetSize(240, 24)
+    presets:SetPoint("TOPLEFT", profiles, "TOPLEFT", 136, -122)
+    presets:SetDefaultText("Select a preset")
+    presets:SetupMenu(function(_, menu)
+        for _, presetName in ipairs(VV.PresetNames()) do
+            local name = presetName
+            menu:CreateRadio(name, function() return VV.selectedPreset == name end, function()
+                VV.selectedPreset = name
+                VV.RefreshOptions()
+            end)
+        end
+    end)
+    local applyPreset = UI.Button(profiles, "Apply preset", 116, function()
+        local ok, result = VV.LoadPreset(VV.selectedPreset)
+        if not ok then VV.Print(result) end
+    end)
+    applyPreset:SetPoint("LEFT", presets, "RIGHT", 12, 0)
+    VV.presetControls = {dropdown=presets, apply=applyPreset}
+    local presetHint = UI.Label(profiles, "Applying replaces this character's settings. Save a profile first to keep your current design.\nBuilt-in presets stay available; your saved profiles are kept separately.", 16, -164, "GameFontHighlightSmall")
+    presetHint:SetPoint("TOPRIGHT", profiles, "TOPRIGHT", -16, -164)
+    presetHint:SetJustifyH("LEFT")
+    UI.Label(profiles, "Profiles", 16, -226, "GameFontNormalLarge")
     VV.selectedProfile = VV.selectedProfile or VV.FindProfile(VV.db.profileName)
-    UI.Label(root, "Load profile", 16, -318)
-    local dropdown = CreateFrame("DropdownButton", nil, root, "WowStyle1DropdownTemplate")
+    UI.Label(profiles, "Load profile", 16, -268)
+    local dropdown = CreateFrame("DropdownButton", nil, profiles, "WowStyle1DropdownTemplate")
     dropdown:SetSize(240, 24)
-    dropdown:SetPoint("TOPLEFT", root, "TOPLEFT", 136, -312)
+    dropdown:SetPoint("TOPLEFT", profiles, "TOPLEFT", 136, -262)
     dropdown:SetDefaultText("Select a profile")
-    local nameBox = CreateFrame("EditBox", nil, root, "InputBoxTemplate")
+    local nameBox = CreateFrame("EditBox", nil, profiles, "InputBoxTemplate")
     nameBox:SetSize(240, 28)
-    nameBox:SetPoint("TOPLEFT", root, "TOPLEFT", 136, -354)
+    nameBox:SetPoint("TOPLEFT", profiles, "TOPLEFT", 136, -304)
     nameBox:SetAutoFocus(false)
     nameBox:SetMaxLetters(48)
     nameBox:SetText(VV.selectedProfile or VV.db.profileName or "")
@@ -73,36 +114,37 @@ function VV.RegisterOptions()
             end)
         end
     end)
-    UI.Label(root, "Save as", 16, -362)
+    UI.Label(profiles, "Save as", 16, -312)
     local function save()
         local ok, result = VV.SaveProfile(nameBox:GetText())
         if ok then nameBox:SetText(result); nameBox:ClearFocus() else VV.Print(result) end
         VV.RefreshOptions()
     end
-    local load = UI.Button(root, "Load", 116, function()
+    local load = UI.Button(profiles, "Load", 116, function()
         local ok, result = VV.LoadProfile(VV.selectedProfile)
         if not ok then VV.Print(result) end
     end)
     load:SetPoint("LEFT", dropdown, "RIGHT", 12, 0)
-    local saveButton = UI.Button(root, "Save profile", 116, save)
+    local saveButton = UI.Button(profiles, "Save profile", 116, save)
     saveButton:SetPoint("LEFT", nameBox, "RIGHT", 12, 0)
     nameBox:SetScript("OnTextChanged", VV.RefreshOptions)
     nameBox:SetScript("OnEnterPressed", save)
     nameBox:SetScript("OnEscapePressed", function() nameBox:ClearFocus() end)
-    local status = UI.Label(root, "", 16, -402, "GameFontHighlightSmall")
-    status:SetPoint("TOPRIGHT", root, "TOPRIGHT", -16, -402)
+    local status = UI.Label(profiles, "", 16, -352, "GameFontHighlightSmall")
+    status:SetPoint("TOPRIGHT", profiles, "TOPRIGHT", -16, -352)
     status:SetJustifyH("LEFT")
-    local hint = UI.Label(root, "Profiles are shared across characters on this account. Loading replaces this character's settings.\nSave under a name to keep your design; saving an existing name updates that profile. Load after combat.",
-        16, -442, "GameFontHighlightSmall")
-    hint:SetPoint("TOPRIGHT", root, "TOPRIGHT", -16, -442)
+    local hint = UI.Label(profiles, "Profiles are shared across characters on this account. Loading replaces this character's settings.\nSave under a name to keep your design; saving an existing name updates that profile. Load after combat.",
+        16, -392, "GameFontHighlightSmall")
+    hint:SetPoint("TOPRIGHT", profiles, "TOPRIGHT", -16, -392)
     hint:SetJustifyH("LEFT")
     VV.profileControls = {dropdown=dropdown, name=nameBox, load=load, save=saveButton, status=status}
+    profiles:SetScript("OnShow", VV.RefreshOptions)
     local conflictText = {}
     for _, key in ipairs(VV.moduleOrder) do
         if VV.conflicts[key] then conflictText[#conflictText + 1] = "Disable " .. VV.conflicts[key] .. " and /reload to activate " .. VV.moduleLabels[key] .. "." end
     end
     if VV.swingConflict then conflictText[#conflictText + 1] = "Disable NameplateSwingTimers and /reload to activate bundled swing timers." end
-    UI.Label(root, table.concat(conflictText, "\n"), 16, -510, "GameFontHighlightSmall")
+    UI.Label(root, table.concat(conflictText, "\n"), 16, -326, "GameFontHighlightSmall")
     root:SetScript("OnShow", VV.RefreshOptions)
     VV.optionsPanel = root
 

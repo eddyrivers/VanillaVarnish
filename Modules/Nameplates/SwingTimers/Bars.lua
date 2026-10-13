@@ -114,12 +114,25 @@ function ns.StyleStack(stack)
     stack.pixel = pixel
     stack.barWidth, stack.barHeight = math.max(5 * pixel, Snap(db.width)), math.max(5 * pixel, Snap(db.height))
     stack.gap, stack.xOffset, stack.yOffset = Snap(db.gap), Snap(db.x), Snap(db.y)
-    stack:SetWidth(stack.barWidth)
+    stack.totalWidth = stack.barWidth
+    stack.layout = db.layout
+    stack:SetWidth(stack.totalWidth)
+    -- Divide physical pixels across three bars, keeping the full span.
+    -- Tiny rows reduce the gap to leave room for each bar's border and fill.
+    if stack.layout == "row" then
+        local widthPixels = math.max(15, math.floor(stack.totalWidth / pixel + 0.5))
+        local gapPixels = math.min(math.floor(stack.gap / pixel + 0.5), math.floor((widthPixels - 15) / 2))
+        stack.totalWidth, stack.gap = widthPixels * pixel, gapPixels * pixel
+        stack:SetWidth(stack.totalWidth)
+        stack.barWidth = math.floor((widthPixels - 2 * gapPixels) / 3) * pixel
+    end
     local offsets = {{-1,-1},{0,-1},{1,-1},{-1,0},{1,0},{-1,1},{0,1},{1,1}}
-    for _, key in ipairs(ns.order) do
+    for index, key in ipairs(ns.order) do
         local bar, config = stack.bars[key], db.bars[key]
-        bar:SetSize(stack.barWidth, stack.barHeight)
-        bar.barWidth, bar.barHeight = stack.barWidth, stack.barHeight
+        local width = stack.barWidth
+        if stack.layout == "row" and index == 3 then width = stack.totalWidth - 2 * (width + stack.gap) end
+        bar:SetSize(width, stack.barHeight)
+        bar.barWidth, bar.barHeight = width, stack.barHeight
         bar.inset, bar.pixel = 2 * pixel, pixel
         bar.radius = math.min(db.borderRadius * pixel, bar.barHeight / 2, bar.barWidth / 2)
         bar.fillRadius = math.max(0, bar.radius - bar.inset)
@@ -247,11 +260,19 @@ function ns.LayoutStack(stack, shown, anchor, clearance)
         stack.clearanceUnit = stack.unitToken
     end
     clearance = stack.clearance
-    local first
-    for _, key in ipairs(ns.order) do if shown[key] then first = stack.bars[key]; break end end
+    local first, padding
+    for _, key in ipairs(ns.order) do
+        if stack.layout == "row" and ns.db.bars[key].enabled then
+            padding = math.max(padding or 0, stack.bars[key].visualPadding)
+        end
+        if shown[key] then
+            first = first or stack.bars[key]
+            padding = math.max(padding or 0, stack.bars[key].visualPadding)
+        end
+    end
     local offsetY = stack.yOffset
     if first and offsetY >= 0 then
-        local minimum = (clearance or 0) + first.visualPadding + 2 * stack.pixel
+        local minimum = (clearance or 0) + (stack.layout == "row" and padding or first.visualPadding) + 2 * stack.pixel
         offsetY = math.max(offsetY, math.ceil(minimum / stack.pixel) * stack.pixel)
     end
     if stack.anchor ~= anchor or stack.offset ~= offsetY or stack.x ~= stack.xOffset then
@@ -259,18 +280,22 @@ function ns.LayoutStack(stack, shown, anchor, clearance)
         stack:SetPoint("TOP", anchor, "BOTTOM", stack.xOffset, -offsetY)
         stack.anchor, stack.offset, stack.x = anchor, offsetY, stack.xOffset
     end
-    local previous, bottom = nil, 0
+    local previous, bottom, right = nil, 0, 0
     for _, key in ipairs(ns.order) do
         local bar = stack.bars[key]
         if shown[key] then
             -- The setting measures the gap between the bar borders. Decorative
             -- spark/text bounds must not silently add to the requested gap.
-            local offset = previous and bottom + stack.gap or 0
-            if bar.offset ~= offset then
-                bar:ClearAllPoints(); bar:SetPoint("TOPLEFT", stack, "TOPLEFT", 0, -offset); bar.offset = offset
+            local row = stack.layout == "row"
+            local offset = not row and previous and bottom + stack.gap or 0
+            local x = row and previous and right + stack.gap or 0
+            if bar.offset ~= offset or bar.offsetX ~= x then
+                bar:ClearAllPoints(); bar:SetPoint("TOPLEFT", stack, "TOPLEFT", x, -offset)
+                bar.offset, bar.offsetX = offset, x
             end
             bar:Show()
             previous, bottom = bar, offset + stack.barHeight
+            right = x + bar.barWidth
         else bar:Hide() end
     end
     stack:SetHeight(math.max(stack.pixel, bottom))

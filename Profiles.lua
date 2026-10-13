@@ -66,7 +66,17 @@ end
 function VV.ProfileModified()
     local name = VV.FindProfile(VV.db.profileName)
     local record = name and VV.profileStore[name]
-    return type(record) ~= "table" or type(record.settings) ~= "table" or not same(snapshot(), record.settings)
+    if type(record) ~= "table" or type(record.settings) ~= "table" then return true end
+    local saved = VV.Copy(record.settings)
+    -- Profiles saved before row layouts implicitly use the stacked layout.
+    local swings = saved.nameplates and saved.nameplates.swingTimers
+    if type(swings) == "table" and swings.layout == nil then swings.layout = "stack" end
+    return not same(snapshot(), saved)
+end
+
+function VV.PresetModified()
+    local settings = VV.GetPreset(VV.db.presetName)
+    return not settings or not same(snapshot(), settings)
 end
 
 function VV.SaveProfile(input)
@@ -75,6 +85,7 @@ function VV.SaveProfile(input)
     name = VV.FindProfile(name) or name
     VV.profileStore[name] = {version=1, settings=snapshot()}
     VV.db.profileName, VV.selectedProfile = name, name
+    VV.db.presetName = nil
     if VV.RefreshOptions then VV.RefreshOptions() end
     VV.Print("Saved profile: " .. name .. ". Available to characters on this account after /reload or logout.")
     return true, name
@@ -91,14 +102,7 @@ local function replace(destination, source)
     end
 end
 
-function VV.LoadProfile(input)
-    if InCombatLockdown() then return false, "Leave combat before loading a profile." end
-    local name = VV.FindProfile(input)
-    local record = name and VV.profileStore[name]
-    if type(record) ~= "table" or record.version ~= 1 or type(record.settings) ~= "table" then
-        return false, "Choose a compatible saved profile first."
-    end
-    local settings = record.settings
+local function apply(settings, name, preset)
     if type(settings.modules) ~= "table" then return false, "That profile has invalid settings." end
     for section in pairs(fields) do
         if type(settings[section]) ~= "table" then return false, "That profile has invalid settings." end
@@ -108,7 +112,9 @@ function VV.LoadProfile(input)
     for section in pairs(fields) do replace(VV.db[section], settings[section]) end
     -- Quest folds describe this character's current quests, not a shared design.
     VV.db.questTracker.collapsed = collapsed
-    VV.db.profileName, VV.selectedProfile = name, name
+    VV.db.profileName = not preset and name or nil
+    VV.db.presetName = preset and name or nil
+    if not preset then VV.selectedProfile = name end
     VV.InitDB()
     local ns = VV.Nameplates
     ns.InitializeTweaks()
@@ -119,8 +125,29 @@ function VV.LoadProfile(input)
     for _, key in ipairs(VV.moduleOrder) do VV.RefreshModule(key) end
     if ns.RefreshComboOptions then ns.RefreshComboOptions() end
     if ns.RefreshFeatureOptions then ns.RefreshFeatureOptions() end
-    VV.Print("Loaded profile: " .. name .. ". Changes stay on this character until you save the profile again.")
+    if VV.RefreshOptions then VV.RefreshOptions() end
     return true, name
+end
+
+function VV.LoadProfile(input)
+    if InCombatLockdown() then return false, "Leave combat before loading a profile." end
+    local name = VV.FindProfile(input)
+    local record = name and VV.profileStore[name]
+    if type(record) ~= "table" or record.version ~= 1 or type(record.settings) ~= "table" then
+        return false, "Choose a compatible saved profile first."
+    end
+    local ok, result = apply(record.settings, name)
+    if ok then VV.Print("Loaded profile: " .. name .. ". Changes stay on this character until you save the profile again.") end
+    return ok, result
+end
+
+function VV.LoadPreset(name)
+    if InCombatLockdown() then return false, "Leave combat before applying a preset." end
+    local settings = VV.GetPreset(name)
+    if not settings then return false, "Choose a built-in preset first." end
+    local ok, result = apply(settings, name, true)
+    if ok then VV.Print("Applied preset: " .. name .. ". Save a profile to keep your own version.") end
+    return ok, result
 end
 
 local events = CreateFrame("Frame")

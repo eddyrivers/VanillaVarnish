@@ -48,7 +48,7 @@ def nameplates(full=False, native=None, seed=None):
     if seed:
         lua.execute(seed)
     for path in FILES:
-        if full or path in ("Core.lua", "Profiles.lua", "Settings.lua") or path.startswith("Modules/Nameplates/"):
+        if full or path in ("Core.lua", "Presets.lua", "Profiles.lua", "Settings.lua") or path.startswith("Modules/Nameplates/"):
             load(lua, path)
     lua.execute("NST_TEST_NS = VV_TEST_NS.Nameplates")
     return lua
@@ -175,6 +175,21 @@ profiles = nameplates(full=True)
 profiles.execute((ROOT / "tests/test_profiles.lua").read_text())
 print(f"PASS: {profiles.globals().VV_PROFILE_CHECKS} account profiles, cross-character loading, isolation, controls, and combat checks")
 
+presets = nameplates(full=True)
+presets.execute((ROOT / "tests/test_presets.lua").read_text())
+print(f"PASS: {presets.globals().VV_PRESET_CHECKS} built-in defaults, preset/profile isolation, collapsing row geometry, controls, and combat checks")
+if args.blizzard_source:
+    native_presets = nameplates(full=True, native=args.blizzard_source)
+    native_presets.execute((ROOT / "tests/test_presets.lua").read_text())
+    print(f"PASS: {native_presets.globals().VV_PRESET_CHECKS} preset and row checks with native Blizzard previews")
+
+swing_import = nameplates(full=True, seed='NameplateSwingTimersDB = {appearanceVersion=9, width=191, y=71}')
+swing_import.execute('''
+Mock.Event("ADDON_LOADED", "VanillaVarnish")
+assert(VV_TEST_NS.Nameplates.db.width == 191 and VV_TEST_NS.Nameplates.db.y == 71)
+assert(VV_TEST_NS.Nameplates.db ~= NameplateSwingTimersDB)
+''')
+
 # Import uses loaded globals only, copies nested tables, and never rewrites them.
 migration = nameplates(full=True, seed='''
 NameplateTweaksDB = {markers=false, damage="Moonfire", swingTimers={appearanceVersion=9, width=191, bars={main={enabled=false}}}}
@@ -243,6 +258,6 @@ end
 Mock.Event("PLAYER_LOGIN")
 assert(VV_TEST_NS.Nameplates.tweaksDB == VV_TEST_NS.db.nameplates)
 assert(VV_TEST_NS.Nameplates.db == VV_TEST_NS.db.nameplates.swingTimers)
-assert(#Mock.categories == 9)
+assert(#Mock.categories == 10)
 ''')
 print("PASS: modules disabled at startup can be enabled later; initialization is independent of event dispatch order")

@@ -3,7 +3,7 @@ local checks = 0
 local function check(value, label) assert(value, label); checks=checks+1 end
 Mock.Event("ADDON_LOADED", "VanillaVarnish")
 Mock.Event("PLAYER_LOGIN")
-check(#vv.ProfileNames() == 0 and vv.profileControls.dropdown.parent == vv.optionsPanel, "Profiles live on the main menu without seeding a character's settings")
+check(#vv.ProfileNames() == 0 and vv.profileControls.dropdown.parent == vv.profilesPanel, "Profiles have their own page without seeding editable profiles")
 check(not vv.profileControls.load:IsEnabled() and not vv.profileControls.save:IsEnabled(), "Empty library/name disables actions")
 ns.SetValue("width", 260)
 ns.SetValue("x", 31)

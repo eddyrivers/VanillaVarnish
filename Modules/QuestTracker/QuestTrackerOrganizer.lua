@@ -327,7 +327,8 @@ function addon.SetAllZonesCollapsed(collapsed)
 end
 
 function addon.ResetOptions()
-    db.enabled, db.completedSort, db.collapsed = true, "off", {}
+    local defaults = VV.GetPreset and VV.GetPreset("Default").questTracker
+    db.enabled, db.completedSort, db.collapsed = true, defaults and defaults.completedSort or "off", {}
     addon.RefreshOptions()
     if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
     Refresh()

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.22
+
+- Give Profiles & Presets its own settings page, with a link from the main menu and `/vv profiles` or `/vv presets` shortcuts.
+- Add Default, Default (tight), and Swing timer row presets. New characters start with the new Default design; existing settings and saved profiles stay yours.
+- Add Stacked and Row layouts to swing timer settings. Row shares the full width between three timers and packs visible timers to the left, with matching live previews.
+
 ## 1.0.21
 
 - Fix completed quest sorting so ready-for-turn-in quests stay together at the top or bottom of each zone. Delivery and talk-to quests with remaining instructions no longer split that group, even when the game gives them a question-mark icon.

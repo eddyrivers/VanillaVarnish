@@ -34,6 +34,7 @@ All VanillaVarnish commands start with `/vv`.
 | Command | Action |
 | --- | --- |
 | `/vv` | Open settings |
+| `/vv profiles`, `/vv presets` | Open Profiles & Presets |
 | `/vv nameplates`, `/vv tracker`, `/vv party`, `/vv tooltips` | Open a module page |
 | `/vv <module> on`, `off`, or `toggle` | Enable or disable a whole module |
 | `/vv nameplates range`, `quests`, `swings`, or `combo` | Open a nameplate feature page |
@@ -43,6 +44,7 @@ All VanillaVarnish commands start with `/vv`.
 | `/vv nameplates range opacity 35` | Set nameplate and party portrait/buff out-of-range opacity to 35% |
 | `/vv nameplates questie on` | Enable Questie fallback |
 | `/vv nameplates main on`, `/vv nameplates offhand off` | Switch individual swing bars |
+| `/vv nameplates layout stack`, `/vv nameplates layout row` | Stack swing timers vertically or pack them into a row |
 | `/vv nameplates help` | List swing appearance and nameplate commands |
 | `/vv tracker group on`, `/vv tracker group off` | Switch zone grouping while preserving the module switch |
 | `/vv tracker expand`, `/vv tracker collapse` | Expand or collapse all zones |
@@ -54,9 +56,19 @@ All VanillaVarnish commands start with `/vv`.
 
 Settings requested in combat open after combat ends. **Restore defaults** resets only its settings page; module switches stay as you set them.
 
-## Profiles
+## Profiles & Presets
 
-Open `/vv` and use **Profiles** on the main page. Enter a name under **Save as**, then click **Save profile**. To use the design on another character, select it in **Load profile** and click **Load** outside combat. Profiles become available on your other characters after you reload or log out of the character that saved them.
+Open `/vv` and follow **Profiles & Presets**, or use `/vv profiles`. Choose a built-in design under **Presets** and click **Apply preset** outside combat. Save your current settings as a profile first if you want to keep them.
+
+| Preset | Design |
+| --- | --- |
+| Default | The starting design for new characters: stacked swing timers, combo points, and completed quests sorted last |
+| Default (tight) | Bring swing timers and combo points closer to the nameplate |
+| Swing timer row | Use the tight design with three swing timers sharing the same 200-unit horizontal span |
+
+**Nameplates > Swing timers > Bar layout** offers **Stacked** and **Row** for any design. Stacked timers collapse upward; row timers collapse to the left in main-hand, off-hand, ranged order. Row width is the full three-timer span including gaps. Hidden timers leave no gaps, and visible timers keep their individual widths. The live preview follows your chosen layout.
+
+Under **Profiles**, enter a name in **Save as**, then click **Save profile**. To use the design on another character, select it in **Load profile** and click **Load** outside combat. Profiles become available on your other characters after you reload or log out of the character that saved them. Built-in presets stay separate from your editable profiles, even when they share a name. Existing characters keep their settings until you apply a preset or load a profile.
 
 A profile is a snapshot of VanillaVarnish's module switches and settings, including appearance, range spells, and quest sorting. Loading replaces the current character's addon settings. Later changes stay local until you save again; saving an existing name updates its snapshot. Save a new name to keep both designs. Collapsed quest zones remain specific to each character. Blizzard's Edit Mode layout and native nameplate style are managed by the game and are not stored in these profiles. Check range spells when sharing between different classes.
 
