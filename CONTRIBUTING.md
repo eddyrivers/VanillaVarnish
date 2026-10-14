@@ -51,6 +51,8 @@ Write commit messages and documentation for the public reader: describe the beha
 
 ## Quest-drop data
 
+Before collecting or importing external data, verify the applicable license, website terms, automation policy and upstream provenance. Record the permission and required attribution before downloading or redistributing it. Public access and citations do not authorize scraping. If collection or reuse is prohibited or unclear, use a permitted source or obtain explicit permission from the rights holder first. Review database rights separately from the license of its hosting or generation tools.
+
 `Modules/Nameplates/QuestDropData.lua` is a generated, ID-only projection of pfQuest Vanilla's quest-item and NPC-loot relationships. The pinned revision and input SHA-256 hashes are in `tools/data/pfquest-source.json`; the [pfQuest MIT license](Licenses/pfQuest-MIT.txt) ships in every release. Native objectives supply counts, completion and localized names. No quest text, NPC names, map coordinates, drop rates, vendors, objects or collected player data are bundled.
 
 Download `db/quests.lua`, `db/items.lua` and `db/refloot.lua` from the manifest's exact pfQuest revision into a local cache, preserving the `db/` paths. Then generate or verify:
