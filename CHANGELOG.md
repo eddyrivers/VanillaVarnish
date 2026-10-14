@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.35-beta.1
+
+- Add **Polite UI**, a new page of independent fade-out and fade-in multiselects for persistent HUD elements. All selections start at Never; matching conditions use AND and fade-in takes priority.
+- Fade over half a second, reveal on hover, and offer combat, targeting, movement, casting, resource, aura, quest, and chat conditions. Event returns have a three-second grace period.
+- Keep manually opened windows unchanged, reveal the HUD while configuring or using Edit Mode, and preserve native opacity and click behavior. Save fade rules in profiles while keeping older profiles compatible.
+- Reserve a placeholder for future Polite UI presets. This beta still needs in-game layout, hover, Escape, and combat validation on Forever.
+
 ## 1.0.34
 
 - Added a small built-in quest database to help show loot icons without Questie.

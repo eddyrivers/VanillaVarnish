@@ -27,6 +27,7 @@ function VV.RefreshOptions()
         preset.dropdown:GenerateMenu()
         preset.apply:SetEnabled(not InCombatLockdown() and VV.GetPreset(VV.selectedPreset) ~= nil)
     end
+    if VV.PoliteUI.RefreshOptions then VV.PoliteUI.RefreshOptions() end
 end
 
 function VV.RegisterOptions()
@@ -58,7 +59,7 @@ function VV.RegisterOptions()
             "Turn this section on or off. Your settings are kept either way.")
     end
     local profilesLink = UI.Button(root, "Profiles & Presets", 180, function() VV.OpenOptions("profiles") end)
-    profilesLink:SetPoint("TOPLEFT", root, "TOPLEFT", 16, -276)
+    profilesLink:SetPoint("TOPLEFT", root, "TOPLEFT", 16, -90 - #VV.moduleOrder * 44 - 10)
     VV.profilesLink = profilesLink
     local profiles = CreateFrame("Frame", nil, UIParent)
     profiles:Hide()
@@ -144,7 +145,7 @@ function VV.RegisterOptions()
         if VV.conflicts[key] then conflictText[#conflictText + 1] = "Disable " .. VV.conflicts[key] .. " and /reload to activate " .. VV.moduleLabels[key] .. "." end
     end
     if VV.swingConflict then conflictText[#conflictText + 1] = "Disable NameplateSwingTimers and /reload to activate bundled swing timers." end
-    UI.Label(root, table.concat(conflictText, "\n"), 16, -326, "GameFontHighlightSmall")
+    UI.Label(root, table.concat(conflictText, "\n"), 16, -90 - #VV.moduleOrder * 44 - 60, "GameFontHighlightSmall")
     root:SetScript("OnShow", VV.RefreshOptions)
     VV.optionsPanel = root
 
@@ -171,5 +172,6 @@ function VV.RegisterOptions()
     Settings.RegisterAddOnCategory(VV.partyCategory)
     party:SetScript("OnShow", VV.RefreshOptions)
     VV.partyPanel, VV.optionControls = party, controls
+    if VV.PoliteUI.RegisterOptions then VV.PoliteUI.RegisterOptions() end
     VV.RefreshOptions()
 end

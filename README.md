@@ -18,6 +18,7 @@ Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. Active settings 
 | Quest tracker | Quests grouped by zone, collapsible headings, and optional completed-first or completed-last sorting |
 | Party frames | Up to 16 buffs in two rows, larger player buffs and dispellable debuffs, class-colored health bars, and friendly-spell range fading |
 | Tooltips | Mouse following, configurable offsets, class/difficulty colors, immediate hover dismissal, and optional combat pause |
+| Polite UI | Independent fade-out and fade-in rules for persistent HUD elements, with hover reveal |
 
 **Nameplates:** choose damage and friendly range spells; unreadable range results keep normal opacity. Quest loot icons include a compact bundled pfQuest Vanilla baseline, so Questie and QuestieDB are optional. Native quest objectives still control progress and completion; native tooltips identify kill and other objectives. An installed drop database can fill quests absent from the baseline. No website-derived Forever overrides are included; changed or new Forever quests may need further coverage. Swing timers and combo points share a live preview. Positive X moves right; positive Y moves down. Threat colors turn fighting enemies blue when you hold aggro as a tank, or when you avoid aggro as a damage dealer or healer. Other situations keep the game's colors.
 
@@ -29,6 +30,41 @@ Both feature previews follow **Settings > Nameplates**, including style, size, h
 
 **Tooltips:** item comparisons stay beside the main tooltip. Defaults are X `34`, Y `-6`; positive Y moves up. Combat pause uses the position saved in Edit Mode. Clicked chat links keep their usual placement.
 
+## Polite UI (beta)
+
+Open **`/vv polite`** (or `/vv fade`) to let persistent parts of the interface step aside. The preset selector is a placeholder for future designs. Each grouped row has **Fade out** and **Fade in** multiselects, both starting at **Never**. Select **Never (clear selections)** to empty a list.
+
+Every selected condition in a list must match: **AND**, rather than OR. For example, fade the **Player frame** when health is full **and** you are out of combat; return it while in combat. If both lists match, **Fade in wins**. A faded element stays faded until its return list matches. Losing the fade-out conditions alone does not bring it back. An empty fade-out list leaves the element alone; an empty fade-in list disables automatic return.
+
+Fades take about **0.5 seconds** and reach complete transparency. **Hover always reveals** the element, including its buttons and aura icons, then lets its rules resume when you leave. Typing keeps chat visible. This settings page and Blizzard's Edit Mode reveal all affected elements. The game retains control of which frames are shown, their click behavior, and their own opacity changes.
+
+The event return choices—enter combat, leave combat, start casting/channeling, select a new target, and press Escape—remain true for **3 seconds**, giving you time to read the returning UI. Additional selections still use AND. State conditions such as **When in combat** remain true for as long as the state lasts. Choose that state instead of the event if you want the frame visible throughout combat.
+
+All rows offer these common state conditions: in/out of combat, having/no target, moving/standing still, mounted/not mounted, resting, casting/channeling/not casting, and alive/dead or ghost. These are the initial element-specific choices for review:
+
+| Element | Additional choices |
+| --- | --- |
+| Player frame and pet frame | Health/mana full; health/mana at least 75% and increasing; health/mana below 75%; health at or below 35%; unit dead |
+| Target frame | Health full, below 75%, or at/below 35%; dead; friendly; attackable |
+| Target of target | Health full or below 75%; dead |
+| Party and raid frames | All members at full health; all mana users at full mana; a member needs healing; a member is dead or disconnected |
+| Player buffs | No buffs; buffs present; a timed buff has 30 seconds or less remaining |
+| Player debuffs | No debuffs; a debuff present |
+| Player cast bar | Mana full or below 75% |
+| Minimap | Indoors; outdoors |
+| Quest tracker | No tracked quests; tracked quests present; a tracked quest is ready to turn in |
+| Experience/reputation bars | Common conditions |
+| Chat windows | Quiet for 30 seconds; a message in the last 30 seconds; typing/not typing |
+| Main, bottom left/right, side, and additional action bars | Common conditions |
+| Pet action bar | Pet present; no pet |
+| Stance/form bar, micro menu, and bag buttons | Common conditions |
+
+"Increasing" means a resource rose within the last 3 seconds without falling since. Mana conditions apply only to units that use mana. Unavailable or restricted API data never satisfies a condition. Frames supplied by the client are discovered as they appear; replacement addon frames are outside this first pass.
+
+**Player frame** means the persistent portrait/health/mana HUD, and **Quest tracker** means the persistent objectives display. The character sheet, quest log window, bags themselves, bank, auction house, map, and other manually opened windows are excluded. Rules are saved per character and included in account profiles. Older profiles and built-in designs leave all fade selections at Never. Use `/vv polite off` for immediate restoration without losing your selections, or `/vv polite reset` to clear them.
+
+This beta targets **WoW Forever 1.60.x / Interface 16001**. Automated checks cover rule behavior; in-game layout, hover, Escape delivery, and combat taint checks remain part of beta validation.
+
 ## Commands
 
 All VanillaVarnish commands start with `/vv`.
@@ -38,6 +74,8 @@ All VanillaVarnish commands start with `/vv`.
 | `/vv` | Open settings |
 | `/vv profiles`, `/vv presets` | Open Profiles & Presets |
 | `/vv nameplates`, `/vv tracker`, `/vv party`, `/vv tooltips` | Open a module page |
+| `/vv polite`, `/vv fade` | Open Polite UI |
+| `/vv polite off`, `/vv polite reset` | Restore native opacity, or clear all fade rules |
 | `/vv <module> on`, `off`, or `toggle` | Enable or disable a whole module |
 | `/vv nameplates range`, `quests`, `swings`, or `combo` | Open a nameplate feature page |
 | `/vv nameplates combo off`, `/vv nameplates threat on` | Switch an individual feature |

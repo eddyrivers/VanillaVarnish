@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: VanillaVarnish
-## Notes: Modular improvements to Blizzard nameplates, quest tracking, party frames, and tooltips.
+## Notes: Modular improvements to Blizzard nameplates, quest tracking, party frames, tooltips, and persistent UI fading.
 ## Author: Eddy Rivers
-## Version: 1.0.34
+## Version: 1.0.35-beta.1
 ## Category: UI Overhaul
 ## X-Curse-Project-ID: 1736142
 ## IconTexture: Interface\Icons\INV_Enchant_DustIllusion
@@ -31,4 +31,6 @@ Modules\QuestTracker\Settings.lua
 Modules\Party\PartyTweaks.lua
 Modules\Tooltips\Tooltips.lua
 Modules\Tooltips\Settings.lua
+Modules\PoliteUI\PoliteUI.lua
+Modules\PoliteUI\Settings.lua
 Settings.lua

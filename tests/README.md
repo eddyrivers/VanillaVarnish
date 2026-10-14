@@ -6,6 +6,8 @@ The mocks cover nameplates, threat colors, swing timers, collapsing row geometry
 
 Review regressions also cover late nameplate removal after frame reuse, forbidden frames, restricted nested quest records, idle swing rendering, party refresh coalescing, current native color restoration, recycled debuff widgets, and malformed profile sections.
 
+Polite UI checks cover Never defaults, AND lists, fade-in precedence, half-second alpha transitions, latched fades, hover and descendant mouse focus, propagated Escape, event grace periods, combat toggles, native alpha changes, Edit Mode, restricted resources/casting, non-mana units, auras, late frames, nested chat chrome, typing and messages, group and quest conditions, profile upgrades, and exclusion of manually opened windows.
+
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for setup, native-source options, and the in-game checks that mocks cannot replace.
 
 For native aura-preview coverage, include `auras.lua` and `classification.lua` from Blizzard_NamePlates in the optional source cache. Add `optionspreview.lua` from Blizzard_SettingsDefinitions_Frame/Nameplates.lua to exercise the native preview sample handoff. The suite tests each aura display combination, native icon limits and scaling, changes while pages are hidden, and isolation from Blizzard's registered preview.

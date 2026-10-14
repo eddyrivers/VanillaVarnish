@@ -44,6 +44,9 @@ function Object:SetWidth(width) assert(width > 0 or (self.isFontString and width
 function Object:SetHeight(height) assert(height > 0); self.height = height end
 function Object:SetSize(width, height) self:SetWidth(width); self:SetHeight(height) end
 function Object:EnableMouse(enabled) self.mouse = enabled end
+function Object:EnableKeyboard(enabled) self.keyboard = enabled end
+function Object:SetPropagateKeyboardInput(enabled) self.propagateKeyboard = enabled end
+function Object:IsMouseOver() return self.mouseOver == true end
 function Object:SetFrameLevel(level) self.frameLevel = level end
 function Object:SetRoundLayoutToNearestPixel(enabled) self.roundToPixel = enabled end
 function Object:SetScale(scale) self.scale = scale end
@@ -52,6 +55,7 @@ function Object:GetEffectiveScale()
     return (self.scale or 1) * (not self.ignoreParentScale and self.parent and self.parent:GetEffectiveScale() or 1)
 end
 function Object:GetFrameLevel() return self.frameLevel end
+function Object:GetParent() return self.parent end
 function Object:SetAlpha(alpha) assert(alpha >= 0 and alpha <= 1); self.alpha = alpha end
 function Object:SetBlendMode(mode) self.blendMode = mode end
 function Object:SetText(text)
@@ -96,6 +100,7 @@ function Object:SetValue(value)
     if changed and self.scripts.OnValueChanged then self.scripts.OnValueChanged(self, value) end
 end
 function Object:SetDefaultText(value) self.defaultText = value end
+function Object:SetSelectionText(fn) self.selectionTextFunction = fn end
 function Object:SetupMenu(fn) self.menuGenerator = fn end
 function Object:GenerateMenu()
     local function Selected(items)
@@ -107,7 +112,8 @@ function Object:GenerateMenu()
             end
         end
     end
-    self.selectionText = Selected(Mock.Menu(self)) or self.defaultText
+    local items = Mock.Menu(self)
+    self.selectionText = self.selectionTextFunction and self.selectionTextFunction(items) or Selected(items) or self.defaultText
 end
 function Object:Show()
     local changed = not self.shown
@@ -281,6 +287,11 @@ function Mock.Menu(dropdown)
             self.items[#self.items + 1] = item
             return item
         end
+        root.CreateCheckbox = root.CreateRadio
+        function root:CreateTitle(name)
+            self.items[#self.items + 1] = {name=name, title=true}
+        end
+        function root:CreateDivider() self.items[#self.items + 1] = {divider=true} end
         function root:CreateButton(name)
             local item = Root(); item.name = name
             self.items[#self.items + 1] = item

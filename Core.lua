@@ -1,8 +1,8 @@
 local ADDON, VV = ...
 
-VV.Nameplates, VV.QuestTracker, VV.Party, VV.Tooltips = {}, {}, {}, {}
-VV.moduleOrder = { "nameplates", "party", "questTracker", "tooltips" }
-VV.moduleLabels = { nameplates = "Nameplates", questTracker = "Quest tracker", party = "Party frames", tooltips = "Tooltips" }
+VV.Nameplates, VV.QuestTracker, VV.Party, VV.Tooltips, VV.PoliteUI = {}, {}, {}, {}, {}
+VV.moduleOrder = { "nameplates", "party", "questTracker", "tooltips", "politeUI" }
+VV.moduleLabels = { nameplates = "Nameplates", questTracker = "Quest tracker", party = "Party frames", tooltips = "Tooltips", politeUI = "Polite UI" }
 local legacy = { nameplates = "NameplateTweaks", questTracker = "QuestTrackerOrganizer", party = "PartyTweaks", tooltips = "ForeverMouseTooltip" }
 local events = CreateFrame("Frame")
 local pendingCategory
@@ -56,6 +56,8 @@ function VV.InitDB()
     end
     if type(db.party) ~= "table" then db.party = defaults and defaults.party or {} end
     if type(db.tooltips) ~= "table" then db.tooltips = defaults and defaults.tooltips or {} end
+    if type(db.politeUI) ~= "table" then db.politeUI = {} end
+    if VV.PoliteUI.InitDB then VV.PoliteUI.InitDB() end
     if type(db.questTracker.enabled) ~= "boolean" then db.questTracker.enabled = true end
     local sort = db.questTracker.completedSort
     if sort ~= "off" and sort ~= "top" and sort ~= "bottom" then
@@ -77,7 +79,7 @@ end
 
 function VV.GetModule(key)
     return ({ nameplates = VV.Nameplates, questTracker = VV.QuestTracker,
-        party = VV.Party, tooltips = VV.Tooltips })[key]
+        party = VV.Party, tooltips = VV.Tooltips, politeUI = VV.PoliteUI })[key]
 end
 
 function VV.RefreshModule(key)
@@ -109,6 +111,7 @@ function VV.OpenOptions(page)
     if page == "nameplates" then VV.Nameplates.OpenOptions(); return end
     if page == "questTracker" then VV.QuestTracker.OpenOptions(); return end
     if page == "tooltips" then VV.Tooltips.OpenOptions(); return end
+    if page == "politeUI" then VV.PoliteUI.OpenOptions(); return end
     VV.OpenSettingsCategory(page == "party" and VV.partyCategory
         or page == "profiles" and VV.profilesCategory or VV.rootCategory)
 end
@@ -126,7 +129,8 @@ SlashCmdList.VANILLAVARNISH = function(message)
     local command, rest = (message or ""):match("^%s*(%S*)%s*(.-)%s*$")
     command = command:lower()
     local key = ({nameplates = "nameplates", nameplate = "nameplates", tracker = "questTracker",
-        quests = "questTracker", party = "party", tooltip = "tooltips", tooltips = "tooltips"})[command]
+        quests = "questTracker", party = "party", tooltip = "tooltips", tooltips = "tooltips",
+        fade = "politeUI", polite = "politeUI", politeui = "politeUI"})[command]
     if command == "" or command == "options" or command == "settings" then VV.OpenOptions(); return end
     if command == "status" then Status(); return end
     if command == "profiles" or command == "presets" then VV.OpenOptions("profiles"); return end
@@ -142,7 +146,7 @@ SlashCmdList.VANILLAVARNISH = function(message)
         end
         return
     end
-    VV.Print("/vv opens settings. /vv nameplates, /vv tracker, /vv party, /vv tooltips open module pages.")
+    VV.Print("/vv opens settings. /vv nameplates, /vv tracker, /vv party, /vv tooltips, /vv polite open module pages.")
     VV.Print("/vv <module> on | off | toggle controls the whole module and preserves its feature settings.")
     VV.Print("/vv status shows module status. Use /vv <module> help for feature commands.")
 end
@@ -155,7 +159,7 @@ events:SetScript("OnEvent", function(_, event, name)
         if not VV.db then VV.InitDB() end
     elseif event == "PLAYER_LOGIN" then
         VV.RegisterOptions()
-        VV.Print("Loaded. Type /vv to configure Nameplates, Quest tracker, Party frames, and Tooltips.")
+        VV.Print("Loaded. Type /vv to configure your finishing touches, including Polite UI.")
         for _, key in ipairs(VV.moduleOrder) do
             if VV.conflicts[key] and VV.db.modules[key] then
                 VV.Print(VV.moduleLabels[key] .. " paused: " .. VV.conflicts[key]

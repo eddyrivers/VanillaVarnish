@@ -190,6 +190,10 @@ combined = nameplates(full=True)
 combined.execute((ROOT / "tests/test_integration.lua").read_text())
 print("PASS: combined TOC load, namespace isolation, shared menu, master switches, and persistence")
 
+polite = nameplates(full=True)
+polite.execute((ROOT / "tests/test_polite_ui.lua").read_text())
+print(f"PASS: {polite.globals().VV_POLITE_UI_CHECKS} Polite UI conditions, fades, hover, combat, native alpha, menus, and profiles checks")
+
 profiles = nameplates(full=True)
 profiles.execute((ROOT / "tests/test_profiles.lua").read_text())
 print(f"PASS: {profiles.globals().VV_PROFILE_CHECKS} account profiles, cross-character loading, isolation, controls, and combat checks")
@@ -277,6 +281,6 @@ end
 Mock.Event("PLAYER_LOGIN")
 assert(VV_TEST_NS.Nameplates.tweaksDB == VV_TEST_NS.db.nameplates)
 assert(VV_TEST_NS.Nameplates.db == VV_TEST_NS.db.nameplates.swingTimers)
-assert(#Mock.categories == 10)
+assert(#Mock.categories == 11)
 ''')
 print("PASS: modules disabled at startup can be enabled later; initialization is independent of event dispatch order")

@@ -21,6 +21,8 @@ For party range fading, cross the friendly spell's range boundary, clear the spe
 
 For party buff priority, show more than eight buffs, eat and drink, and verify recovery effects appear before player buffs with correct tooltips in both rows. For profiles, save a name, change settings, load the saved snapshot, and log into a second character. Check that designs transfer, local changes do not overwrite snapshots, quest folds remain personal, and loading is disabled during combat.
 
+For **Polite UI**, open `/vv polite` and confirm the grouped rows, two multiselects, Never defaults, and disabled preset placeholder. Fade the player frame with full health AND out-of-combat, then return it in combat; test overlap, empty lists, mana and non-mana classes, and 75% recovery thresholds. Hover transparent unit buttons, aura icons outside their container, chat tabs, and action buttons; check targeting, tooltips, and keybindings. Press Escape with its return condition selected, including while casting and in combat; the native Escape action must still work. Verify the three-second event grace, casting/channeling, party/raid styles, tracked quest updates, and chat typing/messages. Open the character sheet, quest log, bank, and auction house and confirm they remain unaffected. Enter Edit Mode, toggle the module, clear rules, and load old/new profiles. Check half-second transitions, native cast-bar fades, hidden bars, chat windows created later, and any Lua or taint errors. Unavailable protected operations should leave the native UI usable; never replace secure scripts or force hidden interaction windows to show.
+
 ## Review regression checklist
 
 After `/reload` on WoW Forever 1.60.x / Interface 16001:

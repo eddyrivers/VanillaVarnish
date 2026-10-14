@@ -8,6 +8,7 @@ local presets = {
             ["party"] = true,
             ["questTracker"] = true,
             ["tooltips"] = true,
+            ["politeUI"] = true,
         },
         ["nameplates"] = {
             ["comboPoints"] = {
@@ -94,6 +95,7 @@ local presets = {
             ["pauseInCombat"] = false,
             ["unitColors"] = true,
         },
+        ["politeUI"] = { ["rules"] = {} },
     },
 }
 

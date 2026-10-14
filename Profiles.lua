@@ -5,12 +5,25 @@ local fields = {
     questTracker = {"enabled", "completedSort"},
     party = {"buffs", "classColors", "rangeFade"},
     tooltips = {"followMouse", "offsetX", "offsetY", "unitColors", "pauseInCombat"},
+    politeUI = {"rules"},
 }
 
 local function validSettings(settings)
     if type(settings) ~= "table" or type(settings.modules) ~= "table" then return false end
     for section in pairs(fields) do
-        if type(settings[section]) ~= "table" then return false end
+        if section ~= "politeUI" and type(settings[section]) ~= "table" then return false end
+    end
+    if settings.politeUI ~= nil then
+        if type(settings.politeUI) ~= "table" or type(settings.politeUI.rules) ~= "table" then return false end
+        for key, rule in pairs(settings.politeUI.rules) do
+            if type(key) ~= "string" or type(rule) ~= "table" then return false end
+            for _, side in ipairs({"fadeOut", "fadeIn"}) do
+                if type(rule[side]) ~= "table" then return false end
+                for condition, selected in pairs(rule[side]) do
+                    if type(condition) ~= "string" or type(selected) ~= "boolean" then return false end
+                end
+            end
+        end
     end
     local plates = settings.nameplates
     for _, key in ipairs({"swingTimers", "comboPoints"}) do
@@ -77,6 +90,14 @@ local function snapshot()
     return settings
 end
 
+-- Older designs predate Polite UI and leave every element at Never.
+local function upgrade(settings)
+    local result = VV.Copy(settings)
+    if result.modules.politeUI == nil then result.modules.politeUI = true end
+    if result.politeUI == nil then result.politeUI = {rules={}} end
+    return result
+end
+
 local function same(a, b)
     if type(a) ~= type(b) then return false end
     if type(a) ~= "table" then return a == b end
@@ -89,7 +110,7 @@ function VV.ProfileModified()
     local name = VV.FindProfile(VV.db.profileName)
     local record = name and VV.profileStore[name]
     if type(record) ~= "table" or record.version ~= 1 or not validSettings(record.settings) then return true end
-    local saved = VV.Copy(record.settings)
+    local saved = upgrade(record.settings)
     -- Profiles saved before row layouts implicitly use the stacked layout.
     local swings = saved.nameplates and saved.nameplates.swingTimers
     if type(swings) == "table" and swings.layout == nil then swings.layout = "stack" end
@@ -126,6 +147,7 @@ end
 
 local function apply(settings, name, preset)
     if not validSettings(settings) then return false, "That profile has invalid settings." end
+    settings = upgrade(settings)
     local collapsed = VV.db.questTracker.collapsed
     replace(VV.db.modules, settings.modules)
     for section in pairs(fields) do replace(VV.db[section], settings[section]) end
