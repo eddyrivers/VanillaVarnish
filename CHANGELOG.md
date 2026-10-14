@@ -2,9 +2,8 @@
 
 ## 1.0.34
 
-- Remove the website-derived Zul'Gurub and My First Real Potion overrides. Keep the pinned pfQuest Vanilla baseline, native objective progress and native tooltip detection.
-- Include pfQuest's MIT notice and the upstream VMaNGOS GPL v2 notice. Document the database source chain and unresolved base-dump permissions.
-- Withdraw the 1.0.32 archive because it contains the removed overrides. Use the replacement package for the current baseline.
+- Added a small built-in quest database to help show loot icons without Questie.
+- Loot icons follow your quest progress and the items in your bags, disappearing when you have enough. The addon still uses the game’s tooltips to find quest objectives.
 
 ## 1.0.32
 
