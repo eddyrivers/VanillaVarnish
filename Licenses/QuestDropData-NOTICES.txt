@@ -1,0 +1,36 @@
+Quest-drop database provenance and notices
+
+The bundled Modules/Nameplates/QuestDropData.lua is a modified, ID-only
+projection of pfQuest's Vanilla database. It contains no Wowhead overrides.
+Native client objectives supply progress, completion and localized names.
+
+pfQuest
+Repository: https://github.com/shagu/pfQuest
+Input revision: 104f35678ca39ab1fb78b655f815cc7016f5e0c8
+Copyright (c) 2017-2021 Eric Mauser (Shagu)
+The original pfQuest MIT notice is reproduced in pfQuest-MIT.txt.
+
+Upstream VMaNGOS
+Repository: https://github.com/vmangos/core
+Database revision identified by pfQuest's input history:
+f07f7eefc4c33784d34a3d3d391b65795ca547c3
+VMaNGOS publishes GNU General Public License version 2 terms.
+The complete upstream license is reproduced in VMaNGOS-GPL-2.0.txt.
+GPL v2 terms are retained for upstream material covered by those terms;
+pfQuest's MIT notice is retained for its contributions. The original addon
+code remains under the MIT license in the package's LICENSE file. This is
+not a claim that MIT relicenses GPL-covered material.
+
+Source form
+The complete modified database is shipped as readable Lua. The projection
+tool, input revision, checksums and licensing review are available in the
+VanillaVarnish source repository:
+https://github.com/eddyrivers/VanillaVarnish/tree/main/tools
+
+Remaining provenance limit
+VMaNGOS's database workflow imports world_full_14_june_2021.7z from
+https://github.com/brotalnia/database before applying migrations. No
+top-level license was found in that archive repository during the review;
+license notices inside the archive were not verified. The database is
+retained at the maintainer's direction with the known MIT/GPL notices.
+Including these notices does not establish complete upstream rights.

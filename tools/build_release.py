@@ -49,6 +49,8 @@ with ZipFile(out) as archive:
     assert "VanillaVarnish/Media/Montserrat-OFL.txt" in names
     assert "VanillaVarnish/LICENSE" in names
     assert "VanillaVarnish/Licenses/pfQuest-MIT.txt" in names
+    assert "VanillaVarnish/Licenses/VMaNGOS-GPL-2.0.txt" in names
+    assert "VanillaVarnish/Licenses/QuestDropData-NOTICES.txt" in names
     assert not any(part in {"tests", "tools", ".test-deps", "dist", ".git", ".github", "Branding"}
                    for name in names for part in name.split("/"))
     assert not any(name.endswith((".exe", ".pyd", ".pyc", ".py")) for name in names)

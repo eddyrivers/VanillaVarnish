@@ -111,8 +111,8 @@ function ns.QuestDropSources(questID, nativeObjectives, complete, database)
                 end
             end
         end
-        -- Reviewed bundled requirements take precedence over an optional
-        -- provider's older requirements. Unknown quests can use that provider.
+        -- Bundled requirements take precedence over an optional provider.
+        -- Unknown quests can use that provider.
         return sources
     end
     if database then

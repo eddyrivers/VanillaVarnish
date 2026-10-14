@@ -635,17 +635,6 @@ questieObjective.Collected = 0; questieObjective.Update = function() error("Unav
 Mock.Tick(1); Check(loot:IsShown() and kill:IsShown(), "Unavailable optional updates cannot break native markers")
 Questie.API.isReady = false; Mock.Tick(1)
 Check(not loot:IsShown() and kill:IsShown(), "Wait for optional Questie initialization")
-Questie.API.isReady = true
-tooltipModule.lookupByKey.m_123 = {{questId = 8184, objective = {Type = "item", Collected = 0, Needed = 1}}}
-Mock.questEntries = {{questID = 8184}}
-Mock.questObjectives = {[8184] = {
-    {itemID = 22637, type = "item", finished = true},
-    {itemID = 19813, type = "item", finished = false},
-}}
-Mock.tooltipLines = {}
-Mock.Event("QUEST_LOG_UPDATE"); Mock.Tick(0.2)
-Check(not loot:IsShown(), "Optional Questie tooltips cannot reintroduce obsolete reviewed loot requirements")
-Mock.questEntries, Mock.questObjectives = nil, nil
 Questie, QuestieLoader, Mock.tooltipLines = nil, nil, nil
 nt("questie off"); Mock.Event("QUEST_LOG_UPDATE"); Mock.Tick(0.2)
 

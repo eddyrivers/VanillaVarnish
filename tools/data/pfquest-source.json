@@ -5,5 +5,16 @@
     "db/quests.lua": "2cc49447b4c18f0a680612a79b4c199f0c46a1dbebdc6f4d78a27035e99c0d93",
     "db/items.lua": "b173e338ff04fdece3b4bfcbb1b66aff4bb9d23fa7a13890311ea2cbc447d808",
     "db/refloot.lua": "5e4bd7d8480a45c1d450ab1090693b532d9ac8bc3e524d63046a34d6b0f796cf"
-  }
+  },
+  "licensing_review": "pfquest-licensing.json",
+  "upstream": {
+    "repository": "https://github.com/vmangos/core",
+    "revision": "f07f7eefc4c33784d34a3d3d391b65795ca547c3",
+    "notice": "Licenses/VMaNGOS-GPL-2.0.txt"
+  },
+  "license_sha256": {
+    "Licenses/pfQuest-MIT.txt": "7ee3c5402cd719de230f3bbc59a6506a3b2b65981d0d793f143fa5b08f926510",
+    "Licenses/VMaNGOS-GPL-2.0.txt": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+  },
+  "license_hash_normalization": "CRLF normalized to LF"
 }

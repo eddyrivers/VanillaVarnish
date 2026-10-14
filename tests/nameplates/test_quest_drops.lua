@@ -39,32 +39,29 @@ Check(not next(ns.QuestDropSources(384, {ribs[1]}, false)),
 Mock.itemNames[2886] = "Cote de sanglier"
 Check(ns.QuestDropSources(384, ribs, false)[1125], "Client name arrival repairs the mixed objective match")
 
--- A new Forever quest reuses an existing drop relationship; native amounts
+-- A baseline quest supplies an existing drop relationship; native amounts
 -- remain authoritative rather than a copied static required count.
-Mock.itemCounts = {[730] = 2}
-Check(ns.QuestDropSources(92110, {Objective(730, 2, 3)}, false)[46],
-    "My First Real Potion needs a third eye without Questie")
-Mock.itemCounts[730] = 3
-Check(not next(ns.QuestDropSources(92110, {Objective(730, 2, 3)}, false)),
+Mock.itemCounts = {[772] = 2}
+Check(ns.QuestDropSources(60, {Objective(772, 2, 3)}, false)[40],
+    "Native required counts control needed candle drops without Questie")
+Mock.itemCounts[772] = 3
+Check(not next(ns.QuestDropSources(60, {Objective(772, 2, 3)}, false)),
     "Inventory completion hides sources before objective text catches up")
-Mock.itemCounts[730], Mock.itemNames[730] = 0, "Murloc Eye"
-Check(not next(ns.QuestDropSources(92110, {Objective(nil, 0, 3, false, "Different item: 0/3")}, false)),
+Mock.itemCounts[772], Mock.itemNames[772] = 0, "Large Candle"
+Check(not next(ns.QuestDropSources(60, {Objective(nil, 0, 3, false, "Different item: 0/3")}, false)),
     "A cached mismatched name cannot guess a changed single-item requirement")
-Mock.itemNames[730] = nil
-Check(not next(ns.QuestDropSources(92110, {Objective(999999, 0, 3)}, false)),
+Mock.itemNames[772] = nil
+Check(not next(ns.QuestDropSources(60, {Objective(999999, 0, 3)}, false)),
     "A readable conflicting native item ID wins over single-item cardinality")
 
--- The reviewed ZG correction replaces obsolete requirements, including when
--- an installed external provider still returns the old three-item version.
-Mock.itemCounts = {[22637] = 0, [19813] = 0}
-local zg = {Objective(22637, 0, 1), Objective(19813, 0, 1)}
-local oldProvider = {QueryQuestSingle = function() error("Bundled quest must take precedence") end}
-sources = ns.QuestDropSources(8184, zg, false, oldProvider)
-Check(sources[11380] and sources[11382], "The idol marks Jin'do and Bloodlord")
-Check(not sources[14517], "The obsolete Dire Maul requirement cannot add sources")
-zg[1].finished = true
-Check(not next(ns.QuestDropSources(8184, zg, false, oldProvider)),
-    "The remaining object-looted doll cannot create a hostile loot icon")
+-- The baseline no longer includes website-derived Forever overrides. Keep
+-- the actual vanilla requirements, without claiming they are Forever fixes.
+Check(ns.QuestDropData.quests[92110] == nil, "The website-derived new quest is absent")
+Check(ns.QuestDropData.items[22637] == nil, "The website-derived idol sources are absent")
+Check(not next(ns.QuestDropData.reviewed), "No website-reviewed quest flags remain")
+local zg = ns.QuestDropData.quests[8184]
+Check(#zg == 3 and zg[1] == 18331 and zg[2] == 19724 and zg[3] == 19813,
+    "ZG retains the pinned pfQuest requirements without Forever overrides")
 
 -- Source snapshots contain no progress, and relationships are shared without
 -- per-quest duplication. Validate the whole generated graph after TOC load.
@@ -83,6 +80,6 @@ for itemID, npcs in pairs(ns.QuestDropData.items) do
         seen[npcID] = true
     end
 end
-Check(quests == 1336 and items == 1184 and links == 25878, "The pinned baseline and reviewed overrides loaded")
+Check(quests == 1335 and items == 1183 and links == 25876, "Only the pinned pfQuest baseline loaded")
 Mock.itemNames, Mock.itemCounts = savedNames, savedCounts
 NST_QUEST_DROP_CHECKS = checks

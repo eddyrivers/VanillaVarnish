@@ -1,0 +1,50 @@
+{
+  "reviewed": "2026-10-13",
+  "retain_existing_baseline": true,
+  "complete_upstream_clearance": false,
+  "decision": "Retain the pinned pfQuest baseline at the user's explicit direction; GPL and MIT are acceptable. Remove all Wowhead-derived overrides. Include both known license notices and document the unresolved base-dump rights. This is not complete legal clearance.",
+  "pfquest": {
+    "revision": "104f35678ca39ab1fb78b655f815cc7016f5e0c8",
+    "license": "MIT",
+    "license_url": "https://github.com/shagu/pfQuest/blob/104f35678ca39ab1fb78b655f815cc7016f5e0c8/LICENSE",
+    "database_update": "https://github.com/shagu/pfQuest/commit/7786596f8b08a07f2b10a266ab696e7d31c24805",
+    "quest_update": "https://github.com/shagu/pfQuest/commit/ba09ad8d86a09bc53cff2b5d5c35a850813bea6a",
+    "findings": [
+      "items.lua and refloot.lua last changed at the February 2025 database update, which explicitly names the VMaNGOS revision below. quests.lua also received an August 2025 exclusive-group update.",
+      "The pinned extractor reads required item IDs from quest_template, NPC loot from creature_loot_template and shared sources from reference_loot_template.",
+      "No localized strings, coordinates or drop rates are retained in VanillaVarnish's projection. An ID-only projection does not itself prove exemption from upstream rights."
+    ],
+    "extractor": "https://github.com/shagu/pfQuest/blob/104f35678ca39ab1fb78b655f815cc7016f5e0c8/toolbox/extractor.lua",
+    "instructions": "https://github.com/shagu/pfQuest/blob/104f35678ca39ab1fb78b655f815cc7016f5e0c8/toolbox/README.md"
+  },
+  "vmangos": {
+    "revision": "f07f7eefc4c33784d34a3d3d391b65795ca547c3",
+    "published_license": "GNU General Public License version 2",
+    "license_url": "https://github.com/vmangos/core/blob/f07f7eefc4c33784d34a3d3d391b65795ca547c3/LICENSE",
+    "database_workflow": "https://github.com/vmangos/core/blob/f07f7eefc4c33784d34a3d3d391b65795ca547c3/.github/workflows/db_dump.yml",
+    "findings": [
+      "The workflow imports world_full_14_june_2021.7z from brotalnia/database, applies core SQL migrations, then exports a database snapshot.",
+      "The license text supplies GPL v2 terms. A repository license does not establish rights to every record imported from a separate archive.",
+      "No express permission to relicense upstream-covered database material as MIT was established. Preserve the GPL terms instead of claiming MIT covers all upstream material."
+    ]
+  },
+  "base_dump": {
+    "repository": "https://github.com/brotalnia/database",
+    "archive": "world_full_14_june_2021.7z",
+    "status": "unresolved",
+    "findings": [
+      "Repository root listing contains database archives, with no top-level LICENSE or README. GitHub's repository metadata reports license=null.",
+      "This does not prove the archives are unlicensed. Notices within the compressed archive have not been inspected, and contributor rights have not been established.",
+      "No new database dump was downloaded or imported for this review."
+    ]
+  },
+  "interpretation": {
+    "source": "https://www.gnu.org/licenses/gpl-faq.en.html#GPLOutput",
+    "finding": "An extractor's license does not automatically determine the rights in converted input data. Adding a GPL notice cannot resolve missing permission in an upstream input."
+  },
+  "before_future_imports": [
+    "Verify the exact input revisions and applicable permissions before collection or redistribution.",
+    "Obtain or inspect an explicit base-dump grant covering redistribution of quest/item/NPC relationships, and identify any required contributor notices.",
+    "Clarify upstream-covered data terms before representing the baseline as fully cleared. Do not assume that relicensing all addon code resolves a separate input-permission gap."
+  ]
+}
