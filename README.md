@@ -40,6 +40,8 @@ Ordinary fades take about **0.5 seconds** and reach complete transparency. **Hov
 
 Forever can restrict raw health values even when a unit's bar is visible. Full/low/critical-health conditions can instead use a native percentage curve passed directly to frame opacity. This path changes opacity immediately and never inspects restricted values in Lua. The native [health-percent API](https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua) accepts curves, and [SetAlpha](https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleRegionAPIDocumentation.lua) accepts their opaque output. Restricted mana thresholds can use the corresponding power-percent API.
 
+When both health and mana are restricted, a private native status bar combines their opacity results so the element fades only when both resource conditions match. The [native bar API](https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleStatusBarAPIDocumentation.lua) accepts restricted ranges and values and preserves restricted getter results. The addon first checks clamping behavior using public values; if no setter/getter combination passes, it keeps the element visible and reports that limitation. Restricted values are never compared, calculated, or printed by Lua.
+
 All rows offer these common state conditions: in/out of combat, having/no target, moving/standing still, mounted/not mounted, resting, casting/channeling/not casting, and alive/dead or ghost. These are the initial element-specific choices for review:
 
 | Element | Additional choices |
@@ -59,7 +61,7 @@ All rows offer these common state conditions: in/out of combat, having/no target
 | Pet action bar | Pet present; no pet |
 | Stance/form bar, micro menu, and bag buttons | Common conditions |
 
-"Increasing" means a readable resource rose within the last 3 seconds without falling since. **Mana checks use the actual mana pool**, including while a druid is in bear or cat form with rage/energy active. A unit with no mana pool cannot match a mana condition. Recovery trends and group resource checks require readable values. Two independently restricted resources cannot currently be combined; those rules leave the element visible and explain the limitation. Other unavailable API data never satisfies a condition. Frames supplied by the client are discovered as they appear; replacement addon frames are outside this first pass.
+"Increasing" means a readable resource rose within the last 3 seconds without falling since. **Mana checks use the actual mana pool**, including while a druid is in bear or cat form with rage/energy active. A unit with no mana pool cannot match a mana condition. Recovery trends and group resource checks require readable values. Other unavailable API data never satisfies a condition. Frames supplied by the client are discovered as they appear; replacement addon frames are outside this first pass.
 
 Hover a condition dropdown to see **Match**, **Waiting**, **Native**, or **Unavailable** beside each selection, along with the element's current status. Native means the client evaluates the resource condition without exposing its result to Lua. Contradictory selections are explained there too. `/vv polite debug` prints the same condition and frame status in chat. Rules update as you change them and resume when Settings closes; no reload is needed to apply selections.
 

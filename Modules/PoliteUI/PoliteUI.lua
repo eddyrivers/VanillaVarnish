@@ -13,34 +13,111 @@ function addon.NativeResourceKind(id)
     return resourceRules[id] and resourceRules[id].kind
 end
 
-function addon.NativeResourcePlan(unit, kind, ids)
-    local fn
-    if kind == "health" then fn = UnitHealthPercent else fn = UnitPowerPercent end
-    if not fn or not C_CurveUtil or not C_CurveUtil.CreateCurve or not Enum
-        or not Enum.LuaCurveType or not Enum.LuaCurveType.Step then return end
-    local key = unit .. ":" .. kind .. ":" .. table.concat(ids, ",")
-    if not resourcePlans[key] then resourcePlans[key] = {unit=unit, kind=kind, ids=ids, curves={}} end
-    return resourcePlans[key]
+local function combineWithRange(bar, a, b, base)
+    bar:SetMinMaxValues(0, base + 1)
+    bar:SetValue(b)
+    bar:SetMinMaxValues(a, base + 1)
+end
+local function combineWithValue(bar, a, b, base)
+    bar:SetMinMaxValues(a, base + 1)
+    bar:SetValue(b)
+end
+local function nativeCombiner()
+    local bar = CreateFrame("StatusBar")
+    bar:Hide()
+    -- Fading requires every resource to match. Each native curve returns
+    -- visible alpha when its resource fails, so combine those alphas with
+    -- max(a, b). Native bar clamping can do this without revealing either
+    -- value: range [a, base + 1], value b. The extra 1 avoids an empty range.
+    -- Validate which setter/getter combination actually clamps on this client.
+    -- Verify the client's actual clamping behavior using PUBLIC values only,
+    -- before putting any restricted values into this private display object.
+    for _, apply in ipairs({combineWithRange, combineWithValue}) do
+        for _, name in ipairs({"GetValue", "GetInterpolatedValue"}) do
+            local getter, valid = bar[name], true
+            if type(getter) == "function" then
+                for _, base in ipairs({1, 0.65, 0, 1}) do
+                    for _, previousA in ipairs({0, base}) do
+                        for _, previousB in ipairs({0, base}) do
+                            for _, a in ipairs({0, base}) do
+                                for _, b in ipairs({0, base}) do
+                                    apply(bar, previousA, previousB, base)
+                                    apply(bar, a, b, base)
+                                    local value = getter(bar)
+                                    if (issecretvalue and issecretvalue(value)) or type(value) ~= "number" or value ~= value
+                                        or math.abs(value - math.max(a, b)) > 0.000001 then valid = false end
+                                end
+                            end
+                        end
+                    end
+                end
+                if valid then return {bar=bar, getter=getter, apply=apply} end
+            end
+        end
+    end
+    return nil, "This client's native bars cannot combine restricted health and mana."
+end
+
+function addon.NativeResourcePlan(unit, ids)
+    if not C_CurveUtil or not C_CurveUtil.CreateCurve or not Enum
+        or not Enum.LuaCurveType or not Enum.LuaCurveType.Step then
+        return nil, "Native resource display API unavailable."
+    end
+    local key = unit .. ":" .. table.concat(ids, ",")
+    local plan = resourcePlans[key]
+    if not plan then
+        plan = {unit=unit, axes={}}
+        for _, kind in ipairs({"health", "mana"}) do
+            local axis = {kind=kind, ids={}, curves={}}
+            for _, id in ipairs(ids) do
+                if addon.NativeResourceKind(id) == kind then axis.ids[#axis.ids + 1] = id end
+            end
+            if #axis.ids > 0 then plan.axes[#plan.axes + 1] = axis end
+        end
+        if #plan.axes > 1 then
+            local ok, combiner, reason = pcall(nativeCombiner)
+            plan.combiner = ok and combiner or nil
+            plan.combineError = ok and reason or "Native resource combination API unavailable."
+        end
+        resourcePlans[key] = plan
+    end
+    -- APIs may temporarily disappear while client UI modules are loading.
+    for _, axis in ipairs(plan.axes) do
+        if (axis.kind == "health" and not UnitHealthPercent) or (axis.kind == "mana" and not UnitPowerPercent) then
+            return nil, "Native resource display API unavailable."
+        end
+    end
+    if #plan.axes > 1 and not plan.combiner then return nil, plan.combineError end
+    return plan
 end
 
 -- Restricted percentages never enter Lua comparisons, arithmetic, logging,
 -- or condition state. A native curve evaluates the rule and the resulting
--- opaque alpha is passed straight to the frame's native SetAlpha method.
+-- opaque alpha is passed to native display setters only. With two resources,
+-- the private status bar combines opaque alphas and its getter stays opaque.
 function addon.NativeResourceOpacity(plan, base)
     local ok, value = pcall(function()
-        local curve = plan.curves[base]
-        if not curve then
-            curve = C_CurveUtil.CreateCurve()
-            curve:SetType(Enum.LuaCurveType.Step)
-            for _, x in ipairs({0, 0.3500001, 0.75, 1}) do
-                local matches = true
-                for _, id in ipairs(plan.ids) do if not resourceRules[id].test(x) then matches = false end end
-                curve:AddPoint(x, matches and 0 or base)
+        local alphas = {}
+        for index, axis in ipairs(plan.axes) do
+            local curve = axis.curves[base]
+            if not curve then
+                curve = C_CurveUtil.CreateCurve()
+                curve:SetType(Enum.LuaCurveType.Step)
+                for _, x in ipairs({0, 0.3500001, 0.75, 1}) do
+                    local matches = true
+                    for _, id in ipairs(axis.ids) do if not resourceRules[id].test(x) then matches = false end end
+                    curve:AddPoint(x, matches and 0 or base)
+                end
+                axis.curves[base] = curve
             end
-            plan.curves[base] = curve
+            if axis.kind == "health" then alphas[index] = UnitHealthPercent(plan.unit, false, curve)
+            else alphas[index] = UnitPowerPercent(plan.unit, Enum.PowerType and Enum.PowerType.Mana or 0, false, curve) end
         end
-        if plan.kind == "health" then return UnitHealthPercent(plan.unit, false, curve) end
-        return UnitPowerPercent(plan.unit, Enum.PowerType and Enum.PowerType.Mana or 0, false, curve)
+        if plan.combiner then
+            plan.combiner.apply(plan.combiner.bar, alphas[1], alphas[2], base)
+            return plan.combiner.getter(plan.combiner.bar)
+        end
+        return alphas[1]
     end)
     if not ok then return false, "Native resource opacity is unavailable: " .. tostring(value) end
     if issecretvalue and issecretvalue(value) then return true, value end
@@ -371,8 +448,6 @@ function addon.Matches(key, side)
                     native = true
                     reason = "Evaluated by the client's native resource display."
                     result.nativeIDs[#result.nativeIDs + 1] = item.id
-                    if result.nativeKind and result.nativeKind ~= kind then result.ready = false; reason = "Two independently restricted resources cannot be combined." end
-                    result.nativeKind = kind
                 elseif info and info.native then reason = "Recovery history is unavailable for restricted resources." end
             end
             result.items[#result.items + 1] = {id=item.id, label=item.label, value=value, reason=reason, native=native}
@@ -495,10 +570,11 @@ local function evaluate()
         hidden[key] = addon.Matches(key, "fadeOut")
         local result = evaluations[key] and evaluations[key].fadeOut
         if result and result.ready and #result.nativeIDs > 0 and addon.NativeResourcePlan then
-            nativePlans[key] = addon.NativeResourcePlan(spec.unit or "player", result.nativeKind, result.nativeIDs)
+            local plan, reason = addon.NativeResourcePlan(spec.unit or "player", result.nativeIDs)
+            nativePlans[key] = plan
             if not nativePlans[key] then
                 for _, item in ipairs(result.items) do
-                    if item.native then item.native, item.reason = false, "Native resource display API unavailable." end
+                    if item.native then item.native, item.reason = false, reason end
                 end
             end
         end
@@ -564,7 +640,7 @@ function addon.RefreshModule()
 end
 -- Opening/closing a canvas changes only the reveal override and keeps history.
 function addon.RefreshVisibility() wake() end
-function addon.SetCondition(key, side, id, selected)
+function addon.SetCondition(key, side, id, selected, menuResponse)
     if not addon.byKey[key] or side ~= "fadeOut" then return false end
     if id ~= nil and (not allowed(key, side, id) or type(selected) ~= "boolean") then return false end
     addon.InitDB()
@@ -574,7 +650,12 @@ function addon.SetCondition(key, side, id, selected)
     addon.InitDB()
     if side == "fadeOut" then hidden[key] = false end
     wake()
-    if VV.RefreshOptions then VV.RefreshOptions() end
+    -- Native checkbox responses update selection text and checked states.
+    -- Rebuilding an open menu inside its responder reinitializes its layout
+    -- while the old menu is still handling the click (including scroll order).
+    if menuResponse then
+        if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
+    elseif VV.RefreshOptions then VV.RefreshOptions() end
     return true
 end
 function addon.ResetSettings()

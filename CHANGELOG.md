@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.35-beta.4
+
+- Combine restricted health and mana fade conditions through native display APIs. Validate native clamping with public values before enabling the combination; keep frames readable and explain the limitation if the client cannot support it.
+- Keep condition menus stable while selecting or clearing checkboxes by letting native menu responses update selections without rebuilding the open menu.
+- Cover health-only, mana-only, and simultaneous restrictions across 9,216 simulated caster/bear/cat configurations, plus native combination failures, recovery, opacity restoration, and menu selection order.
+
 ## 1.0.35-beta.3
 
 - Simplify Polite UI to one Fade out selector per element. Fade only while every selected condition matches; return automatically when any condition stops matching. Preserve fade-out preferences and remove older beta return rules.

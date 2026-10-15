@@ -51,10 +51,26 @@ check(player.scripts.OnClick == click, "Native mouse handlers survive initializa
 check(not addon.presetControl:IsEnabled() and addon.presetControl.defaultText == "Coming soon", "Presets are an honest placeholder")
 check(addon.optionControls["player.fadeOut"].selectionText == "Never", "Empty multiselect displays Never")
 local function select(key, side, name)
-    for _, item in ipairs(Mock.Menu(addon.optionControls[key .. "." .. side])) do
-        if item.name == name then item.callback(); return end
+    local control = addon.optionControls[key .. "." .. side]
+    for _, item in ipairs(Mock.Menu(control)) do
+        if item.name == name then
+            Mock.inPoliteResponse = true
+            local ok, message = pcall(item.callback)
+            Mock.inPoliteResponse = false
+            assert(ok, message)
+            -- Native OnMenuResponse updates selections on the existing menu.
+            control.selectionText = control.selectionTextFunction()
+            return
+        end
     end
     error("Missing condition " .. name)
+end
+for _, control in pairs(addon.optionControls) do
+    local generate = control.GenerateMenu
+    control.GenerateMenu = function(self)
+        check(not Mock.inPoliteResponse, "A checkbox response must not rebuild any open Polite UI menu")
+        return generate(self)
+    end
 end
 Mock.combat = true
 select("player", "fadeOut", "When not in combat")
@@ -243,4 +259,24 @@ addon.ResetSettings()
 check(character:GetAlpha() == 1 and questLog:GetAlpha() == 1 and bank:GetAlpha() == 1 and auction:GetAlpha() == 1,
     "Manually opened windows are never included")
 check(player.scripts.OnClick == click and player:IsShown(), "Native unit visibility and click scripts remain intact")
+for _, spec in ipairs(addon.elements) do
+    local control = addon.optionControls[spec.key .. ".fadeOut"]
+    local items = Mock.Menu(control)
+    local names = {}
+    for i, item in ipairs(items) do names[i] = item.name end
+    for _, item in ipairs(items) do
+        if item.selected and item.name ~= "Never (clear selections)" then
+            for _, selected in ipairs({true, false}) do
+                select(spec.key, "fadeOut", item.name)
+                check(item.selected() == selected, "Existing native menu entries reflect checkbox toggles")
+                local refreshed = Mock.Menu(control)
+                check(#refreshed == #items, "Condition selections preserve menu length")
+                for i, entry in ipairs(refreshed) do check(entry.name == names[i], "Condition selections preserve logical menu order") end
+            end
+        end
+    end
+    select(spec.key, "fadeOut", "Never (clear selections)")
+    check(control.selectionText == "Never", "Clear selections refreshes native selection text without rebuilding the menu")
+end
+addon.ResetSettings()
 VV_POLITE_UI_CHECKS = checks

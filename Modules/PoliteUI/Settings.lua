@@ -57,7 +57,7 @@ function addon.RegisterOptions()
         dropdown:SetupMenu(function(_, menu)
             if menu.SetScrollMode then menu:SetScrollMode(440) end
             menu:CreateRadio("Never (clear selections)", function() return not next(addon.GetRule(key)[side]) end,
-                function() addon.SetCondition(key, side, nil) end)
+                function() addon.SetCondition(key, side, nil, nil, true) end)
             menu:CreateDivider()
             local choices = addon.Choices(key, side)
             local spec = addon.byKey[key]
@@ -66,7 +66,7 @@ function addon.RegisterOptions()
                 if index == 1 and #spec.specific > 0 then menu:CreateTitle("For " .. spec.label) end
                 if index == #spec.specific + 1 then menu:CreateTitle("Common conditions") end
                 menu:CreateCheckbox(choice.label, function() return addon.GetRule(key)[side][id] == true end,
-                    function() addon.SetCondition(key, side, id, not addon.GetRule(key)[side][id]) end)
+                    function() addon.SetCondition(key, side, id, not addon.GetRule(key)[side][id], true) end)
             end
         end)
         dropdown:SetScript("OnEnter", function(self)
