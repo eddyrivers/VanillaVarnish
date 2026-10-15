@@ -1,12 +1,61 @@
 local _, VV = ...
 local addon = VV.PoliteUI
+local resourceRules = {
+    healthFull={kind="health", test=function(x) return x >= 1 end},
+    healthLow={kind="health", test=function(x) return x < 0.75 end},
+    healthCritical={kind="health", test=function(x) return x <= 0.35 end},
+    manaFull={kind="mana", test=function(x) return x >= 1 end},
+    manaLow={kind="mana", test=function(x) return x < 0.75 end},
+}
+local resourcePlans = {}
+
+function addon.NativeResourceKind(id)
+    return resourceRules[id] and resourceRules[id].kind
+end
+
+function addon.NativeResourcePlan(unit, kind, ids)
+    local fn
+    if kind == "health" then fn = UnitHealthPercent else fn = UnitPowerPercent end
+    if not fn or not C_CurveUtil or not C_CurveUtil.CreateCurve or not Enum
+        or not Enum.LuaCurveType or not Enum.LuaCurveType.Step then return end
+    local key = unit .. ":" .. kind .. ":" .. table.concat(ids, ",")
+    if not resourcePlans[key] then resourcePlans[key] = {unit=unit, kind=kind, ids=ids, curves={}} end
+    return resourcePlans[key]
+end
+
+-- Restricted percentages never enter Lua comparisons, arithmetic, logging,
+-- or condition state. A native curve evaluates the rule and the resulting
+-- opaque alpha is passed straight to the frame's native SetAlpha method.
+function addon.NativeResourceOpacity(plan, base)
+    local ok, value = pcall(function()
+        local curve = plan.curves[base]
+        if not curve then
+            curve = C_CurveUtil.CreateCurve()
+            curve:SetType(Enum.LuaCurveType.Step)
+            for _, x in ipairs({0, 0.3500001, 0.75, 1}) do
+                local matches = true
+                for _, id in ipairs(plan.ids) do if not resourceRules[id].test(x) then matches = false end end
+                curve:AddPoint(x, matches and 0 or base)
+            end
+            plan.curves[base] = curve
+        end
+        if plan.kind == "health" then return UnitHealthPercent(plan.unit, false, curve) end
+        return UnitPowerPercent(plan.unit, Enum.PowerType and Enum.PowerType.Mana or 0, false, curve)
+    end)
+    if not ok then return false, "Native resource opacity is unavailable: " .. tostring(value) end
+    if issecretvalue and issecretvalue(value) then return true, value end
+    if type(value) == "number" and value >= 0 and value <= 1 then return true, value end
+    return false, "Native resource opacity returned no usable value."
+end
+
 local driver = CreateFrame("Frame")
 local ready, elapsed, discoveryElapsed = false, 0, 0
-local records, hidden, history, pulses = {}, {}, {}, {}
+local records, hidden, history = {}, {}, {}
 local evaluations, overrides = {}, {}
-local EMPTY_RULE = {fadeOut={}, fadeIn={}}
+local resourceInfo, nativePlans = {}, {}
+local EMPTY_RULE = {fadeOut={}}
 local lastChat, cache, dirty = 0, {}, false
-local FADE_TIME, EVENT_HOLD = 0.5, 3
+local FADE_TIME, RECOVERY_HOLD = 0.5, 3
 
 -- Unknown or restricted data must never satisfy a condition, including a
 -- negative condition such as "no debuffs" or "not casting".
@@ -16,6 +65,7 @@ local function read(fn, ...)
     if ok and not (issecretvalue and issecretvalue(value)) then return value end
 end
 local function number(value)
+    if issecretvalue and issecretvalue(value) then return false end
     return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 local function truth(value)
@@ -49,21 +99,36 @@ local function resource(unit, kind)
     local key = unit .. "." .. kind
     if cache[key] then return unpack(cache[key]) end
     if exists(unit) ~= true then return end
-    if kind == "mana" and read(UnitPowerType, unit) ~= 0 then return end
+    local info = {unit=unit, kind=kind}
+    resourceInfo[key] = info
+    local function sample(fn, ...)
+        if not fn then info.reason = "Resource API unavailable."; return end
+        local ok, value = pcall(fn, ...)
+        if not ok then info.reason = "Resource API failed: " .. tostring(value); return end
+        if issecretvalue and issecretvalue(value) then info.native = true; return end
+        return value
+    end
     local current, maximum
     if kind == "health" then
         -- An omitted optional argument is different from an explicit nil in
         -- the client's generated API bindings. HealthMax takes only the unit.
-        current, maximum = read(UnitHealth, unit), read(UnitHealthMax, unit)
+        current, maximum = sample(UnitHealth, unit), sample(UnitHealthMax, unit)
     else
-        current, maximum = read(UnitPower, unit, 0), read(UnitPowerMax, unit, 0)
+        local mana = Enum and Enum.PowerType and Enum.PowerType.Mana or 0
+        current, maximum = sample(UnitPower, unit, mana), sample(UnitPowerMax, unit, mana)
+        -- A druid still has mana while rage/energy is the active resource.
+        -- Query the mana pool explicitly rather than gating on UnitPowerType.
+        if number(maximum) and maximum <= 0 then
+            info.native, info.reason = false, "This unit has no mana pool."
+            return
+        end
     end
     if not number(current) or not number(maximum) or maximum <= 0 then return end
     local guid = read(UnitGUID, unit)
     local previous, now = history[key], GetTime()
     local rising = previous and previous.guid == guid and previous.maximum == maximum and previous.rising or 0
     if previous and previous.guid == guid and previous.maximum == maximum then
-        if current > previous.current then rising = now + EVENT_HOLD
+        if current > previous.current then rising = now + RECOVERY_HOLD
         elseif current < previous.current then rising = 0 end
     end
     history[key] = {current=current, maximum=maximum, guid=guid, rising=rising}
@@ -133,9 +198,9 @@ local function groupState(spec, condition)
                 end
             elseif connected ~= true or dead ~= false then return false
             elseif condition == "groupManaFull" then
-                local powerType = read(UnitPowerType, unit)
-                if powerType == nil then return end
-                if powerType == 0 then
+                local maximum = read(UnitPowerMax, unit, Enum and Enum.PowerType and Enum.PowerType.Mana or 0)
+                if not number(maximum) then return end
+                if maximum > 0 then
                     local ratio = resource(unit, "mana")
                     if not ratio or ratio < 1 then return false end
                 end
@@ -150,7 +215,7 @@ local function groupState(spec, condition)
 end
 
 addon.conditions = {}
-addon.common, addon.returns = {}, {}
+addon.common = {}
 local function condition(id, label, test, list)
     addon.conditions[id] = {id=id, label=label, test=test}
     if list then list[#list + 1] = id end
@@ -168,14 +233,6 @@ condition("casting", "While casting or channeling", casting, addon.common)
 condition("notCasting", "When not casting or channeling", function() return invert(casting()) end, addon.common)
 condition("alive", "When alive", function() return invert(truth(read(UnitIsDeadOrGhost, "player"))) end, addon.common)
 condition("dead", "When dead or a ghost", function() return truth(read(UnitIsDeadOrGhost, "player")) end, addon.common)
-for _, item in ipairs({
-    {"enterCombat", "When I enter combat"}, {"leaveCombat", "When I leave combat"},
-    {"startCast", "When I start casting or channeling"}, {"newTarget", "When I select a new target"},
-    {"escape", "When I press Escape"},
-}) do
-    local id = item[1]
-    condition(id, item[2], function() return pulses[id] ~= nil and pulses[id] > GetTime() end, addon.returns)
-end
 for _, kind in ipairs({"health", "mana"}) do
     local key = kind
     condition(key .. "Full", "When " .. key .. " is full", function(spec)
@@ -250,9 +307,9 @@ addon.elements = {
 addon.byKey = {}
 for _, spec in ipairs(addon.elements) do
     addon.byKey[spec.key] = spec
-    spec.allowed, spec.choices = {fadeOut={}, fadeIn={}}, {fadeOut={}, fadeIn={}}
-    for _, side in ipairs({"fadeOut", "fadeIn"}) do
-        for _, ids in ipairs({spec.specific, addon.common, side == "fadeIn" and addon.returns or {}}) do
+    spec.allowed, spec.choices = {fadeOut={}}, {fadeOut={}}
+    for _, side in ipairs({"fadeOut"}) do
+        for _, ids in ipairs({spec.specific, addon.common}) do
             for _, id in ipairs(ids) do
                 spec.allowed[side][id] = true
                 spec.choices[side][#spec.choices[side] + 1] = addon.conditions[id]
@@ -277,13 +334,14 @@ function addon.InitDB()
     for key, rule in pairs(db.rules) do
         if not addon.byKey[key] or type(rule) ~= "table" then db.rules[key] = nil
         else
-            for _, side in ipairs({"fadeOut", "fadeIn"}) do
+            rule.fadeIn = nil -- Older beta profiles used separate return lists.
+            for _, side in ipairs({"fadeOut"}) do
                 if type(rule[side]) ~= "table" then rule[side] = {} end
                 for id, value in pairs(rule[side]) do
                     if value ~= true or not allowed(key, side, id) then rule[side][id] = nil end
                 end
             end
-            if not next(rule.fadeOut) and not next(rule.fadeIn) then db.rules[key] = nil end
+            if not next(rule.fadeOut) then db.rules[key] = nil end
         end
     end
     addon.db = db
@@ -295,25 +353,34 @@ end
 function addon.Matches(key, side)
     local spec, selection = addon.byKey[key], addon.GetRule(key)[side]
     if not spec or type(selection) ~= "table" or not next(selection) then return false end
-    local result = {matches=true, items={}}
+    local result = {matches=true, ready=true, items={}, nativeIDs={}}
     for id, selected in pairs(selection) do
-        if selected ~= true or not allowed(key, side, id) then result.matches = false end
+        if selected ~= true or not allowed(key, side, id) then result.matches, result.ready = false, false end
     end
     -- Evaluate every selected condition, in menu order. Short-circuiting an
     -- AND list starves recovery history whenever an earlier gate is false.
     for _, item in ipairs(addon.Choices(key, side)) do
         if selection[item.id] then
             local value = read(item.test, spec)
-            local reason
+            local reason, native
             if value == nil then
-                local powerType = item.id:find("^mana") and read(UnitPowerType, spec.unit or "player")
-                reason = number(powerType) and powerType ~= 0 and "This unit does not use mana." or "Client data unavailable."
+                local kind = item.id:find("^health") and "health" or item.id:find("^mana") and "mana"
+                local info = kind and resourceInfo[(spec.unit or "player") .. "." .. kind]
+                reason = info and info.reason or "Client data unavailable."
+                if info and info.native and not info.reason and addon.NativeResourceKind and addon.NativeResourceKind(item.id) then
+                    native = true
+                    reason = "Evaluated by the client's native resource display."
+                    result.nativeIDs[#result.nativeIDs + 1] = item.id
+                    if result.nativeKind and result.nativeKind ~= kind then result.ready = false; reason = "Two independently restricted resources cannot be combined." end
+                    result.nativeKind = kind
+                elseif info and info.native then reason = "Recovery history is unavailable for restricted resources." end
             end
-            result.items[#result.items + 1] = {id=item.id, label=item.label, value=value, reason=reason}
+            result.items[#result.items + 1] = {id=item.id, label=item.label, value=value, reason=reason, native=native}
             if value ~= true then result.matches = false end
+            if value ~= true and not native then result.ready = false end
         end
     end
-    if #result.items == 0 then result.matches = false end
+    if #result.items == 0 then result.matches, result.ready = false, false end
     evaluations[key] = evaluations[key] or {}
     evaluations[key][side] = result
     return result.matches
@@ -326,12 +393,25 @@ end
 local function write(record)
     if not usable(record.frame) then record.retry = true; record.error = "Frame is unavailable or forbidden."; return false end
     record.writing = true
-    local desired = record.base * record.factor
+    local desired
+    if record.nativePlan then
+        local ok, value = addon.NativeResourceOpacity(record.nativePlan, record.base)
+        if not ok then
+            -- A native API becoming unavailable must not strand a previously
+            -- faded frame at an opaque alpha that Lua cannot inspect.
+            pcall(record.frame.SetAlpha, record.frame, record.base)
+            record.writing = false
+            record.retry, record.error = true, value
+            return false
+        end
+        desired = value
+    else desired = record.base * record.factor end
     local ok, message = pcall(record.frame.SetAlpha, record.frame, desired)
+    if not ok and record.nativePlan then pcall(record.frame.SetAlpha, record.frame, record.base) end
     record.writing = false
     if ok then
         local actual = read(record.frame.GetAlpha, record.frame)
-        if number(actual) and math.abs(actual - desired) > 0.001 then
+        if not record.nativePlan and number(actual) and math.abs(actual - desired) > 0.001 then
             ok, message = false, "Another UI controller changed this frame's opacity."
         end
     end
@@ -339,7 +419,7 @@ local function write(record)
     return ok
 end
 local function restore(record)
-    record.factor, record.goal = 1, 1
+    record.factor, record.goal, record.nativePlan = 1, 1, nil
     if write(record) then record.active = false end
 end
 local function own(frame, key)
@@ -354,7 +434,7 @@ local function own(frame, key)
         local ok = pcall(hooksecurefunc, frame, "SetAlpha", function(_, value)
             if record.writing or not number(value) then return end
             record.base = value
-            if record.active and record.factor ~= 1 then write(record) end
+            if record.active and (record.factor ~= 1 or record.nativePlan) then write(record) end
         end)
         if not ok then records[frame] = nil; return end
     end
@@ -408,16 +488,20 @@ local function editing()
 end
 local function evaluate()
     dirty = false
-    cache, evaluations, overrides = {}, {}, {}
+    cache, evaluations, overrides, resourceInfo, nativePlans = {}, {}, {}, {}, {}
     local reveal = editing()
     for _, spec in ipairs(addon.elements) do
         local key = spec.key
-        -- Sample both lists even when fade-in wins. A return state must not
-        -- prevent the fade-out list from observing ongoing recovery.
-        local fadeIn, fadeOut = addon.Matches(key, "fadeIn"), addon.Matches(key, "fadeOut")
-        if not next(addon.GetRule(key).fadeOut) then hidden[key] = false
-        elseif fadeIn then hidden[key] = false
-        elseif fadeOut then hidden[key] = true end
+        hidden[key] = addon.Matches(key, "fadeOut")
+        local result = evaluations[key] and evaluations[key].fadeOut
+        if result and result.ready and #result.nativeIDs > 0 and addon.NativeResourcePlan then
+            nativePlans[key] = addon.NativeResourcePlan(spec.unit or "player", result.nativeKind, result.nativeIDs)
+            if not nativePlans[key] then
+                for _, item in ipairs(result.items) do
+                    if item.native then item.native, item.reason = false, "Native resource display API unavailable." end
+                end
+            end
+        end
     end
     local over = {}
     for _, record in pairs(records) do
@@ -440,12 +524,19 @@ local function evaluate()
             end
         end)
     end
-    -- Typing keeps all chat chrome readable, even with a latched fade.
+    -- Typing keeps all chat chrome readable regardless of fade conditions.
     if typing() then over.chat = true end
     for _, record in pairs(records) do
         if record.active then
             overrides[record.key] = reveal and "Settings / Edit Mode" or over[record.key] and "Hover / chat input" or nil
             record.goal = hidden[record.key] and not reveal and not over[record.key] and 0 or 1
+            local plan = not reveal and not over[record.key] and nativePlans[record.key] or nil
+            local changed = record.nativePlan ~= plan
+            record.nativePlan = plan
+            if plan or changed then
+                record.factor = plan and 1 or record.goal
+                write(record) -- Native opaque alpha cannot be interpolated in Lua.
+            end
         end
     end
 end
@@ -467,18 +558,17 @@ local function wake()
 end
 function addon.RefreshModule()
     addon.InitDB()
-    hidden, history, pulses = {}, {}, {}
+    hidden, history = {}, {}
     wake()
     if addon.RefreshOptions then addon.RefreshOptions() end
 end
--- Opening/closing a canvas changes only the reveal override. Keep resource
--- history, event grace, and latched rules intact throughout Settings changes.
+-- Opening/closing a canvas changes only the reveal override and keeps history.
 function addon.RefreshVisibility() wake() end
 function addon.SetCondition(key, side, id, selected)
-    if not addon.byKey[key] or (side ~= "fadeOut" and side ~= "fadeIn") then return false end
+    if not addon.byKey[key] or side ~= "fadeOut" then return false end
     if id ~= nil and (not allowed(key, side, id) or type(selected) ~= "boolean") then return false end
     addon.InitDB()
-    local rule = addon.db.rules[key] or {fadeOut={}, fadeIn={}}
+    local rule = addon.db.rules[key] or {fadeOut={}}
     if id == nil then rule[side] = {} else rule[side][id] = selected and true or nil end
     addon.db.rules[key] = rule
     addon.InitDB()
@@ -530,10 +620,10 @@ function addon.GetDiagnostics()
         elseif count == 0 then status = "No supported frame found"
         elseif overrides[key] then status = "Revealed: " .. overrides[key]
         elseif not visible then status = "Hidden by the game"
-        else status = hidden[key] and "Fading / faded out" or "Fade in / visible" end
+        elseif nativePlans[key] then status = "Native resource-driven visibility"
+        else status = hidden[key] and "Fading / faded out" or "Visible (fade conditions not met)" end
         result[key] = {status=status, frames=count, error=error,
-            fadeOut=checks.fadeOut or {matches=false, items={}}, fadeIn=checks.fadeIn or {matches=false, items={}},
-            fadeOutWarning=warning(key, "fadeOut"), fadeInWarning=warning(key, "fadeIn")}
+            fadeOut=checks.fadeOut or {matches=false, items={}}, fadeOutWarning=warning(key, "fadeOut")}
     end
     return result
 end
@@ -541,17 +631,17 @@ local function debugStatus()
     local diagnostics, configured = addon.GetDiagnostics(), false
     for _, spec in ipairs(addon.elements) do
         local rule = addon.GetRule(spec.key)
-        if next(rule.fadeOut) or next(rule.fadeIn) then
+        if next(rule.fadeOut) then
             configured = true
             local state = diagnostics[spec.key]
             VV.Print(spec.label .. ": " .. state.status .. "; " .. state.frames .. " frame(s).")
-            for _, side in ipairs({"fadeOut", "fadeIn"}) do
+            for _, side in ipairs({"fadeOut"}) do
                 local labels = {}
                 for _, item in ipairs(state[side].items) do
-                    labels[#labels + 1] = (item.value == true and "Match: " or item.value == false and "Waiting: " or "Unavailable: ") .. item.label
+                    labels[#labels + 1] = (item.native and "Native: " or item.value == true and "Match: " or item.value == false and "Waiting: " or "Unavailable: ") .. item.label
                         .. (item.reason and " (" .. item.reason .. ")" or "")
                 end
-                VV.Print((side == "fadeOut" and "Fade out: " or "Fade in: ") .. (#labels > 0 and table.concat(labels, " AND ") or "Never"))
+                VV.Print("Fade out: " .. (#labels > 0 and table.concat(labels, " AND ") or "Never"))
                 if state[side .. "Warning"] then VV.Print(state[side .. "Warning"]) end
             end
             if state.error then VV.Print(state.error) end
@@ -567,18 +657,6 @@ function addon.HandleSlash(message)
 end
 
 driver:Hide()
--- This unprotected listener observes Escape without swallowing native keys.
--- Propagation is configured once; it is never changed during combat.
-if driver.EnableKeyboard and driver.SetPropagateKeyboardInput then
-    driver:EnableKeyboard(true)
-    driver:SetPropagateKeyboardInput(true)
-    driver:SetScript("OnKeyDown", function(_, key)
-        if key == "ESCAPE" and enabled() then
-            pulses.escape = GetTime() + EVENT_HOLD
-            evaluate()
-        end
-    end)
-end
 local chatEvents = {"CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER",
     "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_RAID_WARNING", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER",
     "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM", "CHAT_MSG_CHANNEL", "CHAT_MSG_SYSTEM", "CHAT_MSG_EMOTE", "CHAT_MSG_TEXT_EMOTE"}
@@ -600,19 +678,14 @@ driver:SetScript("OnEvent", function(_, event, unit)
     if not ready then return end
     if event:find("^CHAT_MSG_") then lastChat = GetTime() end
     if not activeRules() then return end
-    local pulse = ({PLAYER_REGEN_DISABLED="enterCombat", PLAYER_REGEN_ENABLED="leaveCombat"})[event]
     if event == "PLAYER_TARGET_CHANGED" then
         history["target.health"], history["target.mana"] = nil, nil
         history["targettarget.health"], history["targettarget.mana"] = nil, nil
-        if exists("target") then pulse = "newTarget" end
-    elseif (event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START")
-        and not (issecretvalue and issecretvalue(unit)) and unit == "player" then pulse = "startCast" end
-    if pulse then pulses[pulse] = GetTime() + EVENT_HOLD end
+    end
     -- Discover after startup and periodically as Blizzard's load-on-demand UI
     -- and chat windows appear. Native Show/Hide behavior remains in control.
     if event == "ADDON_LOADED" or event == "PLAYER_ENTERING_WORLD" or event == "GROUP_ROSTER_UPDATE" then discover() end
     dirty = true
-    if pulse then evaluate() end
 end)
 driver:SetScript("OnUpdate", function(_, delta)
     if not activeRules() then
@@ -635,7 +708,7 @@ driver:SetScript("OnUpdate", function(_, delta)
                 -- Failed protected writes and native updates may arrive after
                 -- an animation has finished. Retry instead of getting stuck.
                 local actual = read(record.frame.GetAlpha, record.frame)
-                if record.retry or number(actual) and math.abs(actual - record.base * record.factor) > 0.001 then write(record) end
+                if record.retry or (not record.nativePlan and number(actual) and math.abs(actual - record.base * record.factor) > 0.001) then write(record) end
             end
         end
     end

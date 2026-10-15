@@ -5,8 +5,8 @@ vv.RegisterOptions = function() end
 addon.RegisterOptions = function() end
 vv.InitDB()
 
--- Exhaust all one-, two-, and three-condition selections for every row and
--- direction. Check true, false, and unavailable values at every position, and
+-- Exhaust all one-, two-, and three-condition selections for every row.
+-- Check true, false, and unavailable values at every position, and
 -- verify that no failing condition stops another condition from being sampled.
 local originals, badID, badValue, calls = {}, nil, nil, {}
 for id, item in pairs(addon.conditions) do
@@ -19,11 +19,11 @@ for id, item in pairs(addon.conditions) do
     end
 end
 for _, spec in ipairs(addon.elements) do
-    for _, side in ipairs({"fadeOut", "fadeIn"}) do
+    for _, side in ipairs({"fadeOut"}) do
         local choices = addon.Choices(spec.key, side)
         local function selection(ids)
             combinations = combinations + 1
-            local rule = {fadeOut={}, fadeIn={}}
+            local rule = {fadeOut={}}
             for _, id in ipairs(ids) do rule[side][id] = true end
             addon.db.rules[spec.key] = rule
             local function verify(expected)
@@ -69,13 +69,13 @@ local function advance(seconds)
     for _ = 1, math.ceil((seconds or 0.7) / 0.05) do Mock.Tick(0.05) end
 end
 local function bit(mask, index) return math.floor(mask / 2 ^ (index - 1)) % 2 == 1 end
-local outIDs, inIDs = {"healthFull", "manaFull", "outCombat", "noTarget"}, {"inCombat", "hasTarget"}
+local outIDs = {"healthFull", "manaFull", "outCombat", "noTarget"}
 local cases = 0
--- All 16 subsets of the reported four fade-out conditions, all four subsets
--- of combat/target returns, and 64 resource/combat/target states: 4,096 live
--- configurations. All changes are made in one session, without reloading.
+-- All 16 subsets of the reported four fade-out conditions and 64 resource,
+-- combat, and target states: 1,024 live configurations. Also verify return
+-- and refading after state changes, all in one session without reloading.
 for outMask = 0, 15 do
-    for inMask = 0, 3 do
+    for _ = 1, 1 do
         for _, health in ipairs({0, 74, 75, 100}) do
             for _, mana in ipairs({0, 74, 75, 100}) do
                 for combat = 0, 1 do
@@ -85,23 +85,23 @@ for outMask = 0, 15 do
                         Mock.combat, Mock.units.target = combat == 1, target == 1
                         local signals = {healthFull=health == 100, manaFull=mana == 100,
                             outCombat=combat == 0, noTarget=target == 0, inCombat=combat == 1, hasTarget=target == 1}
-                        local outMatch, inMatch = outMask > 0, inMask > 0
+                        local outMatch = outMask > 0
                         for index, id in ipairs(outIDs) do
                             if bit(outMask, index) then
                                 addon.SetCondition("player", "fadeOut", id, true)
                                 if not signals[id] then outMatch = false end
                             end
                         end
-                        for index, id in ipairs(inIDs) do
-                            if bit(inMask, index) then
-                                addon.SetCondition("player", "fadeIn", id, true)
-                                if not signals[id] then inMatch = false end
-                            end
-                        end
                         advance()
-                        local expected = outMatch and not inMatch and 0 or 1
+                        local expected = outMatch and 0 or 1
                         check(math.abs(player:GetAlpha() - expected) < 0.00001,
-                            string.format("Live matrix out=%d in=%d health=%d mana=%d combat=%d target=%d", outMask, inMask, health, mana, combat, target))
+                            string.format("Live matrix out=%d health=%d mana=%d combat=%d target=%d", outMask, health, mana, combat, target))
+                        Mock.playerHealth, Mock.playerMana, Mock.combat, Mock.units.target = 100, 100, false, false
+                        advance()
+                        check(player:GetAlpha() == (outMask > 0 and 0 or 1), "All matching conditions fade without resetting the rule")
+                        Mock.playerHealth, Mock.playerMana, Mock.combat, Mock.units.target = 0, 0, true, true
+                        advance()
+                        check(player:GetAlpha() == 1, "Losing conditions returns automatically without resetting the rule")
                         cases = cases + 1
                     end
                 end
@@ -131,12 +131,10 @@ for _, spec in ipairs(addon.elements) do
     for _, id in ipairs({"outCombat", "noTarget", "alive"}) do addon.SetCondition(spec.key, "fadeOut", id, true) end
     advance()
     for _, frame in ipairs(frames) do check(frame:GetAlpha() == 0, spec.key .. ": all discovered frames fade with three AND conditions") end
-    addon.SetCondition(spec.key, "fadeIn", "inCombat", true)
-    addon.SetCondition(spec.key, "fadeIn", "hasTarget", true)
     Mock.combat = true; advance()
-    for _, frame in ipairs(frames) do check(frame:GetAlpha() == 0, spec.key .. ": incomplete return list stays faded") end
+    for _, frame in ipairs(frames) do check(frame:GetAlpha() == 1, spec.key .. ": combat breaks a fade-out condition and reveals the group") end
     Mock.units.target = true; advance()
-    for _, frame in ipairs(frames) do check(frame:GetAlpha() == 1, spec.key .. ": complete return list reveals every frame") end
+    for _, frame in ipairs(frames) do check(frame:GetAlpha() == 1, spec.key .. ": a target keeps the group visible while no-target is selected") end
     Mock.combat, Mock.units.target = false, false
     advance()
     frames[1].mouseOver = true; advance()

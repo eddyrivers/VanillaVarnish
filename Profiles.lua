@@ -18,9 +18,11 @@ local function validSettings(settings)
         for key, rule in pairs(settings.politeUI.rules) do
             if type(key) ~= "string" or type(rule) ~= "table" then return false end
             for _, side in ipairs({"fadeOut", "fadeIn"}) do
-                if type(rule[side]) ~= "table" then return false end
-                for condition, selected in pairs(rule[side]) do
-                    if type(condition) ~= "string" or type(selected) ~= "boolean" then return false end
+                if side == "fadeOut" or rule[side] ~= nil then
+                    if type(rule[side]) ~= "table" then return false end
+                    for condition, selected in pairs(rule[side]) do
+                        if type(condition) ~= "string" or type(selected) ~= "boolean" then return false end
+                    end
                 end
             end
         end
@@ -95,6 +97,10 @@ local function upgrade(settings)
     local result = VV.Copy(settings)
     if result.modules.politeUI == nil then result.modules.politeUI = true end
     if result.politeUI == nil then result.politeUI = {rules={}} end
+    for key, rule in pairs(result.politeUI.rules) do
+        rule.fadeIn = nil
+        if not next(rule.fadeOut) then result.politeUI.rules[key] = nil end
+    end
     return result
 end
 

@@ -72,14 +72,13 @@ reset()
 Mock.combat, Mock.health.player = true, 90
 addon.SetCondition("player", "fadeOut", "healthRising", true)
 addon.SetCondition("player", "fadeOut", "outCombat", true)
-addon.SetCondition("player", "fadeIn", "inCombat", true)
 advance(0.2)
 Mock.health.player = 50; advance(0.2)
 Mock.health.player = 90; advance(0.2)
 Mock.combat = false
 Mock.Event("PLAYER_REGEN_ENABLED")
 advance(0.7)
-check(PlayerFrame:GetAlpha() == 0, "A matching return list does not starve recovery history in the fade-out list")
+check(PlayerFrame:GetAlpha() == 0, "Combat gates do not starve recovery history in the fade-out list")
 
 reset()
 Mock.health.player = 50
@@ -123,8 +122,7 @@ reset()
 Mock.powerType.player = 1
 addon.SetCondition("player", "fadeOut", "manaFull", true)
 state = addon.GetDiagnostics().player
-check(state.fadeOut.items[1].value == nil and state.fadeOut.items[1].reason == "This unit does not use mana.",
-    "Unavailable mana conditions explain why the rule cannot match")
+check(state.fadeOut.matches, "Mana conditions use a real mana pool even when rage is active")
 addon.SetCondition("player", "fadeOut", "inCombat", true)
 addon.SetCondition("player", "fadeOut", "outCombat", true)
 state = addon.GetDiagnostics().player
@@ -187,13 +185,10 @@ reset()
 
 addon.SetCondition("player", "fadeOut", "outCombat", true)
 advance(0.7)
-addon.SetCondition("player", "fadeIn", "startCast", true)
-addon.SetCondition("player", "fadeIn", "hasTarget", true)
-addon.SetCondition("player", "fadeIn", "inCombat", true)
 Mock.combat, Mock.units.target, Mock.channel = true, true, "Channel"
 Mock.Event("UNIT_SPELLCAST_CHANNEL_START", "player")
 advance(0.7)
-check(near(PlayerFrame:GetAlpha(), 0.8), "Casting event returns AND with combat and target states")
+check(near(PlayerFrame:GetAlpha(), 0.8), "Entering combat returns an out-of-combat fade automatically")
 reset()
 
 local oldTooltip, lines = GameTooltip, {}
@@ -217,6 +212,18 @@ addon.SetCondition("party", "fadeOut", nil)
 addon.SetCondition("party", "fadeOut", "groupHealthFull", true)
 check(not addon.GetDiagnostics().party.fadeOut.matches, "Dead and injured members do not count as all health full")
 Mock.dead.party1, Mock.units.party1, Mock.units.party2 = false, false, false
+reset()
+
+addon.SetCondition("player", "fadeOut", "outCombat", true)
+vv.SaveProfile("Old beta return migration")
+local oldDesign = vv.profileStore["Old beta return migration"].settings.politeUI.rules
+oldDesign.player.fadeIn = {hasTarget=true, inCombat=true}
+oldDesign.buffs = {fadeOut={}, fadeIn={inCombat=true}}
+check(vv.LoadProfile("Old beta return migration") and addon.GetRule("player").fadeOut.outCombat
+    and not addon.GetRule("player").fadeIn and not addon.db.rules.buffs,
+    "Loading an older beta profile keeps fade-out rules and drops retired return lists")
+check(not vv.ProfileModified(), "Migrated beta profiles compare cleanly without changing the stored snapshot")
+check(oldDesign.player.fadeIn.hasTarget, "Migration does not rewrite account profile snapshots")
 reset()
 
 VV_POLITE_UI_HARDENING_CHECKS = checks

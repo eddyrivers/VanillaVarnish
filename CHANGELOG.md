@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.35-beta.3
+
+- Simplify Polite UI to one Fade out selector per element. Fade only while every selected condition matches; return automatically when any condition stops matching. Preserve fade-out preferences and remove older beta return rules.
+- Check a druid's mana pool in bear and cat form instead of requiring mana to be the active resource.
+- Support restricted health and mana thresholds through native percentage curves and frame opacity. Native resource transitions are immediate; ordinary rules keep half-second fades. Hover, Settings, and Edit Mode still reveal affected elements.
+- Explain native evaluation and unsupported resource combinations in diagnostics. Add opaque-value and caster/bear/cat regression coverage for the reported four-condition rule.
+
 ## 1.0.35-beta.2
 
 - Fix player and group health checks, including full-health rules combined with mana, combat, and targeting conditions.

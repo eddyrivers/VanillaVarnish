@@ -76,53 +76,30 @@ Mock.Tick(0.5)
 check(near(player:GetAlpha(), 0.8), "Hover always reveals to native opacity")
 player.mouseOver = false
 Mock.Tick(0.5)
-check(player:GetAlpha() == 0, "Hover leaves the fade rule latched")
+check(player:GetAlpha() == 0, "Leaving hover resumes matching fade-out conditions")
 player:SetAlpha(0.6)
 check(player:GetAlpha() == 0, "Native opacity changes preserve a hidden fade")
-addon.SetCondition("player", "fadeIn", "hasTarget", true)
+addon.SetCondition("player", "fadeOut", "noTarget", true)
 Mock.units.target = true
 Mock.Event("PLAYER_TARGET_CHANGED")
 Mock.Tick(0.5)
-check(near(player:GetAlpha(), 0.6), "Fade-in wins a simultaneous fade-out match and restores latest native alpha")
+check(near(player:GetAlpha(), 0.6), "A target breaks the fade-out AND list and restores the latest native alpha")
 Mock.units.target = false
 Mock.Event("PLAYER_TARGET_CHANGED")
 Mock.Tick(0.5)
 check(player:GetAlpha() == 0, "Clearing the target allows fade-out again")
-select("player", "fadeIn", "Never (clear selections)")
 Mock.combat = true
 Mock.Tick(0.5)
-check(player:GetAlpha() == 0, "Losing fade-out criteria alone does not undo a latched fade")
-addon.SetCondition("player", "fadeIn", "enterCombat", true)
-Mock.Event("PLAYER_REGEN_DISABLED")
-Mock.Tick(0.5)
-check(near(player:GetAlpha(), 0.6), "Entering combat is a return event")
-Mock.combat = false
-Mock.Tick(3.1)
-check(player:GetAlpha() == 0, "After event grace expires, matching fade-out can run again")
-addon.SetCondition("player", "fadeIn", nil)
-addon.SetCondition("player", "fadeIn", "escape", true)
-check(addon.driver.keyboard and addon.driver.propagateKeyboard, "Keyboard observer propagates Escape to native UI")
-addon.driver.scripts.OnKeyDown(addon.driver, "ESCAPE")
-Mock.Tick(0.5)
-check(near(player:GetAlpha(), 0.6), "Escape reveals a faded frame")
-Mock.Tick(1)
-check(near(player:GetAlpha(), 0.6), "Escape reveal remains readable during the event grace period")
-Mock.Tick(2)
-check(player:GetAlpha() == 0, "Event reveal expires rather than disabling the rule forever")
-addon.SetCondition("player", "fadeIn", "inCombat", true)
-addon.driver.scripts.OnKeyDown(addon.driver, "ESCAPE")
-Mock.Tick(0.5)
-check(player:GetAlpha() == 0, "Return events AND with state conditions")
-Mock.combat, Mock.lockdown = true, true
-Mock.Tick(0.5)
-check(near(player:GetAlpha(), 0.6), "Pending return event matches when all selected conditions are true")
+check(near(player:GetAlpha(), 0.6), "Losing any fade-out criterion automatically reveals the frame")
+check(not addon.optionControls["player.fadeIn"] and not addon.driver.scripts.OnKeyDown,
+    "Separate fade-in controls and the Escape keyboard listener are removed")
+Mock.lockdown = true
 vv.SetModuleEnabled("politeUI", false)
 check(near(player:GetAlpha(), 0.6) and not addon.driver:IsShown(), "Disabling restores immediately, including during combat")
 check(addon.GetRule("player").fadeOut.healthFull, "Disabling preserves preferences")
 player:SetAlpha(0.7)
 vv.SetModuleEnabled("politeUI", true)
 Mock.combat, Mock.lockdown = false, false
-addon.SetCondition("player", "fadeIn", nil)
 Mock.Tick(0.5)
 check(player:GetAlpha() == 0, "Re-enabling uses the retained conditions")
 vv.OpenOptions("politeUI")
@@ -162,11 +139,13 @@ check(near(player:GetAlpha(), 0.7), "Restricted casting data does not mean not c
 addon.SetCondition("player", "fadeOut", nil)
 Mock.cast = nil
 Mock.powerType.player = 1
+Mock.powerMaximum.player = 0
 addon.SetCondition("player", "fadeOut", "manaFull", true)
 Mock.Tick(0.5)
 check(near(player:GetAlpha(), 0.7), "Non-mana classes do not match full mana")
 addon.ResetSettings()
 Mock.powerType.player = 0
+Mock.powerMaximum.player = 100
 
 -- Auras, focus beyond container bounds, native cast fading, and late frames.
 addon.SetCondition("buffs", "fadeOut", "noDebuffs", true) -- not a buffs condition
@@ -206,7 +185,6 @@ addon.ResetSettings()
 local party = frame("PartyFrame")
 Mock.units.party1, Mock.health.party1, Mock.maximum.party1 = true, 100, 100
 addon.SetCondition("party", "fadeOut", "groupHealthFull", true)
-addon.SetCondition("party", "fadeIn", "memberInjured", true)
 Mock.Tick(0.5)
 check(party:GetAlpha() == 0, "Group full-health checks use members, not player health")
 Mock.health.party1 = 60; Mock.Tick(0.5)
@@ -226,19 +204,17 @@ check(chat:GetAlpha() == 0, "Quiet chat fades after 30 seconds")
 box:SetFocus(); Mock.Tick(0.5)
 check(near(chat:GetAlpha(), 0.9), "Typing reveals chat even without an automatic return rule")
 box:ClearFocus(); Mock.Tick(0.5)
-addon.SetCondition("chat", "fadeIn", "chatRecent", true)
 Mock.Event("CHAT_MSG_WHISPER"); Mock.Tick(0.5)
 check(near(chat:GetAlpha(), 0.9), "A recent whisper can be a chat return condition")
 addon.ResetSettings()
 local tracker = frame("ObjectiveTrackerFrame")
 Mock.watches = 2
 addon.SetCondition("quests", "fadeOut", "hasQuests", true)
-addon.SetCondition("quests", "fadeIn", "questComplete", true)
 Mock.Tick(0.5)
 check(tracker:GetAlpha() == 0, "Quest tracker conditions use watched quests")
-Mock.watchedComplete = true
+Mock.watches = 0
 Mock.Event("QUEST_LOG_UPDATE"); Mock.Tick(0.5)
-check(tracker:GetAlpha() == 1, "A quest ready for turn-in can return the tracker")
+check(tracker:GetAlpha() == 1, "Untracking quests automatically returns the tracker")
 addon.ResetSettings()
 
 -- Profile isolation, legacy profiles, and saved preference normalization.
@@ -247,8 +223,8 @@ check(vv.SaveProfile("Polite snapshot"), "Fade rules can be saved in account pro
 addon.ResetSettings()
 check(vv.LoadProfile("Polite snapshot") and addon.GetRule("player").fadeOut.outCombat, "Loading restores fade rules")
 check(not vv.ProfileModified(), "Loaded fade design compares cleanly")
-addon.SetCondition("player", "fadeIn", "escape", true)
-check(vv.ProfileModified() and not vv.profileStore["Polite snapshot"].settings.politeUI.rules.player.fadeIn.escape,
+addon.SetCondition("player", "fadeOut", "alive", true)
+check(vv.ProfileModified() and not vv.profileStore["Polite snapshot"].settings.politeUI.rules.player.fadeOut.alive,
     "Local changes never mutate saved rule selections")
 local legacy = vv.Copy(vv.profileStore["Polite snapshot"])
 legacy.settings.politeUI, legacy.settings.modules.politeUI = nil, nil
@@ -261,7 +237,7 @@ addon.db.rules.player = {fadeOut={outCombat=true, invalid=true, healthFull=false
 addon.db.rules.CharacterFrame = {fadeOut={outCombat=true}, fadeIn={}}
 addon.InitDB()
 check(addon.GetRule("player").fadeOut.outCombat and not addon.GetRule("player").fadeOut.invalid
-    and type(addon.GetRule("player").fadeIn) == "table" and not addon.db.rules.CharacterFrame,
+    and addon.GetRule("player").fadeIn == nil and not addon.db.rules.CharacterFrame,
     "Saved data repairs unknown elements, invalid conditions, and malformed selectors")
 addon.ResetSettings()
 check(character:GetAlpha() == 1 and questLog:GetAlpha() == 1 and bank:GetAlpha() == 1 and auction:GetAlpha() == 1,

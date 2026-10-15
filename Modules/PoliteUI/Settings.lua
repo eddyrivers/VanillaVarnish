@@ -37,7 +37,7 @@ function addon.RegisterOptions()
     presets:SetDefaultText("Coming soon")
     presets:SetEnabled(false)
     UI.Label(panel, "Presets", 16, -84)
-    local help = UI.Label(panel, "All selections in a list must match (AND). Fade in wins when both lists match.\nHover always reveals; fading takes 0.5 seconds. Event conditions last 3 seconds.\nOnly persistent HUD pieces are included. Configure Polite UI outside combat.",
+    local help = UI.Label(panel, "Fade out only while ALL selected conditions match (AND).\nReturn automatically when any condition stops matching. Hover always reveals.\nNormal fades take 0.5 seconds; restricted resource rules use native opacity.",
         16, -118, "GameFontHighlightSmall")
     help:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -16, -118)
     help:SetJustifyH("LEFT")
@@ -50,11 +50,12 @@ function addon.RegisterOptions()
     scroll:SetScript("OnSizeChanged", function(_, width) content:SetWidth(math.max(570, width)) end)
     local function select(row, key, side)
         local dropdown = CreateFrame("DropdownButton", nil, row, "WowStyle1DropdownTemplate")
-        dropdown:SetSize(184, 24)
-        dropdown:SetPoint("TOPLEFT", row, "TOPLEFT", side == "fadeOut" and 188 or 384, 0)
+        dropdown:SetSize(376, 24)
+        dropdown:SetPoint("TOPLEFT", row, "TOPLEFT", 188, 0)
         dropdown:SetDefaultText("Never")
         dropdown:SetSelectionText(function() return summary(key, side) end)
         dropdown:SetupMenu(function(_, menu)
+            if menu.SetScrollMode then menu:SetScrollMode(440) end
             menu:CreateRadio("Never (clear selections)", function() return not next(addon.GetRule(key)[side]) end,
                 function() addon.SetCondition(key, side, nil) end)
             menu:CreateDivider()
@@ -64,20 +65,19 @@ function addon.RegisterOptions()
                 local id = choice.id
                 if index == 1 and #spec.specific > 0 then menu:CreateTitle("For " .. spec.label) end
                 if index == #spec.specific + 1 then menu:CreateTitle("Common conditions") end
-                if side == "fadeIn" and index == #spec.specific + #addon.common + 1 then menu:CreateTitle("Events (3-second reveal)") end
                 menu:CreateCheckbox(choice.label, function() return addon.GetRule(key)[side][id] == true end,
                     function() addon.SetCondition(key, side, id, not addon.GetRule(key)[side][id]) end)
             end
         end)
         dropdown:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(addon.byKey[key].label .. ": " .. (side == "fadeOut" and "Fade out" or "Fade in"))
+            GameTooltip:SetText(addon.byKey[key].label .. ": Fade out")
             local state = addon.GetDiagnostics()[key]
             GameTooltip:AddLine(state.status, 1, 0.82, 0, true)
             local items = state[side].items
             if #items == 0 then GameTooltip:AddLine("Never: no automatic conditions.", 0.85, 0.85, 0.85, true) end
             for _, item in ipairs(items) do
-                local marker = item.value == true and "Match: " or item.value == false and "Waiting: " or "Unavailable: "
+                local marker = item.native and "Native: " or item.value == true and "Match: " or item.value == false and "Waiting: " or "Unavailable: "
                 GameTooltip:AddLine(marker .. item.label .. (item.reason and " (" .. item.reason .. ")" or ""),
                     item.value == true and 0.4 or 1, item.value == true and 1 or 0.82, 0.4, true)
             end
@@ -96,7 +96,6 @@ function addon.RegisterOptions()
             group = spec.group
             UI.Label(content, group, 0, y, "GameFontNormalLarge")
             UI.Label(content, "Fade out", 188, y - 28, "GameFontNormal")
-            UI.Label(content, "Fade in", 384, y - 28, "GameFontNormal")
             y = y - 52
         end
         local row = CreateFrame("Frame", nil, content)
@@ -106,7 +105,6 @@ function addon.RegisterOptions()
         local label = UI.Label(row, spec.label, 0, -5)
         label:SetWidth(180)
         select(row, spec.key, "fadeOut")
-        select(row, spec.key, "fadeIn")
         y = y - 36
     end
     content:SetHeight(-y + 12)

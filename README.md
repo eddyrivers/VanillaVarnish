@@ -18,7 +18,7 @@ Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. Active settings 
 | Quest tracker | Quests grouped by zone, collapsible headings, and optional completed-first or completed-last sorting |
 | Party frames | Up to 16 buffs in two rows, larger player buffs and dispellable debuffs, class-colored health bars, and friendly-spell range fading |
 | Tooltips | Mouse following, configurable offsets, class/difficulty colors, immediate hover dismissal, and optional combat pause |
-| Polite UI | Independent fade-out and fade-in rules for persistent HUD elements, with hover reveal |
+| Polite UI | Fade-out rules for persistent HUD elements, automatic return, and hover reveal |
 
 **Nameplates:** choose damage and friendly range spells; unreadable range results keep normal opacity. Quest loot icons include a compact bundled pfQuest Vanilla baseline, so Questie and QuestieDB are optional. Native quest objectives still control progress and completion; native tooltips identify kill and other objectives. An installed drop database can fill quests absent from the baseline. No website-derived Forever overrides are included; changed or new Forever quests may need further coverage. Swing timers and combo points share a live preview. Positive X moves right; positive Y moves down. Threat colors turn fighting enemies blue when you hold aggro as a tank, or when you avoid aggro as a damage dealer or healer. Other situations keep the game's colors.
 
@@ -32,13 +32,13 @@ Both feature previews follow **Settings > Nameplates**, including style, size, h
 
 ## Polite UI (beta)
 
-Open **`/vv polite`** (or `/vv fade`) to let persistent parts of the interface step aside. The preset selector is a placeholder for future designs. Each grouped row has **Fade out** and **Fade in** multiselects, both starting at **Never**. Select **Never (clear selections)** to empty a list.
+Open **`/vv polite`** (or `/vv fade`) to let persistent parts of the interface step aside. The preset selector is a placeholder for future designs. Each grouped row has one **Fade out** multiselect, starting at **Never**. Select **Never (clear selections)** to empty it.
 
-Every selected condition in a list must match: **AND**, rather than OR. For example, fade the **Player frame** when health is full **and** you are out of combat; return it while in combat. If both lists match, **Fade in wins**. A faded element stays faded until its return list matches. Losing the fade-out conditions alone does not bring it back. An empty fade-out list leaves the element alone; an empty fade-in list disables automatic return.
+Every selected condition must match: **AND**, rather than OR. The element fades out only while they all match and **returns automatically when any condition stops matching**. For example, choose full health, full mana, out of combat, and no target: entering combat, selecting a target, or losing health/mana brings the player frame back. There is no separate Fade in list. Existing fade-out selections are preserved; older beta return lists are discarded.
 
-Fades take about **0.5 seconds** and reach complete transparency. **Hover always reveals** the element, including its buttons and aura icons, then lets its rules resume when you leave. Typing keeps chat visible. This settings page and Blizzard's Edit Mode reveal all affected elements. The game retains control of which frames are shown, their click behavior, and their own opacity changes.
+Ordinary fades take about **0.5 seconds** and reach complete transparency. **Hover always reveals** the element, including its buttons and aura icons, then lets its rules resume when you leave. Typing keeps chat visible. This settings page and Blizzard's Edit Mode reveal all affected elements. The game retains control of which frames are shown, their click behavior, and their own opacity changes.
 
-The event return choices—enter combat, leave combat, start casting/channeling, select a new target, and press Escape—remain true for **3 seconds**, giving you time to read the returning UI. Additional selections still use AND. State conditions such as **When in combat** remain true for as long as the state lasts. Choose that state instead of the event if you want the frame visible throughout combat.
+Forever can restrict raw health values even when a unit's bar is visible. Full/low/critical-health conditions can instead use a native percentage curve passed directly to frame opacity. This path changes opacity immediately and never inspects restricted values in Lua. The native [health-percent API](https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua) accepts curves, and [SetAlpha](https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleRegionAPIDocumentation.lua) accepts their opaque output. Restricted mana thresholds can use the corresponding power-percent API.
 
 All rows offer these common state conditions: in/out of combat, having/no target, moving/standing still, mounted/not mounted, resting, casting/channeling/not casting, and alive/dead or ghost. These are the initial element-specific choices for review:
 
@@ -59,13 +59,13 @@ All rows offer these common state conditions: in/out of combat, having/no target
 | Pet action bar | Pet present; no pet |
 | Stance/form bar, micro menu, and bag buttons | Common conditions |
 
-"Increasing" means a resource rose within the last 3 seconds without falling since. Mana conditions apply only to units that use mana. Unavailable or restricted API data never satisfies a condition. Frames supplied by the client are discovered as they appear; replacement addon frames are outside this first pass.
+"Increasing" means a readable resource rose within the last 3 seconds without falling since. **Mana checks use the actual mana pool**, including while a druid is in bear or cat form with rage/energy active. A unit with no mana pool cannot match a mana condition. Recovery trends and group resource checks require readable values. Two independently restricted resources cannot currently be combined; those rules leave the element visible and explain the limitation. Other unavailable API data never satisfies a condition. Frames supplied by the client are discovered as they appear; replacement addon frames are outside this first pass.
 
-Hover a condition dropdown to see **Match**, **Waiting**, or **Unavailable** beside each selection, along with the element's current status. Contradictory selections are explained there too. `/vv polite debug` prints the same condition and frame status in chat. Rules update as you change them and resume when Settings closes; no reload is needed to apply selections.
+Hover a condition dropdown to see **Match**, **Waiting**, **Native**, or **Unavailable** beside each selection, along with the element's current status. Native means the client evaluates the resource condition without exposing its result to Lua. Contradictory selections are explained there too. `/vv polite debug` prints the same condition and frame status in chat. Rules update as you change them and resume when Settings closes; no reload is needed to apply selections.
 
 **Player frame** means the persistent portrait/health/mana HUD, and **Quest tracker** means the persistent objectives display. The character sheet, quest log window, bags themselves, bank, auction house, map, and other manually opened windows are excluded. Rules are saved per character and included in account profiles. Older profiles and built-in designs leave all fade selections at Never. Use `/vv polite off` for immediate restoration without losing your selections, or `/vv polite reset` to clear them.
 
-This beta targets **WoW Forever 1.60.x / Interface 16001**. Automated checks cover rule behavior; in-game layout, hover, Escape delivery, and combat taint checks remain part of beta validation.
+This beta targets **WoW Forever 1.60.x / Interface 16001**. Automated checks cover rule behavior and simulated opaque native values; in-game layout, hover, native opacity, and combat taint checks remain part of beta validation.
 
 ## Commands
 

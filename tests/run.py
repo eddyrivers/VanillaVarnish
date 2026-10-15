@@ -203,6 +203,13 @@ load(polite_matrix, "Modules/PoliteUI/PoliteUI.lua")
 polite_matrix.execute((ROOT / "tests/test_polite_ui_matrix.lua").read_text())
 print(f"PASS: {polite_matrix.globals().VV_POLITE_UI_MATRIX_CHECKS} assertions across {polite_matrix.globals().VV_POLITE_UI_COMBINATIONS} Polite UI condition subsets, {polite_matrix.globals().VV_POLITE_UI_LIVE_CASES} live configurations, and {polite_matrix.globals().VV_POLITE_UI_ADAPTERS} frame adapters without reloading")
 
+native_resources = runtime()
+native_resources.execute((ROOT / "tests/nameplates/MockWoW.lua").read_text())
+load(native_resources, "Core.lua")
+load(native_resources, "Modules/PoliteUI/PoliteUI.lua")
+native_resources.execute((ROOT / "tests/test_polite_ui_native_resources.lua").read_text())
+print(f"PASS: {native_resources.globals().VV_POLITE_UI_NATIVE_RESOURCE_CHECKS} restricted-resource assertions across {native_resources.globals().VV_POLITE_UI_NATIVE_RESOURCE_CASES} caster/bear/cat configurations")
+
 profiles = nameplates(full=True)
 profiles.execute((ROOT / "tests/test_profiles.lua").read_text())
 print(f"PASS: {profiles.globals().VV_PROFILE_CHECKS} account profiles, cross-character loading, isolation, controls, and combat checks")
