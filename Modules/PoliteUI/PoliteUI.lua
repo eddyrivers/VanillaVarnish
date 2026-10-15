@@ -3,6 +3,8 @@ local addon = VV.PoliteUI
 local driver = CreateFrame("Frame")
 local ready, elapsed, discoveryElapsed = false, 0, 0
 local records, hidden, history, pulses = {}, {}, {}, {}
+local evaluations, overrides = {}, {}
+local EMPTY_RULE = {fadeOut={}, fadeIn={}}
 local lastChat, cache, dirty = 0, {}, false
 local FADE_TIME, EVENT_HOLD = 0.5, 3
 
@@ -48,8 +50,14 @@ local function resource(unit, kind)
     if cache[key] then return unpack(cache[key]) end
     if exists(unit) ~= true then return end
     if kind == "mana" and read(UnitPowerType, unit) ~= 0 then return end
-    local current = read(kind == "health" and UnitHealth or UnitPower, unit, kind == "mana" and 0 or nil)
-    local maximum = read(kind == "health" and UnitHealthMax or UnitPowerMax, unit, kind == "mana" and 0 or nil)
+    local current, maximum
+    if kind == "health" then
+        -- An omitted optional argument is different from an explicit nil in
+        -- the client's generated API bindings. HealthMax takes only the unit.
+        current, maximum = read(UnitHealth, unit), read(UnitHealthMax, unit)
+    else
+        current, maximum = read(UnitPower, unit, 0), read(UnitPowerMax, unit, 0)
+    end
     if not number(current) or not number(maximum) or maximum <= 0 then return end
     local guid = read(UnitGUID, unit)
     local previous, now = history[key], GetTime()
@@ -115,6 +123,14 @@ local function groupState(spec, condition)
             local dead = truth(read(UnitIsDeadOrGhost, unit))
             if condition == "memberUnavailable" then
                 if connected == false or dead == true then return true end
+            elseif condition == "memberInjured" then
+                -- One offline/dead member must not mask another member who
+                -- can still be healed. Only the all-full predicates need
+                -- every member to be available.
+                if connected == true and dead == false then
+                    local ratio = resource(unit, "health")
+                    if ratio and ratio < 1 then return true end
+                end
             elseif connected ~= true or dead ~= false then return false
             elseif condition == "groupManaFull" then
                 local powerType = read(UnitPowerType, unit)
@@ -126,7 +142,6 @@ local function groupState(spec, condition)
             else
                 local ratio = resource(unit, "health")
                 if not ratio then return end
-                if condition == "memberInjured" and ratio < 1 then return true end
                 if condition == "groupHealthFull" and ratio < 1 then return false end
             end
         end
@@ -235,21 +250,20 @@ addon.elements = {
 addon.byKey = {}
 for _, spec in ipairs(addon.elements) do
     addon.byKey[spec.key] = spec
-    spec.allowed = {fadeOut={}, fadeIn={}}
-    for _, id in ipairs(spec.specific) do spec.allowed.fadeOut[id], spec.allowed.fadeIn[id] = true, true end
-    for _, id in ipairs(addon.common) do spec.allowed.fadeOut[id], spec.allowed.fadeIn[id] = true, true end
-    for _, id in ipairs(addon.returns) do spec.allowed.fadeIn[id] = true end
+    spec.allowed, spec.choices = {fadeOut={}, fadeIn={}}, {fadeOut={}, fadeIn={}}
+    for _, side in ipairs({"fadeOut", "fadeIn"}) do
+        for _, ids in ipairs({spec.specific, addon.common, side == "fadeIn" and addon.returns or {}}) do
+            for _, id in ipairs(ids) do
+                spec.allowed[side][id] = true
+                spec.choices[side][#spec.choices[side] + 1] = addon.conditions[id]
+            end
+        end
+    end
 end
 
 function addon.Choices(key, side)
-    local spec, list = addon.byKey[key], {}
-    if not spec then return list end
-    for _, id in ipairs(spec.specific) do list[#list + 1] = addon.conditions[id] end
-    for _, id in ipairs(addon.common) do list[#list + 1] = addon.conditions[id] end
-    if side == "fadeIn" then
-        for _, id in ipairs(addon.returns) do list[#list + 1] = addon.conditions[id] end
-    end
-    return list
+    local spec = addon.byKey[key]
+    return spec and spec.choices[side] or {}
 end
 local function allowed(key, side, id)
     local spec = addon.byKey[key]
@@ -276,16 +290,33 @@ function addon.InitDB()
 end
 function addon.GetRule(key)
     local db = VV.db and VV.db.politeUI
-    return db and db.rules and db.rules[key] or {fadeOut={}, fadeIn={}}
+    return db and db.rules and db.rules[key] or EMPTY_RULE
 end
 function addon.Matches(key, side)
     local spec, selection = addon.byKey[key], addon.GetRule(key)[side]
     if not spec or type(selection) ~= "table" or not next(selection) then return false end
+    local result = {matches=true, items={}}
     for id, selected in pairs(selection) do
-        local item = addon.conditions[id]
-        if selected ~= true or not item or not allowed(key, side, id) or read(item.test, spec) ~= true then return false end
+        if selected ~= true or not allowed(key, side, id) then result.matches = false end
     end
-    return true
+    -- Evaluate every selected condition, in menu order. Short-circuiting an
+    -- AND list starves recovery history whenever an earlier gate is false.
+    for _, item in ipairs(addon.Choices(key, side)) do
+        if selection[item.id] then
+            local value = read(item.test, spec)
+            local reason
+            if value == nil then
+                local powerType = item.id:find("^mana") and read(UnitPowerType, spec.unit or "player")
+                reason = number(powerType) and powerType ~= 0 and "This unit does not use mana." or "Client data unavailable."
+            end
+            result.items[#result.items + 1] = {id=item.id, label=item.label, value=value, reason=reason}
+            if value ~= true then result.matches = false end
+        end
+    end
+    if #result.items == 0 then result.matches = false end
+    evaluations[key] = evaluations[key] or {}
+    evaluations[key][side] = result
+    return result.matches
 end
 
 local function usable(frame)
@@ -293,10 +324,18 @@ local function usable(frame)
     return not frame.IsForbidden or read(frame.IsForbidden, frame) == false
 end
 local function write(record)
-    if not usable(record.frame) then return false end
+    if not usable(record.frame) then record.retry = true; record.error = "Frame is unavailable or forbidden."; return false end
     record.writing = true
-    local ok = pcall(record.frame.SetAlpha, record.frame, record.base * record.factor)
+    local desired = record.base * record.factor
+    local ok, message = pcall(record.frame.SetAlpha, record.frame, desired)
     record.writing = false
+    if ok then
+        local actual = read(record.frame.GetAlpha, record.frame)
+        if number(actual) and math.abs(actual - desired) > 0.001 then
+            ok, message = false, "Another UI controller changed this frame's opacity."
+        end
+    end
+    record.retry, record.error = not ok, not ok and tostring(message) or nil
     return ok
 end
 local function restore(record)
@@ -361,20 +400,24 @@ local function hovered(frame)
     return truth(read(frame.IsMouseOver, frame)) == true
 end
 local function editing()
-    if addon.optionsPanel and read(addon.optionsPanel.IsShown, addon.optionsPanel) then return true end
+    if addon.optionsPanel and truth(read(addon.optionsPanel.IsVisible, addon.optionsPanel)) == true then return true end
     local manager = _G.EditModeManagerFrame
-    return manager and (truth(read(manager.IsEditModeActive, manager)) == true
-        or truth(read(manager.IsShown, manager)) == true) or false
+    if not manager then return false end
+    if manager.IsEditModeActive then return truth(read(manager.IsEditModeActive, manager)) == true end
+    return truth(read(manager.IsVisible, manager)) == true
 end
 local function evaluate()
     dirty = false
-    cache = {}
+    cache, evaluations, overrides = {}, {}, {}
     local reveal = editing()
     for _, spec in ipairs(addon.elements) do
         local key = spec.key
+        -- Sample both lists even when fade-in wins. A return state must not
+        -- prevent the fade-out list from observing ongoing recovery.
+        local fadeIn, fadeOut = addon.Matches(key, "fadeIn"), addon.Matches(key, "fadeOut")
         if not next(addon.GetRule(key).fadeOut) then hidden[key] = false
-        elseif addon.Matches(key, "fadeIn") then hidden[key] = false
-        elseif addon.Matches(key, "fadeOut") then hidden[key] = true end
+        elseif fadeIn then hidden[key] = false
+        elseif fadeOut then hidden[key] = true end
     end
     local over = {}
     for _, record in pairs(records) do
@@ -390,7 +433,7 @@ local function evaluate()
                     for _ = 1, 32 do
                         if not focus or not usable(focus) then break end
                         local record = records[focus]
-                        if record and record.active then over[record.key] = true; break end
+                        if record and record.active and truth(read(focus.IsVisible, focus)) == true then over[record.key] = true; break end
                         focus = read(focus.GetParent, focus)
                     end
                 end
@@ -400,7 +443,10 @@ local function evaluate()
     -- Typing keeps all chat chrome readable, even with a latched fade.
     if typing() then over.chat = true end
     for _, record in pairs(records) do
-        if record.active then record.goal = hidden[record.key] and not reveal and not over[record.key] and 0 or 1 end
+        if record.active then
+            overrides[record.key] = reveal and "Settings / Edit Mode" or over[record.key] and "Hover / chat input" or nil
+            record.goal = hidden[record.key] and not reveal and not over[record.key] and 0 or 1
+        end
     end
 end
 local function enabled() return ready and VV.IsModuleEnabled("politeUI") end
@@ -425,15 +471,18 @@ function addon.RefreshModule()
     wake()
     if addon.RefreshOptions then addon.RefreshOptions() end
 end
+-- Opening/closing a canvas changes only the reveal override. Keep resource
+-- history, event grace, and latched rules intact throughout Settings changes.
+function addon.RefreshVisibility() wake() end
 function addon.SetCondition(key, side, id, selected)
     if not addon.byKey[key] or (side ~= "fadeOut" and side ~= "fadeIn") then return false end
     if id ~= nil and (not allowed(key, side, id) or type(selected) ~= "boolean") then return false end
     addon.InitDB()
-    local rule = addon.GetRule(key)
+    local rule = addon.db.rules[key] or {fadeOut={}, fadeIn={}}
     if id == nil then rule[side] = {} else rule[side][id] = selected and true or nil end
     addon.db.rules[key] = rule
     addon.InitDB()
-    hidden[key] = false
+    if side == "fadeOut" then hidden[key] = false end
     wake()
     if VV.RefreshOptions then VV.RefreshOptions() end
     return true
@@ -444,9 +493,77 @@ function addon.ResetSettings()
     addon.RefreshModule()
     if VV.RefreshOptions then VV.RefreshOptions() end
 end
+local opposites = {
+    {"inCombat", "outCombat"}, {"hasTarget", "noTarget"}, {"moving", "stationary"},
+    {"mounted", "onFoot"}, {"casting", "notCasting"}, {"alive", "dead"},
+    {"healthFull", "healthLow"}, {"healthFull", "healthCritical"}, {"healthRising", "healthLow"},
+    {"manaFull", "manaLow"}, {"manaRising", "manaLow"}, {"groupHealthFull", "memberInjured"},
+    {"noBuffs", "hasBuffs"}, {"noBuffs", "buffExpiring"}, {"noDebuffs", "hasDebuffs"},
+    {"noQuests", "hasQuests"}, {"noQuests", "questComplete"}, {"chatIdle", "chatRecent"},
+    {"typing", "notTyping"}, {"indoors", "outdoors"}, {"petExists", "noPet"},
+}
+local function warning(key, side)
+    local selected = addon.GetRule(key)[side]
+    for _, pair in ipairs(opposites) do
+        if selected[pair[1]] and selected[pair[2]] then
+            return "Cannot match together: " .. addon.conditions[pair[1]].label .. " AND " .. addon.conditions[pair[2]].label
+        end
+    end
+end
+function addon.GetDiagnostics()
+    evaluate()
+    local result = {}
+    for _, spec in ipairs(addon.elements) do
+        local key, count, visible, error = spec.key, 0, false, nil
+        for _, record in pairs(records) do
+            if record.key == key and record.active then
+                count = count + 1
+                if truth(read(record.frame.IsVisible, record.frame)) == true then visible = true end
+                error = error or record.error
+            end
+        end
+        local checks = evaluations[key] or {}
+        local status
+        if not VV.IsModuleEnabled("politeUI") then status = "Module off"
+        elseif not next(addon.GetRule(key).fadeOut) then status = "Never (no fade-out rules)"
+        elseif error then status = "Opacity update pending"
+        elseif count == 0 then status = "No supported frame found"
+        elseif overrides[key] then status = "Revealed: " .. overrides[key]
+        elseif not visible then status = "Hidden by the game"
+        else status = hidden[key] and "Fading / faded out" or "Fade in / visible" end
+        result[key] = {status=status, frames=count, error=error,
+            fadeOut=checks.fadeOut or {matches=false, items={}}, fadeIn=checks.fadeIn or {matches=false, items={}},
+            fadeOutWarning=warning(key, "fadeOut"), fadeInWarning=warning(key, "fadeIn")}
+    end
+    return result
+end
+local function debugStatus()
+    local diagnostics, configured = addon.GetDiagnostics(), false
+    for _, spec in ipairs(addon.elements) do
+        local rule = addon.GetRule(spec.key)
+        if next(rule.fadeOut) or next(rule.fadeIn) then
+            configured = true
+            local state = diagnostics[spec.key]
+            VV.Print(spec.label .. ": " .. state.status .. "; " .. state.frames .. " frame(s).")
+            for _, side in ipairs({"fadeOut", "fadeIn"}) do
+                local labels = {}
+                for _, item in ipairs(state[side].items) do
+                    labels[#labels + 1] = (item.value == true and "Match: " or item.value == false and "Waiting: " or "Unavailable: ") .. item.label
+                        .. (item.reason and " (" .. item.reason .. ")" or "")
+                end
+                VV.Print((side == "fadeOut" and "Fade out: " or "Fade in: ") .. (#labels > 0 and table.concat(labels, " AND ") or "Never"))
+                if state[side .. "Warning"] then VV.Print(state[side .. "Warning"]) end
+            end
+            if state.error then VV.Print(state.error) end
+        end
+    end
+    if not configured then VV.Print("Polite UI: all elements are set to Never.") end
+end
 function addon.HandleSlash(message)
     if (message or ""):lower() == "reset" then addon.ResetSettings(); return end
+    if (message or ""):lower() == "debug" or (message or ""):lower() == "status" then debugStatus(); return end
     VV.Print("/vv polite opens Polite UI. /vv polite on | off | toggle controls fading; /vv polite reset clears its rules.")
+    VV.Print("/vv polite debug explains current conditions and frame status.")
 end
 
 driver:Hide()
@@ -498,16 +615,28 @@ driver:SetScript("OnEvent", function(_, event, unit)
     if pulse then evaluate() end
 end)
 driver:SetScript("OnUpdate", function(_, delta)
-    if not activeRules() then wake(); return end
+    if not activeRules() then
+        elapsed = elapsed + delta
+        if elapsed >= 0.1 then elapsed = 0; wake() end
+        return
+    end
     elapsed, discoveryElapsed = elapsed + delta, discoveryElapsed + delta
     if discoveryElapsed >= 1 then discoveryElapsed = 0; discover() end
-    if dirty or elapsed >= 0.1 then elapsed = 0; evaluate() end
+    local poll = dirty or elapsed >= 0.1
+    if poll then elapsed = 0; evaluate() end
     for _, record in pairs(records) do
-        if record.active and record.factor ~= record.goal then
-            local step = delta / FADE_TIME
-            if record.factor < record.goal then record.factor = math.min(record.goal, record.factor + step)
-            else record.factor = math.max(record.goal, record.factor - step) end
-            write(record)
+        if record.active then
+            if record.factor ~= record.goal then
+                local step = delta / FADE_TIME
+                if record.factor < record.goal then record.factor = math.min(record.goal, record.factor + step)
+                else record.factor = math.max(record.goal, record.factor - step) end
+                write(record)
+            elseif poll then
+                -- Failed protected writes and native updates may arrive after
+                -- an animation has finished. Retry instead of getting stuck.
+                local actual = read(record.frame.GetAlpha, record.frame)
+                if record.retry or number(actual) and math.abs(actual - record.base * record.factor) > 0.001 then write(record) end
+            end
         end
     end
 end)

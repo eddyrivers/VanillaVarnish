@@ -193,6 +193,15 @@ print("PASS: combined TOC load, namespace isolation, shared menu, master switche
 polite = nameplates(full=True)
 polite.execute((ROOT / "tests/test_polite_ui.lua").read_text())
 print(f"PASS: {polite.globals().VV_POLITE_UI_CHECKS} Polite UI conditions, fades, hover, combat, native alpha, menus, and profiles checks")
+polite.execute((ROOT / "tests/test_polite_ui_hardening.lua").read_text())
+print(f"PASS: {polite.globals().VV_POLITE_UI_HARDENING_CHECKS} Polite UI native API and live rule-update hardening checks")
+
+polite_matrix = runtime()
+polite_matrix.execute((ROOT / "tests/nameplates/MockWoW.lua").read_text())
+load(polite_matrix, "Core.lua")
+load(polite_matrix, "Modules/PoliteUI/PoliteUI.lua")
+polite_matrix.execute((ROOT / "tests/test_polite_ui_matrix.lua").read_text())
+print(f"PASS: {polite_matrix.globals().VV_POLITE_UI_MATRIX_CHECKS} assertions across {polite_matrix.globals().VV_POLITE_UI_COMBINATIONS} Polite UI condition subsets, {polite_matrix.globals().VV_POLITE_UI_LIVE_CASES} live configurations, and {polite_matrix.globals().VV_POLITE_UI_ADAPTERS} frame adapters without reloading")
 
 profiles = nameplates(full=True)
 profiles.execute((ROOT / "tests/test_profiles.lua").read_text())

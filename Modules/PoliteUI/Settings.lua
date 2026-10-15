@@ -72,12 +72,18 @@ function addon.RegisterOptions()
         dropdown:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(addon.byKey[key].label .. ": " .. (side == "fadeOut" and "Fade out" or "Fade in"))
-            local labels = {}
-            for _, item in ipairs(addon.Choices(key, side)) do
-                if addon.GetRule(key)[side][item.id] then labels[#labels + 1] = item.label end
+            local state = addon.GetDiagnostics()[key]
+            GameTooltip:AddLine(state.status, 1, 0.82, 0, true)
+            local items = state[side].items
+            if #items == 0 then GameTooltip:AddLine("Never: no automatic conditions.", 0.85, 0.85, 0.85, true) end
+            for _, item in ipairs(items) do
+                local marker = item.value == true and "Match: " or item.value == false and "Waiting: " or "Unavailable: "
+                GameTooltip:AddLine(marker .. item.label .. (item.reason and " (" .. item.reason .. ")" or ""),
+                    item.value == true and 0.4 or 1, item.value == true and 1 or 0.82, 0.4, true)
             end
-            GameTooltip:AddLine(#labels > 0 and table.concat(labels, "\nAND ") or "Never: no automatic conditions.", 0.85, 0.85, 0.85, true)
-            GameTooltip:AddLine("Select every condition that must match. Hover always reveals this element.", 0.85, 0.85, 0.85, true)
+            if state[side .. "Warning"] then GameTooltip:AddLine(state[side .. "Warning"], 1, 0.3, 0.3, true) end
+            if state.error then GameTooltip:AddLine(state.error, 1, 0.3, 0.3, true) end
+            GameTooltip:AddLine("ALL selections must match (AND). Hover always reveals this element.", 0.85, 0.85, 0.85, true)
             GameTooltip:Show()
         end)
         dropdown:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -112,8 +118,8 @@ function addon.RegisterOptions()
     addon.optionsCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, panel, "Polite UI")
     Settings.RegisterAddOnCategory(addon.optionsCategory)
     addon.optionControls, addon.presetControl = controls, presets
-    panel:SetScript("OnShow", function() addon.RefreshOptions(); addon.RefreshModule() end)
-    panel:SetScript("OnHide", function() addon.RefreshModule() end)
+    panel:SetScript("OnShow", function() addon.RefreshOptions(); addon.RefreshVisibility() end)
+    panel:SetScript("OnHide", addon.RefreshVisibility)
     addon.RefreshOptions()
 end
 

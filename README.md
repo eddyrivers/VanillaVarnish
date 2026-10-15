@@ -61,6 +61,8 @@ All rows offer these common state conditions: in/out of combat, having/no target
 
 "Increasing" means a resource rose within the last 3 seconds without falling since. Mana conditions apply only to units that use mana. Unavailable or restricted API data never satisfies a condition. Frames supplied by the client are discovered as they appear; replacement addon frames are outside this first pass.
 
+Hover a condition dropdown to see **Match**, **Waiting**, or **Unavailable** beside each selection, along with the element's current status. Contradictory selections are explained there too. `/vv polite debug` prints the same condition and frame status in chat. Rules update as you change them and resume when Settings closes; no reload is needed to apply selections.
+
 **Player frame** means the persistent portrait/health/mana HUD, and **Quest tracker** means the persistent objectives display. The character sheet, quest log window, bags themselves, bank, auction house, map, and other manually opened windows are excluded. Rules are saved per character and included in account profiles. Older profiles and built-in designs leave all fade selections at Never. Use `/vv polite off` for immediate restoration without losing your selections, or `/vv polite reset` to clear them.
 
 This beta targets **WoW Forever 1.60.x / Interface 16001**. Automated checks cover rule behavior; in-game layout, hover, Escape delivery, and combat taint checks remain part of beta validation.
@@ -76,6 +78,7 @@ All VanillaVarnish commands start with `/vv`.
 | `/vv nameplates`, `/vv tracker`, `/vv party`, `/vv tooltips` | Open a module page |
 | `/vv polite`, `/vv fade` | Open Polite UI |
 | `/vv polite off`, `/vv polite reset` | Restore native opacity, or clear all fade rules |
+| `/vv polite debug` | Explain current fade conditions and frame status |
 | `/vv <module> on`, `off`, or `toggle` | Enable or disable a whole module |
 | `/vv nameplates range`, `quests`, `swings`, or `combo` | Open a nameplate feature page |
 | `/vv nameplates combo off`, `/vv nameplates threat on` | Switch an individual feature |

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.35-beta.2
+
+- Fix player and group health checks, including full-health rules combined with mana, combat, and targeting conditions.
+- Resume fading when Settings closes without requiring a reload. Keep recovery history, event grace, and fade state intact while opening and closing the options page.
+- Evaluate every selected condition in both directions so resource recovery remains reliable behind other conditions. Retry temporary opacity failures and recover from late native updates.
+- Show matching, waiting, and unavailable conditions in dropdown tooltips, flag contradictory selections, and add `/vv polite debug` for current rule and frame status.
+
 ## 1.0.35-beta.1
 
 - Add **Polite UI**, a new page of independent fade-out and fade-in multiselects for persistent HUD elements. All selections start at Never; matching conditions use AND and fade-in takes priority.
