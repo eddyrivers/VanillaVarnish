@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.9
+
+- Keep portrait party buff icons at their standard size in combat. The larger icons and gold borders for your buffs return after combat, when Forever exposes the caster.
+
 ## 1.0.34.8
 
 - Draw portrait party buffs once in combat at the larger icon size. Use plain borders in combat because Forever restricts caster identity. Outside combat, use the caster's identity to highlight your buffs even when the caster unit token is missing.
