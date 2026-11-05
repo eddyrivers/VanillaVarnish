@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.34.7
+
+- Hide Blizzard's portrait-hover buff popup while party buffs are enabled, keeping individual buff tooltips. Add a subtle gold glow to your buffs, including native combat buffs, within the existing two-row display.
+- Add **Pin tanks, then healers** to portrait Party frames settings with **Off**, **Top**, and **Bottom** choices. Keep tanks above healers at either edge, preserve native targeting, and apply protected layout changes after combat.
+- Add **Include your group's quest objectives** under **Nameplates > Quest icons**. Optionally show loot and kill needs from current party or raid members' native tooltip progress, even for quests you do not have. Save both new options in profiles.
+
 ## 1.0.34.6
 
 - Use Blizzard's native aura container for portrait party buffs in combat, avoiding addon aura reads that Forever blocks while auras are secret. Prepare containers before combat, including hidden party slots, and keep native buff updates, counts, cooldowns, and tooltips active.
