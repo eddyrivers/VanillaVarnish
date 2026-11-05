@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.5
+
+- Read portrait-style party buffs through public aura instance IDs before using bulk or indexed lookups. Keep live buff icons, cooldowns, and tooltips available when combat restricts those older readers; remove expired buffs from the current instance list without changing protected frame layout.
+
 ## 1.0.34.4
 
 - Keep party health bars in their class colors during native health and texture updates, removing the brief green flash in raid-style party frames. Apply the correction immediately in combat while preserving native health handling and color restoration when disabled.
