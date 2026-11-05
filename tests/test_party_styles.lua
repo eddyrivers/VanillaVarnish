@@ -76,7 +76,15 @@ assert(not row:IsShown() and member:GetHeight() == 53, "Raid-style selection hid
 assert(Mock.Row(raidMember) == nil and raidMember:GetHeight() == 53, "Compact frames never get addon aura rows or extra height")
 assert(raidMember.healthBar.color[1] == RAID_CLASS_COLORS.MAGE.r, "Raid-style party bars use class colors")
 raidMember.healthBar:SetStatusBarColor(0, 1, 0)
+assert(raidMember.healthBar.color[1] == RAID_CLASS_COLORS.MAGE.r,
+    "Raid-style native health colors must be corrected before the setter returns")
 Mock.combat = true
+raidMember.healthBar:SetStatusBarColor(0, 1, 0)
+assert(raidMember.healthBar.color[1] == RAID_CLASS_COLORS.MAGE.r,
+    "Combat health updates cannot show an intermediate green frame")
+raidMember.healthBar.barTexture:SetDesaturated(false)
+assert(raidMember.healthBar.barTexture.desaturated,
+    "Native texture changes must retain readable class colors immediately")
 Mock.Tick(0.2)
 assert(raidMember.healthBar.color[1] == RAID_CLASS_COLORS.MAGE.r, "Native compact resets are recolored during combat")
 vv.Party.SetOption("classColors", false)

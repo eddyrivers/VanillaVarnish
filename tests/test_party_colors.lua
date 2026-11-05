@@ -23,6 +23,15 @@ Mock.Event("PLAYER_LOGIN")
 local row = assert(Mock.Row(member))
 local icon = Mock.Icons(row)[1]
 assert(icon:IsShown())
+bar:SetStatusBarColor(0, 1, 0, 0.6)
+assert(bar.color[1] == RAID_CLASS_COLORS.MAGE.r, "Native green is corrected without waiting for a timer")
+texture:SetDesaturated(false)
+assert(texture.desaturated, "Native saturation resets are corrected in the same call")
+vv.Party.SetOption("classColors", false)
+assert(bar.color[1] == 0 and bar.color[2] == 1 and bar.color[4] == 0.6 and not texture.desaturated,
+    "Immediate recoloring still records the latest native color and texture for restoration")
+bar:SetStatusBarColor(unpack(originalColor))
+vv.Party.SetOption("classColors", true)
 for _ = 1, 10 do
     vv.Party.SetOption("classColors", false)
     assert(bar.color[1] == originalColor[1] and bar.color[4] == originalColor[4])
@@ -41,6 +50,10 @@ vv.Party.SetOption("classColors", false)
 bar.color = {protected, protected, protected, protected}
 texture.IsDesaturated = function() return protected end
 vv.Party.SetOption("classColors", true)
+bar:SetStatusBarColor(protected, protected, protected, protected)
+texture:SetDesaturated(protected)
+assert(bar.color[1] == RAID_CLASS_COLORS.MAGE.r and texture.desaturated == true,
+    "Restricted native display values can be recorded and recolored without inspecting them")
 vv.Party.SetOption("classColors", false)
 assert(bar.color[1] == protected and bar.color[4] == protected and texture.desaturated == protected)
 texture.IsDesaturated = nil
@@ -70,3 +83,15 @@ Mock.Event("GROUP_ROSTER_UPDATE")
 assert(bar.color[1] == originalColor[1] and not row:IsShown())
 assert(nativeCalls == 0 and valueCalls == 0 and bar.currValue == protected,
     "Module toggles and pooled-frame cleanup preserve native health updates")
+bar:SetStatusBarColor(0.2, 0.8, 0.3, 0.4)
+texture:SetDesaturated(false)
+assert(bar.color[1] == 0.2 and not texture.desaturated, "Inactive frames no longer enforce a previous member's colors")
+member.unit, Mock.classes.party2 = "party2", "WARRIOR"
+Mock.active = {member}
+Mock.Event("GROUP_ROSTER_UPDATE")
+Mock.combat = true
+bar:SetStatusBarColor(0, 1, 0)
+assert(bar.color[1] == RAID_CLASS_COLORS.WARRIOR.r and bar.color[2] == RAID_CLASS_COLORS.WARRIOR.g,
+    "A recycled frame uses the current member's class during the same native update")
+assert(nativeCalls == 0 and valueCalls == 0 and bar.currValue == protected,
+    "Immediate recoloring preserves secure health state after pooled reuse")

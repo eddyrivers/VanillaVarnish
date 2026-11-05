@@ -21,6 +21,7 @@ local colorRecords = setmetatable({}, {__mode="k"})
 local desaturationRecords = setmetatable({}, {__mode="k"})
 local debuffHooks = setmetatable({}, {__mode="k"})
 local partyLayouts = setmetatable({}, {__mode="k"})
+local colorHealth
 
 local function feature(key)
     return VV.IsModuleEnabled("party") and VV.db.party[key]
@@ -217,6 +218,8 @@ local function restoreColor(state)
     end
     if tint.color then attempt(tint.bar.SetStatusBarColor, tint.bar, unpack(tint.color)) end
     tint.setting = nil
+    if tint.state == state then tint.state = nil end
+    if desaturation and desaturation.tint == tint then desaturation.tint = nil end
     state.tint = nil
     -- Native UpdateMember also rebinds units and rewrites health update state.
     -- Never run that routine from a cosmetic toggle, even via securecallfunction.
@@ -230,7 +233,14 @@ local function restoreHeight(state)
     return true
 end
 
-local function colorHealth(state)
+local function reapplyColor(tint)
+    local state = tint and tint.state
+    if state and state.active and state.tint == tint and feature("classColors") then
+        attempt(colorHealth, state)
+    end
+end
+
+colorHealth = function(state)
     if not feature("classColors") then restoreColor(state); return end
     local member, unit = state.member, memberUnit(state.member)
     if not unit then return end
@@ -255,7 +265,11 @@ local function colorHealth(state)
                 tint = {bar=bar}
                 colorRecords[bar] = tint
                 hooksecurefunc(bar, "SetStatusBarColor", function(_, ...)
-                    if not tint.setting then tint.color = {...} end
+                    if tint.setting then return end
+                    tint.color = {...}
+                    -- Native health changes can reset this bar on any frame.
+                    -- Correct the display before returning, not on a timer.
+                    reapplyColor(tint)
                 end)
             end
             tint.color = bar.GetStatusBarColor and {bar:GetStatusBarColor()} or nil
@@ -268,14 +282,18 @@ local function colorHealth(state)
                     record = {}
                     desaturationRecords[texture] = record
                     hooksecurefunc(texture, "SetDesaturated", function(_, ...)
-                        if not record.setting then record.value = {...} end
+                        if record.setting then return end
+                        record.value = {...}
+                        reapplyColor(record.tint)
                     end)
                 end
                 record.value = {texture:IsDesaturated()}
+                record.tint = tint
                 tint.desaturation = record
             end
         end
         local tint = state.tint
+        tint.state = state
         tint.setting = true
         if tint.desaturation then tint.desaturation.setting = true end
         if texture then attempt(texture.SetDesaturated, texture, true) end
