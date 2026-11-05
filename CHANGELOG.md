@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.1
+
+- Keep quest titles in their grouped rows when native tracker animations reposition the first quest. Prevent quests from overlapping zone headings during updates unrelated to quest progress or folding zones.
+
 ## 1.0.34
 
 - Added a small built-in quest database to help show loot icons without Questie.
