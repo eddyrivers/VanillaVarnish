@@ -49,6 +49,17 @@ local function RestoreLayout()
     for _, heading in ipairs(headings) do heading:Hide() end
 end
 
+local function PreserveGroupedSlideAnchor(self)
+    local block = self.firstBlock
+    local state = block and snapshots[block]
+    if not state or state.groupedTop == nil then return end
+    if InCombatLockdown() then pendingRefresh = true; return end
+    -- Native sliding moves only firstBlock and relies on its linked anchors
+    -- to move the remaining rows. Grouped rows have independent positions;
+    -- keep this block in its assigned row, even on the final zero-offset tick.
+    block:SetPoint("TOP", self.ContentsFrame, "TOP", 0, state.groupedTop)
+end
+
 local function SetZoneTracking(zone, tracked)
     if InCombatLockdown() then Print("Zone tracking changes are unavailable during combat."); return end
     local ids, watched = addon.GetZoneQuestIDs(zone), {}
@@ -186,8 +197,9 @@ ApplyLayout = function()
         local offset = count == 0 and firstGap or gap
         if y + offset + height > budget then return false end
         Snapshot(frame)
+        snapshots[frame].groupedTop = -(y - (tracker.headerHeight or 0) + offset)
         frame:ClearAllPoints()
-        frame:SetPoint("TOP", tracker.ContentsFrame, "TOP", 0, -(y - (tracker.headerHeight or 0) + offset))
+        frame:SetPoint("TOP", tracker.ContentsFrame, "TOP", 0, snapshots[frame].groupedTop)
         frame:SetPoint("LEFT", tracker.ContentsFrame, "LEFT", frame.offsetX or tracker.blockOffsetX, 0)
         if not frame.fixedWidth then frame:SetPoint("RIGHT", tracker.ContentsFrame, "RIGHT", 0, 0) end
         frame:SetHeight(height)
@@ -260,6 +272,9 @@ local function TryInstall()
     if not module or not module.ContentsFrame or type(module.BeginLayout) ~= "function"
         or type(module.Update) ~= "function" or type(module.GetExistingBlock) ~= "function" then return false end
     tracker = module
+    if type(module.AdjustSlideAnchor) == "function" then
+        hooksecurefunc(module, "AdjustSlideAnchor", PreserveGroupedSlideAnchor)
+    end
     hooksecurefunc(module, "BeginLayout", function()
         if InCombatLockdown() then pendingRefresh = true; return end
         RestoreLayout()

@@ -6,6 +6,8 @@ The mocks cover nameplates, threat colors, swing timers, collapsing row geometry
 
 Review regressions also cover late nameplate removal after frame reuse, forbidden frames, restricted nested quest records, idle swing rendering, party refresh coalescing, current native color restoration, recycled debuff widgets, and malformed profile sections.
 
+Tracker checks include native slide-anchor updates without quest events, preserving grouped positions before the next frame, folded quest visibility, combat deferral, and native animation placement when grouping is disabled.
+
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for setup, native-source options, and the in-game checks that mocks cannot replace.
 
 For native aura-preview coverage, include `auras.lua` and `classification.lua` from Blizzard_NamePlates in the optional source cache. Add `optionspreview.lua` from Blizzard_SettingsDefinitions_Frame/Nameplates.lua to exercise the native preview sample handoff. The suite tests each aura display combination, native icon limits and scaling, changes while pages are hidden, and isolation from Blizzard's registered preview.

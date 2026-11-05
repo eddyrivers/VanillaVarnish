@@ -230,6 +230,11 @@ function native:GetBlock(id)
     return block, existing
 end
 function native:BeginLayout() self.firstBlock, self.lastBlock, self.contentsHeight = nil, nil, 25 end
+function native:AdjustSlideAnchor(offsetY)
+    if self.firstBlock then
+        self.firstBlock:SetPoint("TOP", self.ContentsFrame, "TOP", 0, offsetY + self.fromHeaderOffsetY)
+    end
+end
 function native:LayoutBlock(block)
     if self.contentsHeight + block.height + 10 > self.availableHeight then block:Hide(); return false end
     block.used, block.nextBlock = true, nil
@@ -316,6 +321,29 @@ equal(top(blocks[5]) > top(blocks[1]), true, "native blocks arranged by zone")
 equal(top(blocks[1]) > top(blocks[2]), true, "native blocks arranged by level")
 equal(top(blocks[2]) > top(blocks[6]), true, "native blocks arranged by ID at equal title")
 equal(top(blocks[3]) > top(blocks[4]), true, "unknown level last")
+-- Native animation ticks can move the first native block without rebuilding
+-- quests or changing progress. It need not be the first grouped quest.
+local groupedFirstY = top(native.firstBlock)
+local groupedFirst = native.firstBlock
+local groupedHeight = native:GetHeight()
+for _, offset in ipairs({0, -80, -40, -1, 0, 25, 0}) do
+    native:AdjustSlideAnchor(offset)
+    equal(top(groupedFirst), groupedFirstY, "idle slide tick preserves grouped quest position")
+    equal(native:GetHeight(), groupedHeight, "slide correction preserves grouped height")
+    equal(native.firstBlock, groupedFirst, "slide correction preserves native first block")
+end
+RunMockTimers()
+equal(top(groupedFirst), groupedFirstY, "slide correction requires no queued refresh")
+native.firstBlock = nil
+native:AdjustSlideAnchor(0)
+equal(native.firstBlock, nil, "cancelled slide with no first block is harmless")
+native.firstBlock = groupedFirst
+combat = true
+native:AdjustSlideAnchor(0)
+equal(top(groupedFirst), -10, "slide anchor changes wait for combat to end")
+combat = false
+events.callback(events, "PLAYER_REGEN_ENABLED"); RunMockTimers()
+equal(top(groupedFirst), groupedFirstY, "combat end restores the grouped position after an idle slide")
 -- Measure the gap from actual rendered bounds for all fold combinations;
 -- expanding either neighbor may add quest content but never extra whitespace.
 for mask = 0, 3 do
@@ -326,6 +354,12 @@ for mask = 0, 3 do
         end
     end
     local previous = blocks[5]:IsShown() and blocks[5] or heads[1]
+    local firstY, firstShown = top(native.firstBlock), native.firstBlock:IsShown()
+    native:AdjustSlideAnchor(0)
+    equal(native.firstBlock:IsShown(), firstShown, "idle slide cannot reveal a folded quest")
+    if firstShown then
+        equal(top(native.firstBlock), firstY, "idle slide preserves placement across zone folds")
+    end
     equal(top(previous) - previous:GetHeight() - top(heads[2]), 10,
         "zone gap remains constant for fold combination " .. mask)
     if blocks[5]:IsShown() then
@@ -456,6 +490,8 @@ equal(blocks[1].HeaderText.size, 14, "off restores native title font")
 equal(heads[1]:IsShown(), false, "off removes headings")
 equal(blocks[1]:IsShown(), true, "off restores native visibility")
 equal(dirty, 1, "off requests native refresh securely")
+native:AdjustSlideAnchor(-30)
+equal(top(native.firstBlock), -40, "grouping off preserves native slide positioning")
 VV_TEST_NS.QuestTracker.HandleSlash("group on")
 container:Update(); RunMockTimers()
 equal(blocks[1].HeaderText:GetText(), "[10] Low", "grouping restores after native rebuild")
