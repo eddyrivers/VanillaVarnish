@@ -18,7 +18,6 @@ function Widget:ClearAllPoints() self.point = nil end
 function Widget:SetAllPoints() end
 function Widget:SetColorTexture(...) self.color = {...} end
 function Widget:SetBlendMode(value) self.blendMode = value end
-function Widget:SetClipsChildren(value) self.clipsChildren = value end
 function Widget:SetVertexColor(...) self.color = {...} end
 function Widget:GetVertexColor() return unpack(self.color or {1, 1, 1, 1}) end
 function Widget:SetAlpha(value) self.alpha = value end

@@ -425,6 +425,25 @@ local function prepareNativeBuffs(state)
     end
 end
 
+local function castByPlayer(unit, aura, instanceID)
+    local source = auraField(aura, "sourceUnit")
+    if source == "player" then return true end
+    if type(source) == "string" and UnitIsUnit then
+        local ok, same = attempt(UnitIsUnit, source, "player")
+        if ok and type(readable(same)) == "boolean" then return same end
+    end
+    -- Some readable auras have no caster unit token. Use the caster's exact
+    -- identity when available, even for spells another party member can cast.
+    if InCombatLockdown() or not C_UnitAuras.GetAuraCasterGUID or not UnitGUID then return false end
+    local id = instanceID or auraField(aura, "auraInstanceID")
+    if type(id) ~= "number" or id <= 0 then return false end
+    local ok, caster = pcall(C_UnitAuras.GetAuraCasterGUID, unit, id)
+    caster = ok and readable(caster)
+    if type(caster) ~= "string" or caster == "" then return false end
+    local playerOK, player = pcall(UnitGUID, "player")
+    return playerOK and caster == readable(player)
+end
+
 local function updateBuffs(state)
     state.buffCount, state.buffSource, state.buffReadFailed = 0, nil, false
     if not feature("buffs") then state.buffStatus = "buffs disabled"; clearRow(state); return end
@@ -502,13 +521,9 @@ local function updateBuffs(state)
     for index = 1, AURA_SCAN_LIMIT do
         local aura = list[index]
         if type(aura) == "table" then
-            local source = auraField(aura, "sourceUnit")
-            local own = source == "player"
-            if not own and type(source) == "string" and UnitIsUnit then
-                local ok, value = attempt(UnitIsUnit, source, "player")
-                own = ok and readable(value) == true
-            end
-            local entry = {aura=aura, index=index, own=own, instanceID=instances and instances[index]}
+            local instanceID = instances and instances[index]
+            local own = castByPlayer(unit, aura, instanceID)
+            local entry = {aura=aura, index=index, own=own, instanceID=instanceID}
             local destination = resting(aura) and recovery or own and ownBuffs or others
             destination[#destination + 1] = entry
         end

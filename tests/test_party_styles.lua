@@ -35,6 +35,24 @@ buffs[10].sourceUnit = "party2"
 Mock.Event("UNIT_AURA", "party1")
 assert(icons[1].width == 14 and icons[3].texture.textureValue == 3)
 for _, icon in ipairs(icons) do assert(not icon.glow:IsShown(), "Reused icons cannot keep another aura's glow") end
+-- Caster GUID can prove ownership without a readable unit token. The same
+-- spell cast by someone else must still use the ordinary appearance.
+function UnitGUID(unit) return unit == "player" and "Player-1-100" end
+function C_UnitAuras.GetAuraCasterGUID(unit, id)
+    assert(unit == "party1")
+    if id == 3 then return "Player-1-100" end
+    if id == 10 then return "Player-1-200" end
+end
+buffs[3].sourceUnit, buffs[10].sourceUnit = nil, nil
+buffs[3].spellId, buffs[10].spellId = 1126, 1126
+buffs[3].isFromPlayerOrPlayerPet, buffs[10].isFromPlayerOrPlayerPet = true, true
+Mock.Event("UNIT_AURA", "party1")
+assert(icons[1].texture.textureValue == 3 and icons[1].width == 19 and icons[1].glow:IsShown())
+assert(icons[10].texture.textureValue == 10 and icons[10].width == 14 and not icons[10].glow:IsShown())
+C_UnitAuras.GetAuraCasterGUID = function() return {secret=true} end
+Mock.Event("UNIT_AURA", "party1")
+assert(icons[3].width == 14 and not icons[3].glow:IsShown(), "An unreadable caster never gets the player's styling")
+C_UnitAuras.GetAuraCasterGUID = nil
 vv.Party.SetOption("buffs", false)
 assert(HIDE_PARTY_MEMBER_BUFF_TOOLTIP == false, "Disabling extra buffs restores the previous native popup setting")
 HIDE_PARTY_MEMBER_BUFF_TOOLTIP = true

@@ -1,6 +1,6 @@
 local _, VV = ...
 local addon = VV.Party
-local SIZE, GAP, ROW_STEP, PER_ROW, LIMIT = 14, 2, 21, 8, 16
+local SIZE, GAP, PER_ROW, LIMIT = 19, 2, 8, 16
 
 function addon.NativeBuffsAvailable()
     return type(AuraContainerSortMethod) == "table" and type(CustomAuraContainerGroupDefaultOptions) == "table"
@@ -26,7 +26,7 @@ function addon.CreateBuffGlow(parent, relative)
     return glow
 end
 
-local function InitializeButton(button, own)
+local function InitializeButton(button)
     -- This callback only builds presentation. The native container owns aura
     -- assignment, restricted data, updates, visibility, and tooltip scripts.
     button:SetSize(SIZE, SIZE)
@@ -51,7 +51,6 @@ local function InitializeButton(button, own)
     local cover = CreateFrame("Frame", nil, button)
     cover:SetAllPoints(button)
     cover:SetFrameLevel(cooldown:GetFrameLevel() + 1)
-    if own then addon.CreateBuffGlow(cover, button) end
     local count = cover:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
     count:SetPoint("BOTTOMRIGHT", 1, -1)
     button:SetApplicationCount(count)
@@ -59,38 +58,28 @@ end
 
 function addon.CreateNativeBuffs(parent)
     if InCombatLockdown() or not addon.NativeBuffsAvailable() then return end
-    local container, viewport
+    local container
     local ok, err = pcall(function()
-        -- Two native groups identify ownership without addon aura reads. The
-        -- viewport displays only the first two rows, including their glows;
-        -- the native flow packs other buffs immediately after the player's.
-        viewport = CreateFrame("Frame", nil, parent)
-        viewport:SetPoint("TOPLEFT", parent, "TOPLEFT", -2, 2)
-        viewport:SetSize(PER_ROW * SIZE + (PER_ROW - 1) * GAP + 4, ROW_STEP + SIZE + 4)
-        viewport:SetClipsChildren(true)
-        container = CreateFrame("AuraContainer", nil, viewport, "CustomAuraContainerTemplate")
+        -- Forever can put the same combat aura in both PLAYER and !PLAYER
+        -- groups. Keep one live list and use the larger size for all its icons.
+        container = CreateFrame("AuraContainer", nil, parent, "CustomAuraContainerTemplate")
         container:SetEnabled(false)
         container:Hide()
-        container:SetPoint("TOPLEFT", viewport, "TOPLEFT", 2, -2)
+        container:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
         container:SetFrameLevel(parent:GetFrameLevel() + 1)
         container:SetFlowLayoutAnchorPoint("TOPLEFT")
         container:SetFlowLayoutMaximumLineSize(PER_ROW * SIZE + (PER_ROW - 1) * GAP)
-        for _, group in ipairs({{"ownBuffs", "HELPFUL|PLAYER", true}, {"buffs", "HELPFUL|!PLAYER", false}}) do
-            local own = group[3]
-            container:AddAuraGroup(group[1], group[2], {
-                maxFrameCount = LIMIT,
-                sortMethod = AuraContainerSortMethod.Default,
-                initializeFrame = function(button) InitializeButton(button, own) end,
-                layout = {elementWidth=SIZE, elementHeight=SIZE, elementSpacing=GAP, lineSpacing=ROW_STEP - SIZE,
-                    groupSpacing=GAP, groupLineSpacing=ROW_STEP - SIZE, forceNewLine=false, layoutIndex=own and 1 or 2},
-            })
-        end
+        container:AddAuraGroup("buffs", "HELPFUL", {
+            maxFrameCount = LIMIT,
+            sortMethod = AuraContainerSortMethod.Default,
+            initializeFrame = InitializeButton,
+            layout = {elementWidth=SIZE, elementHeight=SIZE, elementSpacing=GAP, lineSpacing=GAP},
+        })
     end)
     if ok then return container end
     if container then
         pcall(container.SetEnabled, container, false)
         pcall(container.Hide, container)
     end
-    if viewport then viewport:Hide() end
     return nil, tostring(err)
 end
