@@ -303,9 +303,9 @@ colorHealth = function(state)
     end
 end
 
-local function setAura(icon, unit, aura, index)
+local function setAura(icon, unit, aura, index, instanceID)
     icon.unit = unit
-    icon.auraID = auraField(aura, "auraInstanceID")
+    icon.auraID = instanceID or auraField(aura, "auraInstanceID")
     icon.auraIndex = index
     -- Textures and widget setters can consume secret display values directly.
     icon.texture:SetTexture(aura.icon)
@@ -369,6 +369,30 @@ local function resting(aura)
     return type(name) == "string" and restNames[name] == true
 end
 
+local function instanceBuffs(unit)
+    if not C_UnitAuras.GetUnitAuraInstanceIDs or not C_UnitAuras.GetAuraDataByAuraInstanceID then return end
+    -- The instance list is separate from GetUnitAuras' conditionally secret
+    -- contents. Only public IDs are passed back to aura APIs from addon code.
+    local ok, result = attempt(function()
+        local ids = C_UnitAuras.GetUnitAuraInstanceIDs(unit, "HELPFUL", AURA_SCAN_LIMIT)
+        if type(ids) ~= "table" then return end
+        local auras, instances = {}, {}
+        for index = 1, AURA_SCAN_LIMIT do
+            local id = ids[index]
+            if secret(id) then return end
+            if id == nil then break end
+            if type(id) ~= "number" or id <= 0 then return end
+            local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
+            if type(aura) == "table" then
+                auras[index], instances[index] = aura, id
+            elseif secret(aura) then return end
+            -- A removed aura can disappear between enumeration and lookup.
+        end
+        return {auras=auras, ids=instances}
+    end)
+    if ok then return result end
+end
+
 local function updateBuffs(state)
     state.buffCount, state.buffSource, state.buffReadFailed = 0, nil, false
     if not feature("buffs") then state.buffStatus = "buffs disabled"; clearRow(state); return end
@@ -383,9 +407,14 @@ local function updateBuffs(state)
     -- The aura APIs can still supply permitted display data for this unit token.
     if readable(UnitExists(unit)) == false then state.buffStatus = "unit unavailable"; clearRow(state); return end
     if not C_UnitAuras then state.buffStatus = "aura APIs unavailable"; clearRow(state); return end
-    local list, indexed
+    local list, indexed, instances
+    local byInstance = instanceBuffs(unit)
+    if byInstance then
+        list, instances = byInstance.auras, byInstance.ids
+        state.buffSource = "instances"
+    end
     -- The list API exposes buffs in Forever even when the index API refuses.
-    if C_UnitAuras.GetUnitAuras then
+    if not list and C_UnitAuras.GetUnitAuras then
         local ok, result = attempt(C_UnitAuras.GetUnitAuras, unit, "HELPFUL", AURA_SCAN_LIMIT)
         if ok and type(result) == "table" then
             -- The list can contain secret AuraData references. Attempt numeric
@@ -422,7 +451,7 @@ local function updateBuffs(state)
                 local ok, value = attempt(UnitIsUnit, source, "player")
                 own = ok and readable(value) == true
             end
-            local entry = {aura=aura, index=index, own=own}
+            local entry = {aura=aura, index=index, own=own, instanceID=instances and instances[index]}
             local destination = resting(aura) and recovery or own and ownBuffs or others
             destination[#destination + 1] = entry
         end
@@ -446,7 +475,7 @@ local function updateBuffs(state)
             icon:ClearAllPoints()
             icon:SetPoint("TOPLEFT", state.row, "TOPLEFT", x, -math.floor((index - 1) / BUFFS_PER_ROW) * ROW_STEP)
             x = x + size + ICON_GAP
-            if attempt(setAura, icon, unit, aura, indexed and entry.index or nil) then
+            if attempt(setAura, icon, unit, aura, indexed and entry.index or nil, entry.instanceID) then
                 state.buffCount = state.buffCount + 1
             else hideIcon(icon) end
         else

@@ -127,7 +127,7 @@ load(combat, "Core.lua")
 combat.execute("VV_TEST_NS.RegisterOptions = function() end; VV_TEST_NS.InitDB()")
 load(combat, "Modules/Party/PartyTweaks.lua")
 combat.execute((ROOT / "tests/test_party_combat.lua").read_text())
-print("PASS: party buff display with combat-restricted records and events")
+print("PASS: party combat buffs, instance enumeration, restricted records/events, expiration, and lookup fallbacks")
 
 access = runtime()
 access.execute((ROOT / "tests/party/mock.lua").read_text())
