@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.34.3
+
+- Tighten portrait-style party frames by measuring the buff area against the native bars and reducing the default gap between members to four UI units. Keep room for both buff rows and native pets.
+- Add **Space between members** and **Grow upward from the bottom** to Party frames settings. Upward growth keeps the bottom edge fixed as members join or leave. Save both preferences in profiles and defer protected layout changes until combat ends.
+
 ## 1.0.34.2
 
 - Recognize the player's full name, including their surname, in native quest tooltips. Restore missing loot and kill icons when the tooltip displays a full name while continuing to exclude other players' objectives.
