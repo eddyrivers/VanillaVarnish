@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.2
+
+- Recognize the player's full name, including their surname, in native quest tooltips. Restore missing loot and kill icons when the tooltip displays a full name while continuing to exclude other players' objectives.
+
 ## 1.0.34.1
 
 - Keep quest titles in their grouped rows when native tracker animations reposition the first quest. Prevent quests from overlapping zone headings during updates unrelated to quest progress or folding zones.
