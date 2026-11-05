@@ -163,10 +163,21 @@ function VV.RegisterOptions()
         function() return VV.db.party.rangeFade end,
         function(value) VV.Party.SetOption("rangeFade", value) end,
         "Use the friendly spell and opacity from Nameplates > Range check. No spell or unavailable range leaves portraits and buffs unchanged. Requires portrait-style party frames.")
+    Check(party, "party.growUp", "Grow upward from the bottom", -222,
+        function() return VV.db.party.growUp end,
+        function(value) VV.Party.SetOption("growUp", value) end,
+        "Place the first party member at the bottom and add members above. Keep the bottom edge in place as members join or leave. Requires portrait-style party frames; changes apply after combat.")
+    local spacing = CreateFrame("Frame", nil, party)
+    spacing:SetPoint("TOPLEFT", party, "TOPLEFT", 16, -270)
+    spacing:SetPoint("TOPRIGHT", party, "TOPRIGHT", -16, -270)
+    spacing:SetHeight(30)
+    controls["party.spacing"] = UI.Slider(spacing, "vv.party.spacing", "Space between members", 0, 0, 40, 1, false,
+        function() return VV.db.party.spacing end, function(value) VV.Party.SetOption("spacing", value) end,
+        "Extra space between portrait-style party members in UI units. Buff rows and visible pets keep enough room. Changes apply after combat.")
     local range = UI.Button(party, "Choose friendly range spell", 210, function() VV.Nameplates.OpenOptions("rangeEnabled") end)
-    range:SetPoint("TOPLEFT", party, "TOPLEFT", 16, -222)
+    range:SetPoint("TOPLEFT", party, "TOPLEFT", 16, -320)
     UI.Label(party, "Buffs and range fading need 'Use raid-style party frames' turned off.\nHealth and mana bars keep their native opacity. Some layout changes apply after combat.",
-        16, -266, "GameFontHighlightSmall")
+        16, -364, "GameFontHighlightSmall")
     VV.partyCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, party, "Party frames")
     Settings.RegisterAddOnCategory(VV.partyCategory)
     party:SetScript("OnShow", VV.RefreshOptions)

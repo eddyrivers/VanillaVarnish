@@ -66,6 +66,10 @@ function VV.InitDB()
     for _, key in ipairs({ "buffs", "classColors", "rangeFade" }) do
         if type(db.party[key]) ~= "boolean" then db.party[key] = true end
     end
+    if type(db.party.growUp) ~= "boolean" then db.party.growUp = false end
+    local spacing = db.party.spacing
+    if type(spacing) ~= "number" or spacing ~= spacing or spacing < 0 or spacing > 40 then spacing = 4 end
+    db.party.spacing = math.floor(spacing + 0.5)
     db.schemaVersion = 1
     VV.conflicts = {}
     for key, name in pairs(legacy) do

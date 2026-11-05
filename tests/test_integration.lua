@@ -93,6 +93,12 @@ assert(vv.QuestTracker.db.enabled)
 SlashCmdList.VANILLAVARNISH("party buffs on")
 SlashCmdList.VANILLAVARNISH("party colors off")
 assert(vv.db.party.buffs and not vv.db.party.classColors)
+local growUp = vv.optionControls["party.growUp"].button
+growUp:SetChecked(true); growUp.scripts.OnClick(growUp)
+assert(vv.db.party.growUp)
+local spacing = vv.optionControls["party.spacing"].box
+spacing:SetText("8"); spacing.scripts.OnEnterPressed(spacing)
+assert(vv.db.party.spacing == 8)
 local messages = #Mock.messages
 SlashCmdList.VANILLAVARNISH("help")
 SlashCmdList.VANILLAVARNISH("nameplates help")

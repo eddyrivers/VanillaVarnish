@@ -19,6 +19,8 @@ Before release, check changed features in game after `/reload`: combat transitio
 
 For party range fading, cross the friendly spell's range boundary, clear the spell, and change party-frame styles. Verify portraits and buffs fade together while health, mana, and debuffs stay unchanged, including in combat.
 
+For party layout, adjust spacing to zero and a larger value, toggle upward growth, and add/remove members. Confirm the bottom edge stays fixed when growing upward, both buff rows fit, and pets retain clearance with buffs disabled. Move the party in Edit Mode, switch frame styles, disable the module, and reload. Spacing and growth changes made in combat should apply afterward; profiles should restore both preferences.
+
 For party buff priority, show more than eight buffs, eat and drink, and verify recovery effects appear before player buffs with correct tooltips in both rows. For profiles, save a name, change settings, load the saved snapshot, and log into a second character. Check that designs transfer, local changes do not overwrite snapshots, quest folds remain personal, and loading is disabled during combat.
 
 ## Review regression checklist

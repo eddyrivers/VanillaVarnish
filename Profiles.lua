@@ -3,7 +3,7 @@ local fields = {
     nameplates = {"markers", "rangeEnabled", "swingsEnabled", "comboPointsEnabled", "threatColorsEnabled",
         "questieFallback", "rangeOpacity", "damage", "friendly", "swingTimers", "comboPoints"},
     questTracker = {"enabled", "completedSort"},
-    party = {"buffs", "classColors", "rangeFade"},
+    party = {"buffs", "classColors", "rangeFade", "spacing", "growUp"},
     tooltips = {"followMouse", "offsetX", "offsetY", "unitColors", "pauseInCombat"},
 }
 
@@ -90,6 +90,8 @@ function VV.ProfileModified()
     local record = name and VV.profileStore[name]
     if type(record) ~= "table" or record.version ~= 1 or not validSettings(record.settings) then return true end
     local saved = VV.Copy(record.settings)
+    if saved.party.spacing == nil then saved.party.spacing = 4 end
+    if saved.party.growUp == nil then saved.party.growUp = false end
     -- Profiles saved before row layouts implicitly use the stacked layout.
     local swings = saved.nameplates and saved.nameplates.swingTimers
     if type(swings) == "table" and swings.layout == nil then swings.layout = "stack" end

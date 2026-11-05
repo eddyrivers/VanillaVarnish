@@ -82,6 +82,8 @@ local presets = {
             ["buffs"] = true,
             ["classColors"] = true,
             ["rangeFade"] = true,
+            ["spacing"] = 4,
+            ["growUp"] = false,
         },
         ["questTracker"] = {
             ["completedSort"] = "bottom",

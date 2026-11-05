@@ -111,4 +111,20 @@ ns.tweaksDB.damage, ns.tweaksDB.friendly = {}, 123
 ns.InitializeTweaks()
 check(ns.tweaksDB.damage == nil and ns.tweaksDB.friendly == nil,
     "Invalid saved range spells are cleared before settings or range APIs use them")
+vv.Party.SetOption("spacing", 8)
+vv.Party.SetOption("growUp", true)
+check(vv.SaveProfile("Party layout"), "Party layout can be saved in a profile")
+check(vv.profileStore["Party layout"].settings.party.spacing == 8
+    and vv.profileStore["Party layout"].settings.party.growUp, "Snapshots retain spacing and upward growth")
+vv.Party.SetOption("spacing", 2)
+vv.Party.SetOption("growUp", false)
+check(vv.ProfileModified(), "Party layout changes mark the active profile modified")
+check(vv.LoadProfile("Party layout") and vv.db.party.spacing == 8 and vv.db.party.growUp,
+    "Loading restores both party layout preferences")
+local legacyParty = vv.profileStore["Party layout"].settings.party
+legacyParty.spacing, legacyParty.growUp = nil, nil
+check(vv.LoadProfile("Party layout") and vv.db.party.spacing == 4 and not vv.db.party.growUp
+    and not vv.ProfileModified(), "Older profiles use compact downward defaults without appearing modified")
+check(vv.LoadPreset("Default") and vv.db.party.spacing == 4 and not vv.db.party.growUp,
+    "Built-in presets restore the default party layout")
 VV_PROFILE_CHECKS = checks

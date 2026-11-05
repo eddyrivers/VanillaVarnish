@@ -20,6 +20,7 @@ local refreshQueued = false
 local colorRecords = setmetatable({}, {__mode="k"})
 local desaturationRecords = setmetatable({}, {__mode="k"})
 local debuffHooks = setmetatable({}, {__mode="k"})
+local partyLayouts = setmetatable({}, {__mode="k"})
 
 local function feature(key)
     return VV.IsModuleEnabled("party") and VV.db.party[key]
@@ -445,10 +446,6 @@ local function layoutRow(state)
     if InCombatLockdown() then return false end
     local member = state.member
     if not state.layoutApplied then state.baseHeight = member:GetHeight() end
-    local height = state.baseHeight + EXTRA_HEIGHT
-    local changed = member:GetHeight() ~= height
-    if changed then member:SetHeight(height) end
-    state.layoutApplied = true
     -- Follow the native bars: align horizontally with health, seven pixels
     -- below mana. Convert the left edges to the row's scale before comparing.
     state.row:ClearAllPoints()
@@ -468,7 +465,137 @@ local function layoutRow(state)
     else
         state.row:SetPoint("TOPLEFT", member, "TOPLEFT", 7, -(state.baseHeight + 2))
     end
+    -- Reserve both rows for buffs gained in combat, but count the native area
+    -- above them only once. GetTop uses each frame's effective scale.
+    local height = state.baseHeight + EXTRA_HEIGHT
+    if member.GetTop and state.row.GetTop then
+        local top, rowTop = readable(member:GetTop()), readable(state.row:GetTop())
+        local scale, rowScale = member:GetEffectiveScale(), state.row:GetEffectiveScale()
+        if type(top) == "number" and type(rowTop) == "number" and scale > 0 then
+            height = math.max(state.baseHeight, top - rowTop * rowScale / scale + ROW_HEIGHT * rowScale / scale + 2)
+        end
+    end
+    local changed = member:GetHeight() ~= height
+    if changed then member:SetHeight(height) end
+    state.layoutApplied = true
     return changed
+end
+
+local function points(frame)
+    local result = {}
+    for index = 1, frame:GetNumPoints() do result[index] = {frame:GetPoint(index)} end
+    return result
+end
+
+local function samePoints(a, b)
+    if #a ~= #b then return false end
+    for index, point in ipairs(a) do
+        for field = 1, 5 do if point[field] ~= b[index][field] then return false end end
+    end
+    return true
+end
+
+local function setPoints(frame, value)
+    frame:ClearAllPoints()
+    for _, point in ipairs(value) do frame:SetPoint(unpack(point)) end
+end
+
+local function arrangeParty(party, nativeLayout)
+    if InCombatLockdown() or not party.GetNumPoints then return end
+    local layout = partyLayouts[party]
+    if not layout then return end
+    local enabled = VV.IsModuleEnabled("party") and not raidStyle()
+    if not enabled and not layout.applied then return end
+    local members = {}
+    for member in party.PartyMemberFramePool:EnumerateActive() do
+        local index = readable(member.layoutIndex)
+        if type(index) == "number" and readable(member:IsShown()) == true then members[#members + 1] = member end
+    end
+    table.sort(members, function(a, b) return a.layoutIndex < b.layoutIndex end)
+    local current = points(party)
+    -- Edit Mode can move the container after our last arrangement. Keep that
+    -- new position as the restore point instead of snapping to an old layout.
+    if not layout.anchor or not layout.appliedAnchor or not samePoints(current, layout.appliedAnchor) then
+        layout.anchor, layout.anchorHeight = current, party:GetHeight()
+    end
+    if nativeLayout or not layout.height or not layout.applied then
+        layout.height = party:GetHeight()
+        layout.members = {}
+        for _, member in ipairs(members) do layout.members[member] = points(member) end
+    end
+    if not enabled then
+        for _, member in ipairs(members) do
+            if layout.members[member] then setPoints(member, layout.members[member]) end
+        end
+        party:SetHeight(layout.height)
+        if layout.appliedAnchor then setPoints(party, layout.anchor) end
+        layout.appliedAnchor = nil
+        if layout.background and party.Background then setPoints(party.Background, layout.background) end
+        layout.applied = false
+        return
+    end
+    local config = VV.db.party
+    local gap = config.spacing or 4
+    local top, bottom = party.topPadding or 0, party.bottomPadding or 0
+    local left, height = party.leftPadding or 0, top + bottom
+    for index, member in ipairs(members) do
+        if index > 1 then height = height + gap end
+        height = height + member:GetHeight()
+        -- Native pets extend below the original portrait frame when extra
+        -- buffs are disabled. Preserve that clearance without a blanket gap.
+        if not feature("buffs") and member.PetFrame and readable(member.PetFrame:IsShown()) == true then height = height + 16 end
+    end
+    local anchor = layout.anchor[1]
+    if config.growUp and anchor and #layout.anchor == 1 then
+        local point, relative, relativePoint, x, y = unpack(anchor)
+        if type(point) == "string" and type(readable(y)) == "number" then
+            local factor = point:find("TOP", 1, true) and 1 or point:find("BOTTOM", 1, true) and 0 or 0.5
+            local bottomPoint = point:find("RIGHT", 1, true) and "BOTTOMRIGHT"
+                or point:find("LEFT", 1, true) and "BOTTOMLEFT" or "BOTTOM"
+            setPoints(party, {{bottomPoint, relative, relativePoint, x, y - layout.anchorHeight * factor}})
+            layout.appliedAnchor = points(party)
+        end
+    elseif layout.appliedAnchor then
+        setPoints(party, layout.anchor)
+        layout.appliedAnchor = nil
+    end
+    height = math.max(1, height)
+    if party:GetHeight() ~= height then party:SetHeight(height) end
+    local offset = config.growUp and bottom or top
+    for _, member in ipairs(members) do
+        local petHeight = not feature("buffs") and member.PetFrame and readable(member.PetFrame:IsShown()) == true and 16 or 0
+        member:ClearAllPoints()
+        if config.growUp then
+            member:SetPoint("BOTTOMLEFT", party, "BOTTOMLEFT", left, offset + petHeight)
+        else
+            member:SetPoint("TOPLEFT", party, "TOPLEFT", left, -offset)
+        end
+        offset = offset + member:GetHeight() + petHeight + gap
+    end
+    if party.Background then
+        if not layout.background then layout.background = points(party.Background) end
+        party.Background:ClearAllPoints()
+        party.Background:SetPoint("TOPLEFT", party, "TOPLEFT", -5, 6)
+        party.Background:SetPoint("BOTTOMLEFT", party, "BOTTOMLEFT", -5, -5)
+    end
+    layout.applied = true
+end
+
+local function installPartyLayout()
+    local party = _G.PartyFrame
+    if not party or not party.PartyMemberFramePool or not party.GetNumPoints
+        or type(party.Layout) ~= "function" or partyLayouts[party] then return end
+    partyLayouts[party] = {}
+    hooksecurefunc(party, "Layout", function(self) arrangeParty(self, true) end)
+    if party.UpdatePartyMemberBackground then
+        hooksecurefunc(party, "UpdatePartyMemberBackground", function(self)
+            local layout = partyLayouts[self]
+            if not InCombatLockdown() and self.Background then
+                layout.background = points(self.Background)
+                arrangeParty(self, false)
+            end
+        end)
+    end
 end
 
 local function restoreDebuffs(state)
@@ -622,8 +749,11 @@ local function refresh()
             restoreRange(state)
         end
     end
+    installPartyLayout()
     if layoutChanged and _G.PartyFrame and _G.PartyFrame.Layout then
         attempt(_G.PartyFrame.Layout, _G.PartyFrame)
+    elseif _G.PartyFrame then
+        arrangeParty(_G.PartyFrame, false)
     end
 end
 
@@ -715,7 +845,10 @@ local function Status()
 end
 
 function addon.SetOption(key, value)
-    if key ~= "buffs" and key ~= "classColors" and key ~= "rangeFade" or type(value) ~= "boolean" then return false end
+    if key == "spacing" then
+        if type(value) ~= "number" or value ~= value or value < 0 or value > 40 then return false end
+        value = math.floor(value + 0.5)
+    elseif (key ~= "buffs" and key ~= "classColors" and key ~= "rangeFade" and key ~= "growUp") or type(value) ~= "boolean" then return false end
     VV.db.party[key] = value
     refresh()
     if VV.RefreshOptions then VV.RefreshOptions() end
@@ -726,11 +859,14 @@ function addon.HandleSlash(message)
     local key, mode = (message or ""):lower():match("^%s*(%S*)%s*(.-)%s*$")
     if key == "options" or key == "settings" then VV.OpenOptions("party"); return end
     key = ({buffs = "buffs", colors = "classColors", classcolors = "classColors", range = "rangeFade"})[key] or key
+    if key == "spacing" then addon.SetOption("spacing", tonumber(mode))
+    elseif key == "grow" and (mode == "up" or mode == "down") then addon.SetOption("growUp", mode == "up") end
     if (key == "buffs" or key == "classColors" or key == "rangeFade") and (mode == "on" or mode == "off" or mode == "toggle") then
         addon.SetOption(key, mode == "on" or mode == "toggle" and not VV.db.party[key])
     end
     if key == "help" then
         VV.Print("/vv party range on | off | toggle fades portraits and buffs using the friendly spell and range opacity.")
+        VV.Print("/vv party spacing <0-40>; /vv party grow up | down adjusts portrait-style member layout.")
     end
     Status()
 end

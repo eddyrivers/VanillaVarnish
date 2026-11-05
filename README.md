@@ -25,7 +25,7 @@ Both feature previews follow **Settings > Nameplates**, including style, size, h
 
 **Quest tracker:** click a zone heading to fold it; right-click to track or untrack its quests. Collapsing a zone keeps its quests tracked. Completed sorting groups quests marked ready for turn-in (including click-to-complete quests); quests with remaining travel or delivery instructions stay in level order. Move and resize the tracker in Edit Mode. Combat layout changes apply after combat ends.
 
-**Party frames:** extra buffs and range fading require portrait-style party frames; class colors also support raid-style frames. Buffs include counts, cooldowns, and tooltips. Active eating and drinking effects come first, followed by your buffs, then other buffs in native order. Your buffs remain larger; each row holds eight icons. Range fading uses the friendly spell and opacity from **Nameplates > Range check**, independently of the nameplate range switch. Only portraits and buffs fade; health, mana, and debuffs retain their opacity. No friendly spell or unavailable range means no fading. Addons that replace Blizzard's frames manage their own appearance.
+**Party frames:** extra buffs and range fading require portrait-style party frames; class colors also support raid-style frames. Buffs include counts, cooldowns, and tooltips. Active eating and drinking effects come first, followed by your buffs, then other buffs in native order. Your buffs remain larger; each row holds eight icons. Portrait frames use tighter spacing while reserving both buff rows for auras gained in combat. Adjust **Space between members** (default `4`, range `0–40`) or enable **Grow upward from the bottom** on the Party frames page. Upward growth keeps the bottom edge fixed as members join or leave. Layout changes apply outside combat and are included in profiles. Range fading uses the friendly spell and opacity from **Nameplates > Range check**, independently of the nameplate range switch. Only portraits and buffs fade; health, mana, and debuffs retain their opacity. No friendly spell or unavailable range means no fading. Addons that replace Blizzard's frames manage their own appearance.
 
 **Tooltips:** item comparisons stay beside the main tooltip. Defaults are X `34`, Y `-6`; positive Y moves up. Combat pause uses the position saved in Edit Mode. Clicked chat links keep their usual placement.
 
@@ -52,6 +52,7 @@ All VanillaVarnish commands start with `/vv`.
 | `/vv tracker expand`, `/vv tracker collapse` | Expand or collapse all zones |
 | `/vv party buffs off`, `/vv party colors on` | Switch party features |
 | `/vv party range on`, `/vv party range off` | Switch party portrait and buff fading |
+| `/vv party spacing 4`, `/vv party grow up`, `/vv party grow down` | Set portrait party spacing and growth direction |
 | `/vv tooltips offset 34 -6` | Set cursor offsets |
 | `/vv tooltips reset`, `/vv nameplates reset` | Restore tooltip or swing defaults |
 | `/vv status`, `/vv <module> status`, `/vv nameplates debug` | Show status and diagnostics |
