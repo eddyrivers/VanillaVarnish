@@ -194,10 +194,13 @@ check(vv.db.party.rolePin == "top", "Role pinning is accessible from slash comma
 
 local editing = true
 function EditModeManagerFrame:IsEditModeActive() return editing end
+local editX, editY, editScale = 123.4567, -209.8765, 1.3
+PartyFrame.scale = editScale
+function PartyFrame:GetScale() return self.scale end
 PartyFrame:ClearAllPoints()
-PartyFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 315, -235)
+PartyFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", editX, editY)
 PartyFrame:Layout()
-check(PartyFrame.point[1] == "TOPLEFT" and PartyFrame.point[4] == 315,
+check(PartyFrame.point[1] == "TOPLEFT" and PartyFrame.point[4] == editX,
     "Upward growth leaves Blizzard's dragged anchor alone during Edit Mode")
 dragging = true
 local dragHeight, memberPoint = PartyFrame:GetHeight(), members[1].point
@@ -216,24 +219,31 @@ PartyFrame:OnDragStop()
 local afterDrag = assert(Mock.pending, "Reflow should be queued after native drag stop")
 Mock.pending = nil
 afterDrag()
-check(near(PartyFrame:GetHeight(), dragHeight + 6) and PartyFrame.point[4] == 315,
+check(near(PartyFrame:GetHeight(), dragHeight + 6) and PartyFrame.point[4] == editX,
     "Spacing updates after the drag without moving the saved Edit Mode anchor")
-local savedBottom = bottom(PartyFrame)
+local savedHeight = PartyFrame:GetHeight()
 Mock.EditModeEvent("EditMode.SavedLayouts")
 editing = false
 
--- The saved point loads before the live roster is the same size as the Edit
--- Mode preview. Replace the container to discard the old runtime layout cache.
-local reloaded = CreateFrame("Frame", nil, UIParent)
-reloaded.PartyMemberFramePool = originalPool
-reloaded.spacing, reloaded.bottomPadding = 10, 2
-reloaded.Layout, reloaded.UpdatePartyMemberBackground = nativeLayout, nativeBackground
-reloaded:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 315, -235)
-PartyFrame = reloaded
-for _, member in ipairs(members) do member.parent = reloaded end
-Mock.active = {members[1], members[2]}
-PartyFrame:Layout()
-Mock.Event("PLAYER_LOGIN")
-check(PartyFrame.point[1] == "BOTTOMLEFT" and PartyFrame.point[4] == 315 and near(bottom(PartyFrame), savedBottom),
-    "Reloading with a different roster keeps the bottom position saved in Edit Mode")
+-- Edit Mode stores offsets at scale 1 and rounds them on disk. Reloading
+-- restores those offsets divided by the frame scale, with the live roster.
+local loadedX, loadedY = 160.5 / editScale, -272.8 / editScale
+local function reloadParty()
+    local reloaded = CreateFrame("Frame", nil, UIParent)
+    reloaded.PartyMemberFramePool = originalPool
+    reloaded.spacing, reloaded.bottomPadding = 10, 2
+    reloaded.Layout, reloaded.UpdatePartyMemberBackground = nativeLayout, nativeBackground
+    reloaded.scale, reloaded.GetScale = editScale, PartyFrame.GetScale
+    reloaded:SetPoint("TOPLEFT", UIParent, "TOPLEFT", loadedX, loadedY)
+    PartyFrame = reloaded
+    for _, member in ipairs(members) do member.parent = reloaded end
+    Mock.active = {members[1], members[2]}
+    PartyFrame:Layout()
+    Mock.Event("PLAYER_LOGIN")
+    return PartyFrame.point[1] == "BOTTOMLEFT" and PartyFrame.point[4] == loadedX
+        and near(bottom(PartyFrame), top(UIParent) + loadedY - savedHeight)
+end
+check(reloadParty(), "Reloading with rounded offsets and a different roster keeps the saved bottom position")
+vv.db.partyGrowthAnchor = {key = ("TOPLEFT:UIParent:TOPLEFT:%.4f:%.4f"):format(editX, editY), height = savedHeight}
+check(reloadParty(), "An existing saved bottom position survives migration across Edit Mode rounding")
 NST_PARTY_LAYOUT_CHECKS = checks

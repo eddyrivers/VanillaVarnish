@@ -636,19 +636,35 @@ local function setPoints(frame, value)
     for _, point in ipairs(value) do frame:SetPoint(unpack(point, 1, 5)) end
 end
 
-local function growthAnchorHeight(anchor, height)
+local function growthAnchorHeight(party, anchor, height)
     local point, relative, relativePoint, x, y = unpack(anchor, 1, 5)
     local name = type(relative) == "string" and relative or relative and relative.GetName and relative:GetName()
     if not name or type(point) ~= "string" or type(relativePoint) ~= "string"
         or type(readable(x)) ~= "number" or type(readable(y)) ~= "number" then return height end
-    local key = ("%s:%s:%s:%.4f:%.4f"):format(point, name, relativePoint, x, y)
+    -- Edit Mode saves offsets at scale 1 and reloads them rounded to tenths.
+    -- Match in that coordinate space so rounding does not change the baseline.
+    local scale = party.GetScale and party:GetScale() or 1
+    x, y = x * scale, y * scale
+    local key = ("%s:%s:%s"):format(point, name, relativePoint)
     local saved = VV.db.partyGrowthAnchor
-    if type(saved) == "table" and saved.key == key
+    if type(saved) == "table" and type(saved.key) == "string"
         and type(saved.height) == "number" and saved.height >= 0 and saved.height < math.huge then
-        return saved.height
+        local savedX, savedY
+        if saved.key == key then
+            savedX, savedY = saved.x, saved.y
+        elseif saved.key:sub(1, #key + 1) == key .. ":" then
+            -- Older records put the unscaled offsets in the key.
+            local oldX, oldY = saved.key:sub(#key + 2):match("^(-?%d+%.%d+):(-?%d+%.%d+)$")
+            if oldX then savedX, savedY = tonumber(oldX) * scale, tonumber(oldY) * scale end
+        end
+        if type(savedX) == "number" and type(savedY) == "number"
+            and math.abs(savedX - x) <= 0.051 and math.abs(savedY - y) <= 0.051 then
+            if saved.key == key then return saved.height end
+            height = saved.height
+        end
     end
     -- This is a character's Edit Mode position, separate from shared profiles.
-    VV.db.partyGrowthAnchor = {key = key, height = height}
+    VV.db.partyGrowthAnchor = {key = key, x = x, y = y, height = height}
     return height
 end
 
@@ -737,7 +753,7 @@ local function arrangeParty(party, nativeLayout)
             local factor = point:find("TOP", 1, true) and 1 or point:find("BOTTOM", 1, true) and 0 or 0.5
             local bottomPoint = point:find("RIGHT", 1, true) and "BOTTOMRIGHT"
                 or point:find("LEFT", 1, true) and "BOTTOMLEFT" or "BOTTOM"
-            local referenceHeight = growthAnchorHeight(anchor, layout.anchorHeight)
+            local referenceHeight = growthAnchorHeight(party, anchor, layout.anchorHeight)
             local grown = {{bottomPoint, relative, relativePoint, x, y - referenceHeight * factor}}
             if not samePoints(current, grown) then
                 setPoints(party, grown)
@@ -973,7 +989,7 @@ if EventRegistry and EventRegistry.RegisterCallback then
         if not layout then return end
         local current = points(party)
         if #current == 1 and (not layout.appliedAnchor or not samePoints(current, layout.appliedAnchor)) then
-            growthAnchorHeight(current[1], party:GetHeight())
+            growthAnchorHeight(party, current[1], party:GetHeight())
         end
     end, addon)
     EventRegistry:RegisterCallback("EditMode.Exit", queueRefresh, addon)
