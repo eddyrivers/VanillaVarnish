@@ -1,6 +1,6 @@
 local _, VV = ...
 local addon = VV.Party
-local SIZE, GAP, PER_ROW, LIMIT = 19, 2, 8, 16
+local SIZE, GAP, ROW_STEP, PER_ROW, LIMIT = 14, 2, 21, 8, 16
 
 function addon.NativeBuffsAvailable()
     return type(AuraContainerSortMethod) == "table" and type(CustomAuraContainerGroupDefaultOptions) == "table"
@@ -60,8 +60,8 @@ function addon.CreateNativeBuffs(parent)
     if InCombatLockdown() or not addon.NativeBuffsAvailable() then return end
     local container
     local ok, err = pcall(function()
-        -- Forever can put the same combat aura in both PLAYER and !PLAYER
-        -- groups. Keep one live list and use the larger size for all its icons.
+        -- Keep one live list at the ordinary size. The combat renderer cannot
+        -- reliably distinguish the player's casts for selective enlargement.
         container = CreateFrame("AuraContainer", nil, parent, "CustomAuraContainerTemplate")
         container:SetEnabled(false)
         container:Hide()
@@ -73,7 +73,7 @@ function addon.CreateNativeBuffs(parent)
             maxFrameCount = LIMIT,
             sortMethod = AuraContainerSortMethod.Default,
             initializeFrame = InitializeButton,
-            layout = {elementWidth=SIZE, elementHeight=SIZE, elementSpacing=GAP, lineSpacing=GAP},
+            layout = {elementWidth=SIZE, elementHeight=SIZE, elementSpacing=GAP, lineSpacing=ROW_STEP - SIZE},
         })
     end)
     if ok then return container end

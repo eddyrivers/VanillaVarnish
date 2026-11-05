@@ -154,7 +154,7 @@ function VV.RegisterOptions()
     Check(party, "party.buffs", "Show party buffs", -90,
         function() return VV.db.party.buffs end,
         function(value) VV.Party.SetOption("buffs", value) end,
-        "Show up to 16 buffs beneath mana. Outside combat, eating and drinking come first, followed by your larger gold-bordered buffs. In combat, all buffs use the larger size and a plain border. Also enlarge dispellable debuffs. Requires portrait-style party frames.")
+        "Show up to 16 buffs beneath mana. Outside combat, eating and drinking come first, followed by your larger gold-bordered buffs. In combat, buffs use the standard size and a plain border. Also enlarge dispellable debuffs. Requires portrait-style party frames.")
     Check(party, "party.classColors", "Class-colored health bars", -134,
         function() return VV.db.party.classColors end,
         function(value) VV.Party.SetOption("classColors", value) end,
