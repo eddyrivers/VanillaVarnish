@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.34.6
+
+- Use Blizzard's native aura container for portrait party buffs in combat, avoiding addon aura reads that Forever blocks while auras are secret. Prepare containers before combat, including hidden party slots, and keep native buff updates, counts, cooldowns, and tooltips active.
+- Restore normal recovery priority and larger player buffs after combat. Combat icons use a uniform size and the client's sorting. Report native renderer readiness in `/vv party status` and skip restricted debuff reads while protected geometry cannot change.
+
 ## 1.0.34.5
 
 - Read portrait-style party buffs through public aura instance IDs before using bulk or indexed lookups. Keep live buff icons, cooldowns, and tooltips available when combat restricts those older readers; remove expired buffs from the current instance list without changing protected frame layout.
