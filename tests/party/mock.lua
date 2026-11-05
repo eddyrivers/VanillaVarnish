@@ -1,4 +1,7 @@
 Mock = { frames = {}, active = {}, combat = false, auras = {}, classes = {} }
+local editCallbacks = {}
+EventRegistry = {RegisterCallback = function(_, event, callback) editCallbacks[event] = callback end}
+function Mock.EditModeEvent(event) editCallbacks[event]() end
 local Widget = {}
 function Widget:SetSize(w, h) self.width, self.height = w, h end
 function Widget:SetHeight(h)
@@ -17,7 +20,6 @@ function Widget:SetPoint(...) self.point = {...} end
 function Widget:ClearAllPoints() self.point = nil end
 function Widget:SetAllPoints() end
 function Widget:SetColorTexture(...) self.color = {...} end
-function Widget:SetBlendMode(value) self.blendMode = value end
 function Widget:SetVertexColor(...) self.color = {...} end
 function Widget:GetVertexColor() return unpack(self.color or {1, 1, 1, 1}) end
 function Widget:SetAlpha(value) self.alpha = value end

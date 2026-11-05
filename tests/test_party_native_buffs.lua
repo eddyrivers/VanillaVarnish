@@ -5,12 +5,6 @@ local create = CreateFrame
 local containers = {}
 AuraContainerSortMethod = {Default=0}
 CustomAuraContainerGroupDefaultOptions = {}
-local createGlow = vv.Party.CreateBuffGlow
-local glows = {}
-vv.Party.CreateBuffGlow = function(parent, icon)
-    glows[icon] = createGlow(parent, icon)
-    return glows[icon]
-end
 
 -- Model the trust boundary: ordinary addon reads throw in combat. Only the
 -- native container's own renderer can consume the current aura data then.
@@ -112,7 +106,6 @@ render(container) -- native UNIT_AURA delivery, independent of addon queries
 Mock.Event("UNIT_AURA", "party1"); Mock.Tick(1)
 check(container.buttons[1].boundIcon.textureValue == 31 and container.buttons[2]:IsShown(), "Native aura updates remain live during combat")
 check(ordinaryIcon.width == 19 and container.buttons[1].width == 14 and container.buttons[2].width == 14
-    and not glows[container.buttons[1]] and not glows[container.buttons[2]]
     and not container.buttons[3]:IsShown(), "Combat shows each buff once at the standard size without guessing its caster")
 check(reads == 0, "No addon aura API reads are attempted while native combat rendering is active")
 check(member:GetHeight() == height and #Mock.frames == frameCount, "Combat never rebuilds the protected layout or creates another container")

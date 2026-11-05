@@ -83,7 +83,6 @@ end
 local function hideIcon(icon)
     if GameTooltip:IsOwned(icon) then GameTooltip:Hide() end
     icon.unit, icon.auraID, icon.auraIndex = nil, nil, nil
-    if icon.glow then icon.glow:Hide() end
     icon:Hide()
 end
 
@@ -124,6 +123,7 @@ local function createState(member)
         icon.border = icon:CreateTexture(nil, "BACKGROUND")
         icon.border:SetAllPoints()
         icon.border:SetColorTexture(0.08, 0.08, 0.08, 1)
+        icon.goldBorder, icon.borderInset = false, 1
         icon.texture = icon:CreateTexture(nil, "ARTWORK")
         icon.texture:SetPoint("TOPLEFT", 1, -1)
         icon.texture:SetPoint("BOTTOMRIGHT", -1, 1)
@@ -136,8 +136,6 @@ local function createState(member)
         local cover = CreateFrame("Frame", nil, icon)
         cover:SetAllPoints(icon)
         cover:SetFrameLevel(icon.cooldown:GetFrameLevel() + 1)
-        icon.glow = addon.CreateBuffGlow(cover, icon)
-        icon.glow:Hide()
         icon.count = cover:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
         icon.count:SetPoint("BOTTOMRIGHT", 1, -1)
         icon:EnableMouse(true)
@@ -444,6 +442,21 @@ local function castByPlayer(unit, aura, instanceID)
     return playerOK and caster == readable(player)
 end
 
+local function styleBuffBorder(icon, own, pixel)
+    if icon.goldBorder ~= own then
+        if own then icon.border:SetColorTexture(1, 0.82, 0.25, 1)
+        else icon.border:SetColorTexture(0.08, 0.08, 0.08, 1) end
+        icon.goldBorder = own
+    end
+    local inset = own and pixel or 1
+    if icon.borderInset ~= inset then
+        icon.texture:ClearAllPoints()
+        icon.texture:SetPoint("TOPLEFT", inset, -inset)
+        icon.texture:SetPoint("BOTTOMRIGHT", -inset, inset)
+        icon.borderInset = inset
+    end
+end
+
 local function updateBuffs(state)
     state.buffCount, state.buffSource, state.buffReadFailed = 0, nil, false
     if not feature("buffs") then state.buffStatus = "buffs disabled"; clearRow(state); return end
@@ -533,6 +546,8 @@ local function updateBuffs(state)
     for _, entry in ipairs(others) do ordered[#ordered + 1] = entry end
     local received = 0
     local x = 0
+    local pixel = PixelUtil and PixelUtil.GetPixelToUIUnitFactor
+        and PixelUtil.GetPixelToUIUnitFactor() / state.row:GetEffectiveScale() or 1
     for index, icon in ipairs(state.icons) do
         local entry = ordered[index]
         local aura = entry and entry.aura
@@ -548,7 +563,7 @@ local function updateBuffs(state)
             icon:SetPoint("TOPLEFT", state.row, "TOPLEFT", x, -math.floor((index - 1) / BUFFS_PER_ROW) * ROW_STEP)
             x = x + size + ICON_GAP
             if attempt(setAura, icon, unit, aura, indexed and entry.index or nil, entry.instanceID) then
-                if entry.own then icon.glow:Show() else icon.glow:Hide() end
+                styleBuffBorder(icon, entry.own, pixel)
                 state.buffCount = state.buffCount + 1
             else hideIcon(icon) end
         else
@@ -617,13 +632,32 @@ end
 
 local function setPoints(frame, value)
     frame:ClearAllPoints()
-    for _, point in ipairs(value) do frame:SetPoint(unpack(point)) end
+    for _, point in ipairs(value) do frame:SetPoint(unpack(point, 1, 5)) end
+end
+
+local function growthAnchorHeight(anchor, height)
+    local point, relative, relativePoint, x, y = unpack(anchor, 1, 5)
+    local name = type(relative) == "string" and relative or relative and relative.GetName and relative:GetName()
+    if not name or type(point) ~= "string" or type(relativePoint) ~= "string"
+        or type(readable(x)) ~= "number" or type(readable(y)) ~= "number" then return height end
+    local key = ("%s:%s:%s:%.4f:%.4f"):format(point, name, relativePoint, x, y)
+    local saved = VV.db.partyGrowthAnchor
+    if type(saved) == "table" and saved.key == key
+        and type(saved.height) == "number" and saved.height >= 0 and saved.height < math.huge then
+        return saved.height
+    end
+    -- This is a character's Edit Mode position, separate from shared profiles.
+    VV.db.partyGrowthAnchor = {key = key, height = height}
+    return height
 end
 
 local function arrangeParty(party, nativeLayout)
     if InCombatLockdown() or not party.GetNumPoints then return end
     local layout = partyLayouts[party]
     if not layout then return end
+    if party.IsInitialized and not party:IsInitialized() then return end
+    local manager = _G.EditModeManagerFrame
+    local editing = manager and manager.IsEditModeActive and manager:IsEditModeActive()
     local enabled = VV.IsModuleEnabled("party") and not raidStyle()
     if not enabled and not layout.applied then return end
     local members = {}
@@ -648,7 +682,7 @@ local function arrangeParty(party, nativeLayout)
             if layout.members[member] then setPoints(member, layout.members[member]) end
         end
         party:SetHeight(layout.height)
-        if layout.appliedAnchor then setPoints(party, layout.anchor) end
+        if layout.appliedAnchor and not editing then setPoints(party, layout.anchor) end
         layout.appliedAnchor = nil
         if layout.background and party.Background then setPoints(party.Background, layout.background) end
         layout.applied = false
@@ -692,16 +726,21 @@ local function arrangeParty(party, nativeLayout)
         if not feature("buffs") and member.PetFrame and readable(member.PetFrame:IsShown()) == true then height = height + 16 end
     end
     local anchor = layout.anchor[1]
-    if config.growUp and anchor and #layout.anchor == 1 then
-        local point, relative, relativePoint, x, y = unpack(anchor)
+    if not editing and config.growUp and #members > 0 and anchor and #layout.anchor == 1 then
+        local point, relative, relativePoint, x, y = unpack(anchor, 1, 5)
         if type(point) == "string" and type(readable(y)) == "number" then
             local factor = point:find("TOP", 1, true) and 1 or point:find("BOTTOM", 1, true) and 0 or 0.5
             local bottomPoint = point:find("RIGHT", 1, true) and "BOTTOMRIGHT"
                 or point:find("LEFT", 1, true) and "BOTTOMLEFT" or "BOTTOM"
-            setPoints(party, {{bottomPoint, relative, relativePoint, x, y - layout.anchorHeight * factor}})
-            layout.appliedAnchor = points(party)
+            local referenceHeight = growthAnchorHeight(anchor, layout.anchorHeight)
+            local grown = {{bottomPoint, relative, relativePoint, x, y - referenceHeight * factor}}
+            if not samePoints(current, grown) then
+                setPoints(party, grown)
+                current = points(party)
+            end
+            layout.appliedAnchor = current
         end
-    elseif layout.appliedAnchor then
+    elseif not editing and not config.growUp and layout.appliedAnchor then
         setPoints(party, layout.anchor)
         layout.appliedAnchor = nil
     end
@@ -915,6 +954,20 @@ local function queueRefresh()
         refreshQueued = false
         refresh()
     end)
+end
+
+if EventRegistry and EventRegistry.RegisterCallback then
+    EventRegistry:RegisterCallback("EditMode.SavedLayouts", function()
+        if InCombatLockdown() or not ready or not VV.IsModuleEnabled("party") or not VV.db.party.growUp or raidStyle() then return end
+        local party = _G.PartyFrame
+        local layout = party and partyLayouts[party]
+        if not layout then return end
+        local current = points(party)
+        if #current == 1 and (not layout.appliedAnchor or not samePoints(current, layout.appliedAnchor)) then
+            growthAnchorHeight(current[1], party:GetHeight())
+        end
+    end, addon)
+    EventRegistry:RegisterCallback("EditMode.Exit", queueRefresh, addon)
 end
 
 for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "GROUP_ROSTER_UPDATE", "PLAYER_REGEN_DISABLED",

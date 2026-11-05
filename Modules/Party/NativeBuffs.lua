@@ -6,26 +6,6 @@ function addon.NativeBuffsAvailable()
     return type(AuraContainerSortMethod) == "table" and type(CustomAuraContainerGroupDefaultOptions) == "table"
 end
 
-function addon.CreateBuffGlow(parent, relative)
-    local glow = CreateFrame("Frame", nil, parent)
-    glow:SetAllPoints(relative)
-    glow:SetFrameLevel(parent:GetFrameLevel() + 1)
-    for offset = 1, 2 do
-        for _, edge in ipairs({{"TOPLEFT", "TOPRIGHT", -offset, offset, offset, offset},
-            {"BOTTOMLEFT", "BOTTOMRIGHT", -offset, -offset, offset, -offset},
-            {"TOPLEFT", "BOTTOMLEFT", -offset, offset, -offset, -offset},
-            {"TOPRIGHT", "BOTTOMRIGHT", offset, offset, offset, -offset}}) do
-            local texture = glow:CreateTexture(nil, "OVERLAY")
-            texture:SetColorTexture(1, 0.82, 0.25, offset == 1 and 0.7 or 0.2)
-            texture:SetBlendMode("ADD")
-            texture:SetSize(1, 1)
-            texture:SetPoint(edge[1], glow, edge[1], edge[3], edge[4])
-            texture:SetPoint(edge[2], glow, edge[2], edge[5], edge[6])
-        end
-    end
-    return glow
-end
-
 local function InitializeButton(button)
     -- This callback only builds presentation. The native container owns aura
     -- assignment, restricted data, updates, visibility, and tooltip scripts.

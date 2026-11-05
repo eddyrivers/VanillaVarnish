@@ -24,6 +24,7 @@ CreateFrame = function(...)
 end
 UIParent = CreateFrame("Frame")
 UIParent:SetSize(1000, 800)
+function UIParent:GetName() return "UIParent" end
 local originalPool = PartyFrame.PartyMemberFramePool
 PartyFrame = CreateFrame("Frame", nil, UIParent)
 PartyFrame.PartyMemberFramePool = originalPool
@@ -72,6 +73,7 @@ function PartyFrame:UpdatePartyMemberBackground()
     self.Background:SetPoint("TOPLEFT", self, "TOPLEFT", -5, 6)
     self.Background:SetPoint("BOTTOMLEFT", members[4], "BOTTOMLEFT", -5, -5)
 end
+local nativeLayout, nativeBackground = PartyFrame.Layout, PartyFrame.UpdatePartyMemberBackground
 PartyFrame:Layout()
 Mock.Event("PLAYER_LOGIN")
 check(vv.db.party.spacing == 4 and not vv.db.party.growUp, "Compact spacing defaults to four and downward growth")
@@ -186,4 +188,30 @@ Mock.Event("PLAYER_ROLES_ASSIGNED"); order({4,1,3,2})
 check(not vv.Party.SetOption("rolePin", true) and not vv.Party.SetOption("rolePin", "left"), "Invalid role modes are rejected")
 vv.Party.HandleSlash("roles top")
 check(vv.db.party.rolePin == "top", "Role pinning is accessible from slash commands")
+
+local editing = true
+function EditModeManagerFrame:IsEditModeActive() return editing end
+PartyFrame:ClearAllPoints()
+PartyFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 315, -235)
+PartyFrame:Layout()
+check(PartyFrame.point[1] == "TOPLEFT" and PartyFrame.point[4] == 315,
+    "Upward growth leaves Blizzard's dragged anchor alone during Edit Mode")
+local savedBottom = bottom(PartyFrame)
+Mock.EditModeEvent("EditMode.SavedLayouts")
+editing = false
+
+-- The saved point loads before the live roster is the same size as the Edit
+-- Mode preview. Replace the container to discard the old runtime layout cache.
+local reloaded = CreateFrame("Frame", nil, UIParent)
+reloaded.PartyMemberFramePool = originalPool
+reloaded.spacing, reloaded.bottomPadding = 10, 2
+reloaded.Layout, reloaded.UpdatePartyMemberBackground = nativeLayout, nativeBackground
+reloaded:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 315, -235)
+PartyFrame = reloaded
+for _, member in ipairs(members) do member.parent = reloaded end
+Mock.active = {members[1], members[2]}
+PartyFrame:Layout()
+Mock.Event("PLAYER_LOGIN")
+check(PartyFrame.point[1] == "BOTTOMLEFT" and PartyFrame.point[4] == 315 and near(bottom(PartyFrame), savedBottom),
+    "Reloading with a different roster keeps the bottom position saved in Edit Mode")
 NST_PARTY_LAYOUT_CHECKS = checks

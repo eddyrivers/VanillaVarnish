@@ -10,13 +10,18 @@ Mock.Event("PLAYER_LOGIN")
 local row = assert(Mock.Row(member))
 local icons = Mock.Icons(row)
 assert(HIDE_PARTY_MEMBER_BUFF_TOOLTIP and not PartyMemberBuffTooltip:IsShown(), "The native portrait-hover buff popup is suppressed")
-assert(icons[1].glow:IsShown() and icons[2].glow:IsShown() and not icons[3].glow:IsShown(),
-    "Only buffs cast by the player have a glowing border")
+assert(icons[1].border.color[1] == 1 and icons[2].border.color[1] == 1 and icons[3].border.color[1] ~= 1,
+    "Only buffs cast by the player have a solid gold border")
 assert(icons[1].texture.textureValue == 3 and icons[2].texture.textureValue == 10,
     "Player buffs must precede others, including buffs beyond the first eight")
 assert(icons[1].width == 19 and icons[2].height == 19 and icons[3].width == 14)
 assert(icons[2].point[4] == 21 and icons[3].point[4] == 42 and icons[4].point[4] == 58)
 assert(icons[3].texture.textureValue == 1 and icons[4].texture.textureValue == 2, "Partition retains native order")
+PixelUtil = {GetPixelToUIUnitFactor = function() return 0.8 end}
+member.scale = 2
+Mock.Event("UNIT_AURA", "party1")
+assert(icons[1].texture.point[2] == -0.4 and icons[3].texture.point[2] == -1,
+    "The gold border is one screen pixel at a different party frame scale")
 -- Indexed tooltips retain the original index after sorting.
 C_UnitAuras.GetUnitAuras = nil
 C_UnitAuras.GetAuraDataByIndex = function(_, index) return buffs[index] end
@@ -34,7 +39,7 @@ buffs[3].sourceUnit = {secret=true}
 buffs[10].sourceUnit = "party2"
 Mock.Event("UNIT_AURA", "party1")
 assert(icons[1].width == 14 and icons[3].texture.textureValue == 3)
-for _, icon in ipairs(icons) do assert(not icon.glow:IsShown(), "Reused icons cannot keep another aura's glow") end
+for _, icon in ipairs(icons) do assert(icon.border.color[1] ~= 1, "Reused icons cannot keep another aura's gold border") end
 -- Caster GUID can prove ownership without a readable unit token. The same
 -- spell cast by someone else must still use the ordinary appearance.
 function UnitGUID(unit) return unit == "player" and "Player-1-100" end
@@ -47,11 +52,11 @@ buffs[3].sourceUnit, buffs[10].sourceUnit = nil, nil
 buffs[3].spellId, buffs[10].spellId = 1126, 1126
 buffs[3].isFromPlayerOrPlayerPet, buffs[10].isFromPlayerOrPlayerPet = true, true
 Mock.Event("UNIT_AURA", "party1")
-assert(icons[1].texture.textureValue == 3 and icons[1].width == 19 and icons[1].glow:IsShown())
-assert(icons[10].texture.textureValue == 10 and icons[10].width == 14 and not icons[10].glow:IsShown())
+assert(icons[1].texture.textureValue == 3 and icons[1].width == 19 and icons[1].border.color[1] == 1)
+assert(icons[10].texture.textureValue == 10 and icons[10].width == 14 and icons[10].border.color[1] ~= 1)
 C_UnitAuras.GetAuraCasterGUID = function() return {secret=true} end
 Mock.Event("UNIT_AURA", "party1")
-assert(icons[3].width == 14 and not icons[3].glow:IsShown(), "An unreadable caster never gets the player's styling")
+assert(icons[3].width == 14 and icons[3].border.color[1] ~= 1, "An unreadable caster never gets the player's styling")
 C_UnitAuras.GetAuraCasterGUID = nil
 vv.Party.SetOption("buffs", false)
 assert(HIDE_PARTY_MEMBER_BUFF_TOOLTIP == false, "Disabling extra buffs restores the previous native popup setting")
