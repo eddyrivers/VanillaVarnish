@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.12
+
+- Keep upward-growing party frames at their saved position when Edit Mode rounds the saved coordinates, including when the frame is scaled or the group size changes on reload.
+
 ## 1.0.34.11
 
 - Pause portrait party layout updates while dragging the frame in Edit Mode. Apply pending changes after release so they cannot shift the frame under the cursor.
