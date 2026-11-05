@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.34.10
+
+- Mark your buffs on portrait party frames with a solid one-pixel gold border.
+- Preserve the bottom position saved in Edit Mode when upward-growing party frames reload with a different roster size. Let Edit Mode control the frame's position while you move it.
+
 ## 1.0.34.9
 
 - Keep portrait party buff icons at their standard size in combat. The larger icons and gold borders for your buffs return after combat, when Forever exposes the caster.
