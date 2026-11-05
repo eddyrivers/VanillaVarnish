@@ -4,7 +4,7 @@ Run the Lua 5.1 suite with `python tests/run.py --lua-runtime <directory-contain
 
 The mocks cover nameplates, threat colors, swing timers, collapsing row geometry across UI scales, combo points, previews, quest grouping, party range fading, buff wrapping/recovery priority, and native alpha restoration, tooltips, restricted API data, account profiles, built-in preset isolation, saved preferences, and module switches. Optional cached native sources exercise Blizzard's nameplate and tooltip mixins.
 
-Review regressions also cover late nameplate removal after frame reuse, forbidden frames, restricted nested quest records, idle swing rendering, party refresh coalescing, current native color restoration, recycled debuff widgets, and malformed profile sections.
+Review regressions also cover late nameplate removal after frame reuse, forbidden frames, restricted nested quest records, idle swing rendering, party refresh coalescing, current native color restoration, recycled debuff widgets, and malformed profile sections. Native quest tooltip checks cover full player names and surnames, party ownership, completed objectives, and restricted or unavailable names without a bundled drop relationship.
 
 Tracker checks include native slide-anchor updates without quest events, preserving grouped positions before the next frame, folded quest visibility, combat deferral, and native animation placement when grouping is disabled.
 

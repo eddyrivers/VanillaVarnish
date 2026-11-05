@@ -146,6 +146,21 @@ local function QuestieKinds(unit)
     return kinds
 end
 
+local function PlayerNames()
+    local ok, name, surname = pcall(UnitName, "player")
+    if not ok then return end
+    name, surname = Known(name), Known(surname)
+    if type(name) ~= "string" or name == "" then return end
+    local fullName = name
+    if type(surname) == "string" and surname ~= "" then
+        local separator = Field(Field(Constants, "CharacterNameSeparatorConsts"), "CHARACTERNAME_SURNAME_SEPARATOR")
+        if type(separator) ~= "string" then separator = " " end
+        local suffix = separator .. surname
+        if name:sub(-#suffix) ~= suffix then fullName = name .. suffix end
+    end
+    return Normalize(name), Normalize(fullName)
+end
+
 local function NativeKinds(unit)
     local kinds = {}
     if not (C_TooltipInfo and C_TooltipInfo.GetUnit) then return kinds end
@@ -154,14 +169,17 @@ local function NativeKinds(unit)
     if type(lines) ~= "table" then return kinds end
     local lineTypes = Enum and Enum.TooltipDataLineType
     local ownObjectives = true
-    local playerName = SafeCall(UnitName, "player")
+    local playerName, playerFullName = PlayerNames()
     for _, line in ipairs(Records(lines)) do
         local lineType = Field(line, "type")
         local text = Field(line, "leftText")
         if lineTypes and lineType == lineTypes.QuestTitle then
             ownObjectives = true
         elseif lineTypes and lineType == lineTypes.QuestPlayer then
-            ownObjectives = type(text) == "string" and type(playerName) == "string" and text == playerName
+            -- Forever's player line may include a surname even when UnitName's
+            -- first return does not. Compare complete names, never prefixes.
+            local name = Normalize(text)
+            ownObjectives = playerName ~= nil and (name == playerName or name == playerFullName)
         elseif ownObjectives and type(text) == "string" then
             local kind = objectives[Normalize(text)]
             if not kind then
