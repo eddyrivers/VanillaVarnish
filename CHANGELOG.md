@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.11
+
+- Pause portrait party layout updates while dragging the frame in Edit Mode. Apply pending changes after release so they cannot shift the frame under the cursor.
+
 ## 1.0.34.10
 
 - Mark your buffs on portrait party frames with a solid one-pixel gold border.
