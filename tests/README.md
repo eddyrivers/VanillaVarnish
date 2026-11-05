@@ -8,6 +8,8 @@ Review regressions also cover late nameplate removal after frame reuse, forbidde
 
 Tracker checks include native slide-anchor updates without quest events, preserving grouped positions before the next frame, folded quest visibility, combat deferral, and native animation placement when grouping is disabled.
 
+Native party-buff checks block all addon aura readers during combat and exercise the native container contract, current buff updates/removals, hidden roster slots, unit reuse, tooltips/count/cooldown bindings, toggles, setup failure, and normal display restoration. These checks do not emulate the client's secure execution compartments or prove in-game rendering.
+
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for setup, native-source options, and the in-game checks that mocks cannot replace.
 
 For native aura-preview coverage, include `auras.lua` and `classification.lua` from Blizzard_NamePlates in the optional source cache. Add `optionspreview.lua` from Blizzard_SettingsDefinitions_Frame/Nameplates.lua to exercise the native preview sample handoff. The suite tests each aura display combination, native icon limits and scaling, changes while pages are hidden, and isolation from Blizzard's registered preview.

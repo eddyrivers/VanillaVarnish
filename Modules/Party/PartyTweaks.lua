@@ -73,6 +73,12 @@ end
 
 local function clearRow(state)
     for _, icon in ipairs(state.icons) do hideIcon(icon) end
+    if state.nativeBuffs then
+        attempt(state.nativeBuffs.SetEnabled, state.nativeBuffs, false)
+        state.nativeBuffs:Hide()
+        attempt(state.nativeBuffs.SetUnit, state.nativeBuffs, "none")
+        state.nativeBuffUnit = nil
+    end
     state.row:Hide()
 end
 
@@ -393,6 +399,14 @@ local function instanceBuffs(unit)
     if ok then return result end
 end
 
+local function prepareNativeBuffs(state)
+    if not state.nativeBuffs and not state.nativeBuffsAttempted and not InCombatLockdown()
+        and VV.IsModuleEnabled("party") and addon.NativeBuffsAvailable and addon.NativeBuffsAvailable() then
+        state.nativeBuffsAttempted = true
+        state.nativeBuffs, state.nativeBuffsError = addon.CreateNativeBuffs(state.row)
+    end
+end
+
 local function updateBuffs(state)
     state.buffCount, state.buffSource, state.buffReadFailed = 0, nil, false
     if not feature("buffs") then state.buffStatus = "buffs disabled"; clearRow(state); return end
@@ -406,6 +420,31 @@ local function updateBuffs(state)
     -- An unknown/restricted existence result cannot be used as a Lua condition.
     -- The aura APIs can still supply permitted display data for this unit token.
     if readable(UnitExists(unit)) == false then state.buffStatus = "unit unavailable"; clearRow(state); return end
+    prepareNativeBuffs(state)
+    if state.nativeBuffs then
+        local container = state.nativeBuffs
+        local ok = attempt(function()
+            if state.nativeBuffUnit ~= unit then
+                container:SetUnit(unit)
+                state.nativeBuffUnit = unit
+            end
+            if InCombatLockdown() then
+                for _, icon in ipairs(state.icons) do hideIcon(icon) end
+                state.row:Show()
+                container:Show()
+                container:SetEnabled(true)
+            else
+                container:SetEnabled(false)
+                container:Hide()
+            end
+        end)
+        if InCombatLockdown() then
+            state.buffSource = "native container"
+            state.buffStatus = ok and "native combat buffs (up to 16)" or "native combat display refused"
+            if not ok then clearRow(state) end
+            return
+        end
+    end
     if not C_UnitAuras then state.buffStatus = "aura APIs unavailable"; clearRow(state); return end
     local list, indexed, instances
     local byInstance = instanceBuffs(unit)
@@ -664,6 +703,9 @@ local function updateDebuffs(state)
         restoreDebuffs(state)
         return
     end
+    -- Debuff geometry already waits for combat to end. Do not query the
+    -- restricted aura reader when no decoration can be applied anyway.
+    if InCombatLockdown() then return end
     local unit, pool = memberUnit(member), member.AuraFramePool
     if not unit or not pool or not pool.EnumerateActive or not C_UnitAuras then return end
     -- RAID is the client's capability filter for harmful auras the player can
@@ -781,6 +823,7 @@ local function refresh()
         end
         if state then
             state.active = true
+            if not compact then prepareNativeBuffs(state) end
             if not compact and layoutRow(state) then layoutChanged = true end
             colorHealth(state)
             if not compact then updateBuffs(state); updateDebuffs(state) end
@@ -813,14 +856,17 @@ local function queueRefresh()
     end)
 end
 
-for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "GROUP_ROSTER_UPDATE",
+for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "GROUP_ROSTER_UPDATE", "PLAYER_REGEN_DISABLED",
     "PLAYER_REGEN_ENABLED", "UNIT_AURA", "UNIT_CONNECTION", "UNIT_PET", "CVAR_UPDATE", "EDIT_MODE_LAYOUTS_UPDATED" }) do
     driver:RegisterEvent(event)
 end
 driver:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_LOGIN" then ready = true end
     if not ready then return end
-    if event == "UNIT_AURA" then
+    if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+        for _, state in pairs(states) do if state.row then updateBuffs(state) end end
+        queueRefresh()
+    elseif event == "UNIT_AURA" then
         if not feature("buffs") then return end
         if secret(unit) then
             -- Refresh known units without inspecting the restricted event token.
@@ -879,6 +925,7 @@ local function Status()
         if state.active then
             print((memberUnit(state.member) or "unknown unit") .. ": " .. (state.buffStatus or "not updated")
                 .. "; source: " .. (state.buffSource or "none")
+                .. (state.row and ("; native combat renderer: " .. (state.nativeBuffs and "ready" or state.nativeBuffsError or "unavailable")) or "")
                 .. "; layout: " .. (state.compact and "native raid-style" or state.layoutApplied and "ready" or "no extra row"))
         end
     end

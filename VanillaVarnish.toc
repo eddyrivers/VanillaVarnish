@@ -8,7 +8,7 @@
 ## IconTexture: Interface\Icons\INV_Enchant_DustIllusion
 ## SavedVariablesPerCharacter: VanillaVarnishDB
 ## SavedVariables: VanillaVarnishProfilesDB
-## OptionalDeps: Blizzard_ObjectiveTracker, QuestieDB, Questie, NameplateTweaks, QuestTrackerOrganizer, PartyTweaks, NameplateSwingTimers, ForeverMouseTooltip
+## OptionalDeps: Blizzard_ObjectiveTracker, Blizzard_AuraContainer, QuestieDB, Questie, NameplateTweaks, QuestTrackerOrganizer, PartyTweaks, NameplateSwingTimers, ForeverMouseTooltip
 
 Core.lua
 Presets.lua
@@ -28,6 +28,7 @@ Modules\Nameplates\SwingTimers\NameplateSwingTimers.lua
 Modules\QuestTracker\Model.lua
 Modules\QuestTracker\QuestTrackerOrganizer.lua
 Modules\QuestTracker\Settings.lua
+Modules\Party\NativeBuffs.lua
 Modules\Party\PartyTweaks.lua
 Modules\Tooltips\Tooltips.lua
 Modules\Tooltips\Settings.lua
