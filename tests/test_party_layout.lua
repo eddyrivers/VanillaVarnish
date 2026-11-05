@@ -31,6 +31,9 @@ PartyFrame.PartyMemberFramePool = originalPool
 PartyFrame.spacing, PartyFrame.bottomPadding = 10, 2
 PartyFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 100, -100)
 PartyFrame.Background = CreateFrame("Frame", nil, PartyFrame)
+local dragging = false
+function PartyFrame:IsEditModeDragging() return dragging end
+function PartyFrame:OnDragStop() dragging = false end
 local members = {}
 for index = 1, 4 do
     local member = Mock.Member("party" .. index)
@@ -196,6 +199,25 @@ PartyFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 315, -235)
 PartyFrame:Layout()
 check(PartyFrame.point[1] == "TOPLEFT" and PartyFrame.point[4] == 315,
     "Upward growth leaves Blizzard's dragged anchor alone during Edit Mode")
+dragging = true
+local dragHeight, memberPoint = PartyFrame:GetHeight(), members[1].point
+local dragRow = Mock.Row(members[1])
+local rowPoint, iconPoint = dragRow.point, Mock.Icons(dragRow)[1].point
+vv.Party.SetOption("spacing", 8)
+Mock.Event("UNIT_AURA", "party1")
+Mock.Event("GROUP_ROSTER_UPDATE")
+Mock.Tick(2)
+PartyFrame:UpdatePartyMemberBackground()
+check(PartyFrame:GetHeight() == dragHeight and members[1].point == memberPoint
+    and dragRow.point == rowPoint and Mock.Icons(dragRow)[1].point == iconPoint,
+    "Settings, roster, aura, and periodic updates leave the dragged layout alone")
+check(PartyFrame.Background.point[2] == members[4], "The background hook leaves native anchors alone during the drag")
+PartyFrame:OnDragStop()
+local afterDrag = assert(Mock.pending, "Reflow should be queued after native drag stop")
+Mock.pending = nil
+afterDrag()
+check(near(PartyFrame:GetHeight(), dragHeight + 6) and PartyFrame.point[4] == 315,
+    "Spacing updates after the drag without moving the saved Edit Mode anchor")
 local savedBottom = bottom(PartyFrame)
 Mock.EditModeEvent("EditMode.SavedLayouts")
 editing = false

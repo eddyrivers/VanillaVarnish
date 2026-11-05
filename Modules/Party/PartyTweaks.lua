@@ -17,6 +17,7 @@ local states, lastError = {}, nil
 local driver = CreateFrame("Frame")
 local ready, elapsed, auraElapsed = false, 0, 0
 local refreshQueued = false
+local queueRefresh
 local colorRecords = setmetatable({}, {__mode="k"})
 local desaturationRecords = setmetatable({}, {__mode="k"})
 local debuffHooks = setmetatable({}, {__mode="k"})
@@ -651,8 +652,12 @@ local function growthAnchorHeight(anchor, height)
     return height
 end
 
+local function partyIsDragging(party)
+    return party and party.IsEditModeDragging and party:IsEditModeDragging()
+end
+
 local function arrangeParty(party, nativeLayout)
-    if InCombatLockdown() or not party.GetNumPoints then return end
+    if InCombatLockdown() or not party.GetNumPoints or partyIsDragging(party) then return end
     local layout = partyLayouts[party]
     if not layout then return end
     if party.IsInitialized and not party:IsInitialized() then return end
@@ -772,6 +777,7 @@ local function installPartyLayout()
         or type(party.Layout) ~= "function" or partyLayouts[party] then return end
     partyLayouts[party] = {}
     hooksecurefunc(party, "Layout", function(self) arrangeParty(self, true) end)
+    if party.OnDragStop then hooksecurefunc(party, "OnDragStop", queueRefresh) end
     if party.UpdatePartyMemberBackground then
         hooksecurefunc(party, "UpdatePartyMemberBackground", function(self)
             local layout = partyLayouts[self]
@@ -911,6 +917,9 @@ end
 
 local function refresh()
     updateBuffPopup()
+    -- Resizing the moving frame or relaying out its children can shift the
+    -- point Blizzard is dragging, even with Edit Mode snapping disabled.
+    if partyIsDragging(_G.PartyFrame) then return end
     local layoutChanged = false
     for _, state in pairs(states) do state.active = false end
     visitMembers(function(member, compact)
@@ -947,7 +956,7 @@ local function refresh()
     end
 end
 
-local function queueRefresh()
+queueRefresh = function()
     if refreshQueued then return end
     refreshQueued = true
     C_Timer.After(0, function()
@@ -982,7 +991,7 @@ driver:SetScript("OnEvent", function(_, event, unit)
         for _, state in pairs(states) do if state.row then updateBuffs(state) end end
         queueRefresh()
     elseif event == "UNIT_AURA" then
-        if not feature("buffs") then return end
+        if not feature("buffs") or partyIsDragging(_G.PartyFrame) then return end
         if secret(unit) then
             -- Refresh known units without inspecting the restricted event token.
             for _, state in pairs(states) do if state.row then updateBuffs(state); updateDebuffs(state); updateRange(state) end end
