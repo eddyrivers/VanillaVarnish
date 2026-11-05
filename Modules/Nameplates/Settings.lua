@@ -91,9 +91,11 @@ function ns.RegisterFeatureOptions()
     Heading(quests, "Quest icons", "White icons beside names show units you need to loot, defeat, or interact with for quests.")
     FeatureCheck(quests, "questieFallback", "Use Questie for extra quest information", -90, "questieFallback",
         "Use Questie's tooltip information when a quest objective is missing from the game's data.")
+    FeatureCheck(quests, "groupQuestMarkers", "Include your group's quest objectives", -134, "groupQuestMarkers",
+        "Also show loot and kill icons for unfinished objectives in a current party or raid member's native tooltip section, even when you do not have that quest. Requires the game to supply group progress.")
     local hint = UI.Label(quests, "Questie can also help identify quest-item drops when installed.\nIf you see duplicate icons, turn off Questie's nameplate icons.",
-        16, -144, "GameFontHighlightSmall")
-    hint:SetPoint("TOPRIGHT", quests, "TOPRIGHT", -16, -144)
+        16, -188, "GameFontHighlightSmall")
+    hint:SetPoint("TOPRIGHT", quests, "TOPRIGHT", -16, -188)
     hint:SetJustifyH("LEFT")
     panels.markers = quests
     ns.questCategory = Settings.RegisterCanvasLayoutSubcategory(ns.rootCategory, quests, "Quest icons")

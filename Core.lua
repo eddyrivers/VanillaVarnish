@@ -67,6 +67,7 @@ function VV.InitDB()
         if type(db.party[key]) ~= "boolean" then db.party[key] = true end
     end
     if type(db.party.growUp) ~= "boolean" then db.party.growUp = false end
+    if db.party.rolePin ~= "top" and db.party.rolePin ~= "bottom" then db.party.rolePin = "off" end
     local spacing = db.party.spacing
     if type(spacing) ~= "number" or spacing ~= spacing or spacing < 0 or spacing > 40 then spacing = 4 end
     db.party.spacing = math.floor(spacing + 0.5)

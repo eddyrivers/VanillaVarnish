@@ -104,4 +104,42 @@ Mock.questEntries = {}
 Mock.Event("QUEST_LOG_UPDATE"); Mock.Tick(1)
 Check(not markers.loot:IsShown(), "An abandoned quest cannot leave a native loot icon")
 
+local originalExists = UnitExists
+local group = {party1={"Other", "Player"},party2={"Third", "Person"}}
+function UnitExists(unit) return group[unit] ~= nil or unit == "nameplate1" end
+function UnitName(unit)
+    if unit == "player" then return "Ada", "Lovelace" end
+    if group[unit] then return unpack(group[unit]) end
+    return "Gnarlpine Gardener"
+end
+function IsInRaid() return false end
+function GetNumGroupMembers() return 3 end
+Check(not ns.tweaksDB.groupQuestMarkers, "Group markers are opt-in")
+ns.SetFeature("groupQuestMarkers", true)
+Tooltip("Other Player", "1/15 Gnarlpine Fang", "1/10 Gnarlpine Gardener")
+Check(markers.loot:IsShown() and markers.kill:IsShown(), "Group needs show both icons without the player's quest")
+Tooltip("Other Player", "15/15 Gnarlpine Fang", "10/10 Gnarlpine Gardener")
+Check(not markers.loot:IsShown() and not markers.kill:IsShown(), "Completed group counts cannot create markers")
+Tooltip("Not Grouped", "1/15 Gnarlpine Fang", "1/10 Gnarlpine Gardener")
+Check(not markers.loot:IsShown() and not markers.kill:IsShown(), "Tooltip names outside the current group are ignored")
+Tooltip("Other Player", "1/15 Gnarlpine Fang")
+Mock.tooltipLines[#Mock.tooltipLines + 1] = {type=lineTypes.QuestPlayer,leftText="Third Person"}
+Mock.tooltipLines[#Mock.tooltipLines + 1] = {type=lineTypes.QuestObjective,leftText="10/10 Gnarlpine Gardener"}
+Mock.Tick(1)
+Check(markers.loot:IsShown() and not markers.kill:IsShown(), "Each group member's completion is evaluated separately")
+ns.SetFeature("groupQuestMarkers", false); Mock.Tick(1)
+Check(not markers.loot:IsShown(), "Turning group markers off removes group-only needs")
+ns.SetFeature("groupQuestMarkers", true)
+group.party1 = nil
+Mock.Event("GROUP_ROSTER_UPDATE"); Mock.Tick(1)
+Check(not markers.loot:IsShown(), "A departing group member cannot leave markers behind")
+group.raid1 = {"Other", "Player"}
+function IsInRaid() return true end
+Tooltip("Other Player", nil, "1/10 Gnarlpine Gardener")
+Check(markers.loot:IsShown() and markers.kill:IsShown(), "Raid member objectives also supply markers")
+group.raid1 = {{secret=true},"Player"}
+Mock.Tick(1)
+Check(not markers.loot:IsShown() and not markers.kill:IsShown(), "Restricted group names never establish membership")
+Check(not ns.SetFeature("groupQuestMarkers", "yes"), "Invalid group marker preferences are rejected")
+UnitExists = originalExists
 NST_QUEST_TOOLTIP_CHECKS = checks

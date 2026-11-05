@@ -1,5 +1,7 @@
 local vv = VV_TEST_NS
 local member = Mock.Member("party1")
+PartyMemberBuffTooltip = CreateFrame("Frame")
+HIDE_PARTY_MEMBER_BUFF_TOOLTIP = false
 local buffs = {}
 for index = 1, 12 do buffs[index] = {icon=index, auraInstanceID=index, sourceUnit="party2"} end
 buffs[3].sourceUnit, buffs[10].sourceUnit = "player", "player"
@@ -7,6 +9,9 @@ Mock.auras.party1 = buffs
 Mock.Event("PLAYER_LOGIN")
 local row = assert(Mock.Row(member))
 local icons = Mock.Icons(row)
+assert(HIDE_PARTY_MEMBER_BUFF_TOOLTIP and not PartyMemberBuffTooltip:IsShown(), "The native portrait-hover buff popup is suppressed")
+assert(icons[1].glow:IsShown() and icons[2].glow:IsShown() and not icons[3].glow:IsShown(),
+    "Only buffs cast by the player have a glowing border")
 assert(icons[1].texture.textureValue == 3 and icons[2].texture.textureValue == 10,
     "Player buffs must precede others, including buffs beyond the first eight")
 assert(icons[1].width == 19 and icons[2].height == 19 and icons[3].width == 14)
@@ -29,6 +34,14 @@ buffs[3].sourceUnit = {secret=true}
 buffs[10].sourceUnit = "party2"
 Mock.Event("UNIT_AURA", "party1")
 assert(icons[1].width == 14 and icons[3].texture.textureValue == 3)
+for _, icon in ipairs(icons) do assert(not icon.glow:IsShown(), "Reused icons cannot keep another aura's glow") end
+vv.Party.SetOption("buffs", false)
+assert(HIDE_PARTY_MEMBER_BUFF_TOOLTIP == false, "Disabling extra buffs restores the previous native popup setting")
+HIDE_PARTY_MEMBER_BUFF_TOOLTIP = true
+vv.Party.SetOption("buffs", true)
+vv.SetModuleEnabled("party", false)
+assert(HIDE_PARTY_MEMBER_BUFF_TOOLTIP == true, "Disabling the module preserves an already suppressed native popup")
+vv.SetModuleEnabled("party", true)
 
 local native = {}
 member.AuraFramePool = {EnumerateActive=function()

@@ -22,9 +22,24 @@ local desaturationRecords = setmetatable({}, {__mode="k"})
 local debuffHooks = setmetatable({}, {__mode="k"})
 local partyLayouts = setmetatable({}, {__mode="k"})
 local colorHealth
+local popupSuppressed, previousPopupSetting
 
 local function feature(key)
     return VV.IsModuleEnabled("party") and VV.db.party[key]
+end
+
+local function updateBuffPopup()
+    if feature("buffs") then
+        if not popupSuppressed then
+            previousPopupSetting = HIDE_PARTY_MEMBER_BUFF_TOOLTIP
+            popupSuppressed = true
+        end
+        HIDE_PARTY_MEMBER_BUFF_TOOLTIP = true
+        if PartyMemberBuffTooltip then PartyMemberBuffTooltip:Hide() end
+    elseif popupSuppressed then
+        HIDE_PARTY_MEMBER_BUFF_TOOLTIP = previousPopupSetting
+        popupSuppressed = false
+    end
 end
 
 local function secret(value)
@@ -68,6 +83,7 @@ end
 local function hideIcon(icon)
     if GameTooltip:IsOwned(icon) then GameTooltip:Hide() end
     icon.unit, icon.auraID, icon.auraIndex = nil, nil, nil
+    if icon.glow then icon.glow:Hide() end
     icon:Hide()
 end
 
@@ -120,6 +136,8 @@ local function createState(member)
         local cover = CreateFrame("Frame", nil, icon)
         cover:SetAllPoints(icon)
         cover:SetFrameLevel(icon.cooldown:GetFrameLevel() + 1)
+        icon.glow = addon.CreateBuffGlow(cover, icon)
+        icon.glow:Hide()
         icon.count = cover:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
         icon.count:SetPoint("BOTTOMRIGHT", 1, -1)
         icon:EnableMouse(true)
@@ -515,6 +533,7 @@ local function updateBuffs(state)
             icon:SetPoint("TOPLEFT", state.row, "TOPLEFT", x, -math.floor((index - 1) / BUFFS_PER_ROW) * ROW_STEP)
             x = x + size + ICON_GAP
             if attempt(setAura, icon, unit, aura, indexed and entry.index or nil, entry.instanceID) then
+                if entry.own then icon.glow:Show() else icon.glow:Hide() end
                 state.buffCount = state.buffCount + 1
             else hideIcon(icon) end
         else
@@ -621,6 +640,32 @@ local function arrangeParty(party, nativeLayout)
         return
     end
     local config = VV.db.party
+    if config.rolePin == "top" or config.rolePin == "bottom" then
+        -- Build physical top-to-bottom order, then convert back to the growth
+        -- direction. Secure unit bindings and native layout indices stay put.
+        local tanks, healers, others = {}, {}, {}
+        for position = 1, #members do
+            local member = members[config.growUp and #members + 1 - position or position]
+            local role
+            local unit = memberUnit(member)
+            if unit and UnitGroupRolesAssigned then
+                local ok, value = attempt(UnitGroupRolesAssigned, unit)
+                if ok then role = readable(value) end
+            elseif unit and UnitGroupRolesAssignedEnum then
+                local ok, value = attempt(UnitGroupRolesAssignedEnum, unit)
+                value = ok and readable(value)
+                if Enum and Enum.LFGRole then
+                    role = value == Enum.LFGRole.Tank and "TANK" or value == Enum.LFGRole.Healer and "HEALER" or nil
+                end
+            end
+            local group = role == "TANK" and tanks or role == "HEALER" and healers or others
+            group[#group + 1] = member
+        end
+        local ordered = {}
+        local groups = config.rolePin == "top" and {tanks, healers, others} or {others, tanks, healers}
+        for _, group in ipairs(groups) do for _, member in ipairs(group) do ordered[#ordered + 1] = member end end
+        for index = 1, #members do members[index] = ordered[config.growUp and #ordered + 1 - index or index] end
+    end
     local gap = config.spacing or 4
     local top, bottom = party.topPadding or 0, party.bottomPadding or 0
     local left, height = party.leftPadding or 0, top + bottom
@@ -811,6 +856,7 @@ local function visitMembers(callback)
 end
 
 local function refresh()
+    updateBuffPopup()
     local layoutChanged = false
     for _, state in pairs(states) do state.active = false end
     visitMembers(function(member, compact)
@@ -857,7 +903,8 @@ local function queueRefresh()
 end
 
 for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "GROUP_ROSTER_UPDATE", "PLAYER_REGEN_DISABLED",
-    "PLAYER_REGEN_ENABLED", "UNIT_AURA", "UNIT_CONNECTION", "UNIT_PET", "CVAR_UPDATE", "EDIT_MODE_LAYOUTS_UPDATED" }) do
+    "PLAYER_REGEN_ENABLED", "UNIT_AURA", "UNIT_CONNECTION", "UNIT_PET", "CVAR_UPDATE", "EDIT_MODE_LAYOUTS_UPDATED",
+    "PLAYER_ROLES_ASSIGNED", "ROLE_CHANGED_INFORM" }) do
     driver:RegisterEvent(event)
 end
 driver:SetScript("OnEvent", function(_, event, unit)
@@ -939,7 +986,9 @@ local function Status()
 end
 
 function addon.SetOption(key, value)
-    if key == "spacing" then
+    if key == "rolePin" then
+        if value ~= "off" and value ~= "top" and value ~= "bottom" then return false end
+    elseif key == "spacing" then
         if type(value) ~= "number" or value ~= value or value < 0 or value > 40 then return false end
         value = math.floor(value + 0.5)
     elseif (key ~= "buffs" and key ~= "classColors" and key ~= "rangeFade" and key ~= "growUp") or type(value) ~= "boolean" then return false end
@@ -954,13 +1003,15 @@ function addon.HandleSlash(message)
     if key == "options" or key == "settings" then VV.OpenOptions("party"); return end
     key = ({buffs = "buffs", colors = "classColors", classcolors = "classColors", range = "rangeFade"})[key] or key
     if key == "spacing" then addon.SetOption("spacing", tonumber(mode))
-    elseif key == "grow" and (mode == "up" or mode == "down") then addon.SetOption("growUp", mode == "up") end
+    elseif key == "grow" and (mode == "up" or mode == "down") then addon.SetOption("growUp", mode == "up")
+    elseif key == "roles" then addon.SetOption("rolePin", mode) end
     if (key == "buffs" or key == "classColors" or key == "rangeFade") and (mode == "on" or mode == "off" or mode == "toggle") then
         addon.SetOption(key, mode == "on" or mode == "toggle" and not VV.db.party[key])
     end
     if key == "help" then
         VV.Print("/vv party range on | off | toggle fades portraits and buffs using the friendly spell and range opacity.")
         VV.Print("/vv party spacing <0-40>; /vv party grow up | down adjusts portrait-style member layout.")
+        VV.Print("/vv party roles off | top | bottom pins tanks before healers at the chosen edge.")
     end
     Status()
 end

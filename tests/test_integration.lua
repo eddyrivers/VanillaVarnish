@@ -99,6 +99,16 @@ assert(vv.db.party.growUp)
 local spacing = vv.optionControls["party.spacing"].box
 spacing:SetText("8"); spacing.scripts.OnEnterPressed(spacing)
 assert(vv.db.party.spacing == 8)
+local roles = vv.optionControls["party.rolePin"].dropdown
+local menu = Mock.Menu(roles)
+assert(#menu == 3 and menu[1].name == "Off" and menu[2].name == "Top" and menu[3].name == "Bottom")
+menu[3].callback()
+assert(vv.db.party.rolePin == "bottom" and roles.selectionText == "Bottom")
+local groupQuests = n.featureControls.groupQuestMarkers.button
+groupQuests:SetChecked(true); groupQuests.scripts.OnClick(groupQuests)
+assert(n.tweaksDB.groupQuestMarkers)
+SlashCmdList.VANILLAVARNISH("nameplates groupquests off")
+assert(not n.tweaksDB.groupQuestMarkers and not groupQuests:GetChecked())
 local messages = #Mock.messages
 SlashCmdList.VANILLAVARNISH("help")
 SlashCmdList.VANILLAVARNISH("nameplates help")

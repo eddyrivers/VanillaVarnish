@@ -151,4 +151,39 @@ vv.Party.SetOption("buffs", true)
 PartyFrame.scale = 1.8
 Mock.Event("EDIT_MODE_LAYOUTS_UPDATED")
 check(near(members[1]:GetHeight(), 87), "Scaling the entire party does not duplicate aura height")
+local roles = {party1="DAMAGER", party2="HEALER", party3="TANK", party4="DAMAGER"}
+function UnitGroupRolesAssigned(unit) return roles[unit] end
+local function order(expected)
+    local physical = {unpack(members)}
+    table.sort(physical, function(a,b) return top(a) > top(b) end)
+    for index, value in ipairs(expected) do
+        check(physical[index] == members[value], "Role pinning preserves the expected physical order")
+    end
+    for index, member in ipairs(members) do
+        check(member.unit == "party" .. index and member.layoutIndex == index, "Role pinning preserves native unit bindings")
+    end
+end
+vv.Party.SetOption("growUp", false)
+vv.Party.SetOption("rolePin", "top"); order({3,2,1,4})
+vv.Party.SetOption("rolePin", "bottom"); order({1,4,3,2})
+vv.Party.SetOption("growUp", true); order({4,1,3,2})
+vv.Party.SetOption("rolePin", "top"); order({3,2,4,1})
+vv.Party.SetOption("rolePin", "off"); order({4,3,2,1})
+Mock.combat = true
+vv.Party.SetOption("rolePin", "bottom"); order({4,3,2,1})
+Mock.combat = false
+Mock.Event("PLAYER_REGEN_ENABLED"); order({4,1,3,2})
+roles.party4 = "TANK"
+Mock.Event("PLAYER_ROLES_ASSIGNED"); order({1,4,3,2})
+roles.party2 = {secret=true}
+Mock.Event("ROLE_CHANGED_INFORM"); order({2,1,4,3})
+roles.party4 = "NONE"
+UnitGroupRolesAssigned = nil
+Mock.Event("PLAYER_ROLES_ASSIGNED"); order({4,3,2,1})
+Enum = {LFGRole={Tank=1,Healer=2,Damage=3}}
+function UnitGroupRolesAssignedEnum(unit) return unit == "party3" and 1 or unit == "party2" and 2 or 3 end
+Mock.Event("PLAYER_ROLES_ASSIGNED"); order({4,1,3,2})
+check(not vv.Party.SetOption("rolePin", true) and not vv.Party.SetOption("rolePin", "left"), "Invalid role modes are rejected")
+vv.Party.HandleSlash("roles top")
+check(vv.db.party.rolePin == "top", "Role pinning is accessible from slash commands")
 NST_PARTY_LAYOUT_CHECKS = checks

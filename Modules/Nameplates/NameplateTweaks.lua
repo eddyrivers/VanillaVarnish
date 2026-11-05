@@ -146,8 +146,8 @@ local function QuestieKinds(unit)
     return kinds
 end
 
-local function PlayerNames()
-    local ok, name, surname = pcall(UnitName, "player")
+local function PlayerNames(unit)
+    local ok, name, surname = pcall(UnitName, unit or "player")
     if not ok then return end
     name, surname = Known(name), Known(surname)
     if type(name) ~= "string" or name == "" then return end
@@ -161,6 +161,28 @@ local function PlayerNames()
     return Normalize(name), Normalize(fullName)
 end
 
+local function ObjectiveSubject(text)
+    return Normalize(Normalize(text):gsub("%d+%s*/%s*%d+", ""):gsub("%d+%%", "")
+        :gsub("^%s*[:%-]%s*", ""):gsub("%s*[:%-]%s*$", ""))
+end
+
+local function GroupNames()
+    local names = {}
+    if not db.groupQuestMarkers then return names end
+    local raid = SafeCall(IsInRaid) == true
+    local count = SafeCall(GetNumGroupMembers)
+    count = type(count) == "number" and math.min(count, raid and 40 or 4) or (raid and 0 or 4)
+    for index = 1, count do
+        local token = (raid and "raid" or "party") .. index
+        if SafeCall(UnitExists, token) == true then
+            local name, fullName = PlayerNames(token)
+            if name then names[name] = true end
+            if fullName then names[fullName] = true end
+        end
+    end
+    return names
+end
+
 local function NativeKinds(unit)
     local kinds = {}
     if not (C_TooltipInfo and C_TooltipInfo.GetUnit) then return kinds end
@@ -169,17 +191,45 @@ local function NativeKinds(unit)
     if type(lines) ~= "table" then return kinds end
     local lineTypes = Enum and Enum.TooltipDataLineType
     local ownObjectives = true
+    local groupObjectives = false
+    local groupNames = GroupNames()
+    local questObjectives = {}
+    local npcName = Normalize(SafeCall(UnitName, unit))
+    local slainText = SafeCall(string.format, QUEST_MONSTERS_KILLED or "%s slain: %d/%d", npcName, 0, 1)
+    local slainSubject = ObjectiveSubject(slainText)
     local playerName, playerFullName = PlayerNames()
     for _, line in ipairs(Records(lines)) do
         local lineType = Field(line, "type")
         local text = Field(line, "leftText")
         if lineTypes and lineType == lineTypes.QuestTitle then
             ownObjectives = true
+            groupObjectives, questObjectives = false, {}
+            local questID = Field(line, "questID")
+            if db.groupQuestMarkers and type(questID) == "number" then
+                for _, objective in ipairs(Records(SafeCall(C_QuestLog and C_QuestLog.GetQuestObjectives, questID))) do
+                    local kind = Field(objective, "type")
+                    if kind == "item" or kind == "monster" then
+                        questObjectives[ObjectiveSubject(Field(objective, "text"))] = kind == "item" and "loot" or "kill"
+                    end
+                end
+            end
         elseif lineTypes and lineType == lineTypes.QuestPlayer then
             -- Forever's player line may include a surname even when UnitName's
             -- first return does not. Compare complete names, never prefixes.
             local name = Normalize(text)
             ownObjectives = playerName ~= nil and (name == playerName or name == playerFullName)
+            groupObjectives = not ownObjectives and groupNames[name] == true
+        elseif groupObjectives and lineTypes and lineType == lineTypes.QuestObjective and type(text) == "string" then
+            local current, needed = text:match("(%d+)%s*/%s*(%d+)")
+            if current and tonumber(current) < tonumber(needed) then
+                local subject = ObjectiveSubject(text)
+                -- Native quest metadata is preferred. For tooltip-only group
+                -- quests, counted NPC names mean kills; other counted needs
+                -- on this hostile creature identify quest loot.
+                local kind = questObjectives[subject] or objectives[subject]
+                    or (npcName ~= "" and (subject == npcName or subject == slainSubject) and "kill" or "loot")
+                if kind == "loot" or kind == "kill" then kinds[kind] = true end
+            end
         elseif ownObjectives and type(text) == "string" then
             local kind = objectives[Normalize(text)]
             if not kind then
@@ -402,7 +452,7 @@ end
 function ns.SetFeature(key, value)
     if not db or type(value) ~= "boolean" then return false end
     if key ~= "rangeEnabled" and key ~= "markers" and key ~= "swingsEnabled"
-        and key ~= "comboPointsEnabled" and key ~= "questieFallback" and key ~= "threatColorsEnabled" then return false end
+        and key ~= "comboPointsEnabled" and key ~= "questieFallback" and key ~= "groupQuestMarkers" and key ~= "threatColorsEnabled" then return false end
     db[key] = value
     ns.RefreshTweaks()
     if ns.Refresh then ns.Refresh() end
@@ -482,6 +532,9 @@ local function Slash(message)
     elseif command == "questie" and (rest:lower() == "on" or rest:lower() == "off") then
         ns.SetFeature("questieFallback", rest:lower() == "on")
         Print("Extra Questie quest information " .. rest:lower() .. ".")
+    elseif command == "groupquests" and (rest:lower() == "on" or rest:lower() == "off") then
+        ns.SetFeature("groupQuestMarkers", rest:lower() == "on")
+        Print("Group quest markers " .. rest:lower() .. ".")
         return
     elseif command == "debug" then
         Status()
@@ -492,7 +545,7 @@ local function Slash(message)
         Print("Target range: damage=" .. tostring(damage) .. ", friendly=" .. tostring(friendly) .. " (nil means unavailable).")
         return
     end
-    if command ~= "help" and not feature and command ~= "questie" and ns.Slash then
+    if command ~= "help" and not feature and command ~= "questie" and command ~= "groupquests" and ns.Slash then
         ns.Slash(message)
         return
     end
@@ -504,6 +557,7 @@ local function Slash(message)
     Print("/vv nameplates range opacity 50 — choose out-of-range opacity from 0 to 100 percent.")
     Print("Use off to disable either; spell IDs and spell links also work.")
     Print("/vv nameplates markers on or off; /vv nameplates questie on or off.")
+    Print("/vv nameplates groupquests on or off includes your group's loot and kill objectives.")
     Print("/vv nameplates status; /vv nameplates debug. Settings save per character.")
     Print("/vv nameplates threat on or off — toggle role-aware threat colors.")
     if ns.SwingHelp then ns.SwingHelp() end
@@ -521,6 +575,7 @@ function ns.InitializeTweaks()
     if type(db.comboPointsEnabled) ~= "boolean" then db.comboPointsEnabled = true end
     if type(db.threatColorsEnabled) ~= "boolean" then db.threatColorsEnabled = true end
     if type(db.questieFallback) ~= "boolean" then db.questieFallback = false end
+    if type(db.groupQuestMarkers) ~= "boolean" then db.groupQuestMarkers = false end
     local opacity = Known(db.rangeOpacity)
     if type(opacity) ~= "number" or opacity ~= opacity or opacity < 0 or opacity > 1 then db.rangeOpacity = 0.5 end
     ns.tweaksDB = db
@@ -531,7 +586,7 @@ end
 
 local events = CreateFrame("Frame")
 for _, event in ipairs({"ADDON_LOADED", "PLAYER_ENTERING_WORLD", "NAME_PLATE_UNIT_ADDED",
-    "NAME_PLATE_UNIT_REMOVED", "PLAYER_REGEN_ENABLED", "QUEST_LOG_UPDATE", "BAG_UPDATE_DELAYED", "ITEM_DATA_LOAD_RESULT", "SPELLS_CHANGED", "UNIT_FACTION"}) do
+    "NAME_PLATE_UNIT_REMOVED", "PLAYER_REGEN_ENABLED", "QUEST_LOG_UPDATE", "BAG_UPDATE_DELAYED", "ITEM_DATA_LOAD_RESULT", "SPELLS_CHANGED", "UNIT_FACTION", "GROUP_ROSTER_UPDATE"}) do
     events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", function(_, event, arg)

@@ -19,6 +19,7 @@ local presets = {
             ["comboPointsEnabled"] = true,
             ["markers"] = true,
             ["questieFallback"] = false,
+            ["groupQuestMarkers"] = false,
             ["rangeEnabled"] = true,
             ["rangeOpacity"] = 0.5,
             ["swingTimers"] = {
@@ -84,6 +85,7 @@ local presets = {
             ["rangeFade"] = true,
             ["spacing"] = 4,
             ["growUp"] = false,
+            ["rolePin"] = "off",
         },
         ["questTracker"] = {
             ["completedSort"] = "bottom",

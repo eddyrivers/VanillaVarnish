@@ -174,10 +174,22 @@ function VV.RegisterOptions()
     controls["party.spacing"] = UI.Slider(spacing, "vv.party.spacing", "Space between members", 0, 0, 40, 1, false,
         function() return VV.db.party.spacing end, function(value) VV.Party.SetOption("spacing", value) end,
         "Extra space between portrait-style party members in UI units. Buff rows and visible pets keep enough room. Changes apply after combat.")
+    UI.Label(party, "Pin tanks, then healers", 16, -320)
+    local roles = CreateFrame("DropdownButton", nil, party, "WowStyle1DropdownTemplate")
+    roles:SetPoint("TOPLEFT", party, "TOPLEFT", 208, -314)
+    roles:SetWidth(140)
+    roles:SetupMenu(function(_, menu)
+        for _, choice in ipairs({{"off", "Off"}, {"top", "Top"}, {"bottom", "Bottom"}}) do
+            local value, label = choice[1], choice[2]
+            menu:CreateRadio(label, function() return VV.db.party.rolePin == value end,
+                function() VV.Party.SetOption("rolePin", value) end)
+        end
+    end)
+    controls["party.rolePin"] = {dropdown=roles, Refresh=function() roles:GenerateMenu() end}
     local range = UI.Button(party, "Choose friendly range spell", 210, function() VV.Nameplates.OpenOptions("rangeEnabled") end)
-    range:SetPoint("TOPLEFT", party, "TOPLEFT", 16, -320)
+    range:SetPoint("TOPLEFT", party, "TOPLEFT", 16, -366)
     UI.Label(party, "Buffs and range fading need 'Use raid-style party frames' turned off.\nHealth and mana bars keep their native opacity. Some layout changes apply after combat.",
-        16, -364, "GameFontHighlightSmall")
+        16, -410, "GameFontHighlightSmall")
     VV.partyCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, party, "Party frames")
     Settings.RegisterAddOnCategory(VV.partyCategory)
     party:SetScript("OnShow", VV.RefreshOptions)

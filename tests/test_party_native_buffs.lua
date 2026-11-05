@@ -5,6 +5,12 @@ local create = CreateFrame
 local containers = {}
 AuraContainerSortMethod = {Default=0}
 CustomAuraContainerGroupDefaultOptions = {}
+local createGlow = vv.Party.CreateBuffGlow
+vv.Party.CreateBuffGlow = function(parent, relative)
+    local glow = createGlow(parent, relative)
+    relative.testGlow = glow -- Test instrumentation during presentation setup only.
+    return glow
+end
 
 -- Model the trust boundary: ordinary addon reads throw in combat. Only the
 -- native container's own renderer can consume the current aura data then.
@@ -28,16 +34,28 @@ C_UnitAuras.GetAuraDataByIndex = blockedInCombat(function() return nil end)
 local function render(container)
     nativeUpdates = nativeUpdates + 1
     local data = container.enabled and container:IsVisible() and Mock.auras[container.unit] or {}
-    for index, button in ipairs(container.buttons or {}) do
-        local aura = data[index]
-        if aura then
-            button.boundIcon:SetTexture(aura.icon)
-            button.boundCount:SetText((aura.applications or 0) > 1 and aura.applications or "")
-            button.boundCooldown.nativeAura = aura
-            button.nativeAuraID = aura.auraInstanceID
-            button:Show()
-        else button:Hide() end
+    local flowing = {}
+    for _, group in ipairs(container.groups or {}) do
+        local filtered = {}
+        for _, aura in ipairs(data or {}) do
+            local own = aura.sourceUnit == "player" or aura.sourceUnit == "pet" or aura.sourceUnit == "vehicle"
+            if own == (group.filter == "HELPFUL|PLAYER") then filtered[#filtered + 1] = aura end
+        end
+        table.sort(filtered, function(a,b) return a.auraInstanceID < b.auraInstanceID end)
+        for index, button in ipairs(group.buttons) do
+            local aura = filtered[index]
+            if aura then
+                button.boundIcon:SetTexture(aura.icon)
+                button.boundCount:SetText((aura.applications or 0) > 1 and aura.applications or "")
+                button.boundCooldown.nativeAura = aura
+                button.nativeAuraID = aura.auraInstanceID
+                button:Show()
+                flowing[#flowing + 1] = button
+                button.flowPosition = #flowing
+            else button:Hide() end
+        end
     end
+    if #flowing > 0 then container.buttons = flowing end
 end
 CreateFrame = function(kind, name, parent, template)
     local frame = create(kind, name, parent, template)
@@ -45,14 +63,25 @@ CreateFrame = function(kind, name, parent, template)
         assert(not Mock.combat, "Native containers must be prepared before combat")
         assert(template == "CustomAuraContainerTemplate")
         frame.buttons = {}
+        frame.groups = {}
         function frame:SetEnabled(value) self.enabled = value; render(self) end
         function frame:SetUnit(unit) self.unit = unit; render(self) end
         function frame:SetFlowLayoutAnchorPoint(point) self.flowAnchor = point end
         function frame:SetFlowLayoutMaximumLineSize(width) self.lineWidth = width end
         function frame:AddAuraGroup(key, filter, options)
             self.groupKey, self.filter, self.options = key, filter, options
+            local group = {key=key,filter=filter,options=options,buttons={}}
+            self.groups[#self.groups + 1] = group
             for index = 1, options.maxFrameCount do
                 local button = create("Button", nil, self)
+                local isVisible = button.IsVisible
+                function button:IsVisible()
+                    local perRow = math.floor((frame.lineWidth + options.layout.elementSpacing)
+                        / (options.layout.elementWidth + options.layout.elementSpacing))
+                    local y = 2 + math.floor(((self.flowPosition or 1) - 1) / perRow)
+                        * (options.layout.elementHeight + options.layout.lineSpacing)
+                    return isVisible(self) and y + self:GetHeight() <= frame.parent:GetHeight()
+                end
                 function button:SetTooltipAnchorPoint(point) self.tooltipAnchor = point end
                 function button:SetHideTooltipInCombat(value) self.hideTooltipInCombat = value end
                 function button:SetIcon(icon) self.boundIcon = icon end
@@ -60,7 +89,8 @@ CreateFrame = function(kind, name, parent, template)
                 function button:SetApplicationCount(count) self.boundCount = count end
                 options.initializeFrame(button)
                 button:Hide()
-                self.buttons[index] = button
+                group.buttons[index] = button
+                if #self.groups == 1 then self.buttons[index] = button end
             end
         end
         local show, hide = frame.Show, frame.Hide
@@ -81,11 +111,14 @@ local row = assert(Mock.Row(member))
 local ordinaryIcon = Mock.Icons(row)[1]
 check(#containers == 2, "Hidden roster slots also prepare a native combat display")
 local container
-for _, frame in ipairs(containers) do if frame.parent == row then container = frame end end
+for _, frame in ipairs(containers) do if frame.parent.parent == row then container = frame end end
 check(container and container.unit == "party1" and not container.enabled and ordinaryIcon:IsShown(),
     "Normal buff rendering is retained outside combat")
-check(container.filter == "HELPFUL" and container.options.maxFrameCount == 16
-    and container.options.sortMethod == AuraContainerSortMethod.Default, "Native display is limited to sixteen helpful buffs")
+check(container.groups[1].filter == "HELPFUL|PLAYER" and container.groups[2].filter == "HELPFUL|!PLAYER"
+    and container.options.maxFrameCount == 16 and container.options.sortMethod == AuraContainerSortMethod.Default,
+    "Complementary native helpful filters separate ownership without addon reads")
+check(container.parent.clipsChildren and container.parent.width == 130 and container.parent.height == 39,
+    "The fixed native viewport clips after two eight-buff rows and includes the glow margin")
 check(container.lineWidth == 126 and container.options.layout.lineSpacing == 7, "Native icons fit eight per reserved row")
 check(container.buttons[1].clicks == false and container.buttons[1].hideTooltipInCombat == false
     and container.buttons[1].tooltipAnchor == "ANCHOR_BOTTOMRIGHT", "Native tooltips keep working without intercepting party targeting")
@@ -105,7 +138,7 @@ check(member:GetHeight() == height and #Mock.frames == frameCount, "Combat never
 newcomer:Show()
 Mock.Event("GROUP_ROSTER_UPDATE")
 local newContainer
-for _, frame in ipairs(containers) do if frame.parent == Mock.Row(newcomer) then newContainer = frame end end
+for _, frame in ipairs(containers) do if frame.parent.parent == Mock.Row(newcomer) then newContainer = frame end end
 check(newContainer.enabled and newContainer.unit == "party2" and newContainer.buttons[1]:IsShown(),
     "A previously hidden prepared party slot can appear during combat")
 Mock.auras.party1 = {}
@@ -125,6 +158,39 @@ Mock.Event("PLAYER_REGEN_ENABLED")
 check(not container.enabled and not container:IsShown() and ordinaryIcon:IsShown()
     and ordinaryIcon.texture.textureValue == 41, "Leaving combat restores normal buff sorting and presentation")
 check(reads == 0 and nativeUpdates > 0, "Native rendering survives the reported all-readers-blocked restriction")
+Mock.auras.party3 = {}
+for index = 1, 25 do
+    Mock.auras.party3[index] = {icon=index, auraInstanceID=index, sourceUnit=index <= 5 and "player" or index == 6 and "pet" or "party2"}
+end
+Mock.combat = true
+Mock.Event("PLAYER_REGEN_DISABLED")
+check(container.buttons[1].nativeAuraID == 1 and container.buttons[6].nativeAuraID == 6
+    and container.buttons[7].nativeAuraID == 7, "Native player and pet buffs precede other buffs without gaps")
+local shown = 0
+for _, button in ipairs(container.buttons) do if button:IsVisible() then shown = shown + 1 end end
+check(shown == 16 and not container.buttons[17]:IsVisible(), "Mixed native ownership still displays only sixteen buffs")
+check(container.buttons[1].testGlow and container.buttons[6].testGlow and not container.buttons[7].testGlow,
+    "Native player and pet buffs glow while other players' buffs do not")
+check(container.groups[1].options.layout.layoutIndex == 1 and container.groups[2].options.layout.layoutIndex == 2,
+    "Native group order is explicit and independent of pooled aura frames")
+for _, ownCount in ipairs({0, 1, 8, 9, 16, 20}) do
+    Mock.auras.party3 = {}
+    for index = 1, 30 do
+        Mock.auras.party3[index] = {icon=index, auraInstanceID=index, sourceUnit=index <= ownCount and "player" or "party2"}
+    end
+    render(container)
+    local visible, glowing = 0, 0
+    for _, button in ipairs(container.buttons) do
+        if button:IsVisible() then
+            visible = visible + 1
+            if button.testGlow then glowing = glowing + 1 end
+        end
+    end
+    check(visible == 16 and glowing == math.min(16, ownCount), "Native ownership partitions fill two rows without overflowing or losing glows")
+end
+check(reads == 0, "Ownership highlighting never queries restricted auras from addon code")
+Mock.combat = false
+Mock.Event("PLAYER_REGEN_ENABLED")
 check(vv.Party.CreateNativeBuffs(row) ~= nil, "Native renderer construction is available outside combat")
 Mock.combat = true
 local before = #containers
