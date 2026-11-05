@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.4
+
+- Keep party health bars in their class colors during native health and texture updates, removing the brief green flash in raid-style party frames. Apply the correction immediately in combat while preserving native health handling and color restoration when disabled.
+
 ## 1.0.34.3
 
 - Tighten portrait-style party frames by measuring the buff area against the native bars and reducing the default gap between members to four UI units. Keep room for both buff rows and native pets.
