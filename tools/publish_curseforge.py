@@ -45,7 +45,7 @@ def release_info(root, tag):
             raise ValueError(f"Missing TOC field: {name}")
         return match.group(1).strip()
     version, project = field("Version"), field("X-Curse-Project-ID")
-    if not re.fullmatch(r"\d+\.\d+\.\d+(?:-(?:alpha|beta)(?:\.\d+)?)?", version) or tag != "v" + version:
+    if not re.fullmatch(r"\d+(?:\.\d+){2,3}(?:-(?:alpha|beta)(?:\.\d+)?)?", version) or tag != "v" + version:
         raise ValueError("Release tag must exactly match v<TOC version>")
     if field("Interface") != "16001" or not project.isdecimal():
         raise ValueError("Publishing requires Interface 16001 and a numeric CurseForge project ID")

@@ -40,6 +40,14 @@ class PublishingTests(unittest.TestCase):
                 self.fixture(root, "1.2.3-" + suffix)
                 self.assertEqual(publisher.release_info(root, "v1.2.3-" + suffix)[2], suffix.split(".")[0])
 
+    def test_four_part_hotfix_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.fixture(root, "1.0.34.8")
+            self.assertEqual(publisher.release_info(root, "v1.0.34.8")[1:3], ("1.0.34.8", "release"))
+            with self.assertRaises(ValueError):
+                publisher.release_info(root, "v1.0.34")
+
     def test_stale_toc_and_missing_notes(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
