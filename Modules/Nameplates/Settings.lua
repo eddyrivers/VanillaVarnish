@@ -62,6 +62,8 @@ function ns.RegisterFeatureOptions()
         "Show weapon swing timers beneath your target's nameplate.")
     FeatureCheck(root, "threatColorsEnabled", "Threat colors", -246, "threatColorsEnabled",
         "Blue on fighting enemies when tanks hold aggro, or damage dealers and healers do not. Other situations keep the game's colors.")
+    FeatureCheck(root, "focusEnabled", "Combat focus", -286, "focusEnabled",
+        "Shrink and fade lower-priority enemies in combat.")
     VV.RegisterOptions()
     ns.rootCategory = VV.rootCategory
     ns.nameplateCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, root, "Nameplates")
@@ -85,6 +87,32 @@ function ns.RegisterFeatureOptions()
     panels.rangeEnabled = range
     ns.rangeCategory = Settings.RegisterCanvasLayoutSubcategory(ns.rootCategory, range, "Range check")
     Settings.RegisterAddOnCategory(ns.rangeCategory)
+
+    local focus = CreateFrame("Frame", nil, UIParent)
+    focus:Hide()
+    Heading(focus, "Combat focus", "Keep your target and casting enemies prominent. Tank mode also prioritizes enemies you may lose or aren't holding.")
+    FeatureCheck(focus, "focusToggle", "Enable combat focus", -100, "focusEnabled",
+        "Combat focus takes priority over range fading on the nameplates it adjusts.")
+    local focusOptions = CreateFrame("Frame", nil, focus)
+    focusOptions:SetPoint("TOPLEFT", focus, "TOPLEFT", 16, -144)
+    focusOptions:SetPoint("TOPRIGHT", focus, "TOPRIGHT", -16, -144)
+    focusOptions:SetHeight(128)
+    controls.focusMode = UI.Dropdown(focusOptions, "feature.focusMode", "Mode", 0,
+        {{"tank", "Tank"}, {"damage", "Damage / Healer"}},
+        function() return ns.tweaksDB.focusMode end,
+        function(value) ns.SetFocusOption("focusMode", value) end,
+        "Tank mode also keeps enemies with shaky or lost threat at full opacity and normal size.")
+    controls.focusScale = UI.Slider(focusOptions, "feature.focusScale", "Background size", -40, 0.25, 1, 0.01, true,
+        function() return ns.tweaksDB.focusScale end,
+        function(value) ns.SetFocusOption("focusScale", value) end,
+        "Size of lower-priority plates relative to the game's normal size.")
+    controls.focusOpacity = UI.Slider(focusOptions, "feature.focusOpacity", "Background opacity", -80, 0, 1, 0.01, true,
+        function() return ns.tweaksDB.focusOpacity end,
+        function(value) ns.SetFocusOption("focusOpacity", value) end,
+        "Opacity of lower-priority plates. 0% makes their artwork transparent.")
+    panels.focusEnabled = focus
+    ns.focusCategory = Settings.RegisterCanvasLayoutSubcategory(ns.rootCategory, focus, "Combat focus")
+    Settings.RegisterAddOnCategory(ns.focusCategory)
 
     local quests = CreateFrame("Frame", nil, UIParent)
     quests:Hide()
@@ -110,6 +138,7 @@ function ns.OpenOptions(page)
     if page == "swingsEnabled" or page == "swings" then ns.OpenSwingOptions(); return end
     if page == "comboPointsEnabled" or page == "combo" then ns.OpenComboOptions(); return end
     local category = page == "rangeEnabled" and ns.rangeCategory
+        or page == "focusEnabled" and ns.focusCategory
         or page == "markers" and ns.questCategory or ns.nameplateCategory
     ns.OpenSettingsCategory(category)
 end

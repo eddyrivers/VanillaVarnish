@@ -47,6 +47,7 @@ function Object:EnableMouse(enabled) self.mouse = enabled end
 function Object:SetFrameLevel(level) self.frameLevel = level end
 function Object:SetRoundLayoutToNearestPixel(enabled) self.roundToPixel = enabled end
 function Object:SetScale(scale) self.scale = scale end
+function Object:GetScale() return self.scale or 1 end
 function Object:SetIgnoreParentScale(value) self.ignoreParentScale = value end
 function Object:GetEffectiveScale()
     return (self.scale or 1) * (not self.ignoreParentScale and self.parent and self.parent:GetEffectiveScale() or 1)

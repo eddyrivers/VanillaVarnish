@@ -1,6 +1,7 @@
 local _, VV = ...
 local fields = {
     nameplates = {"markers", "rangeEnabled", "swingsEnabled", "comboPointsEnabled", "threatColorsEnabled",
+        "focusEnabled", "focusMode", "focusScale", "focusOpacity",
         "questieFallback", "groupQuestMarkers", "rangeOpacity", "damage", "friendly", "swingTimers", "comboPoints"},
     questTracker = {"enabled", "completedSort"},
     party = {"buffs", "classColors", "rangeFade", "spacing", "growUp", "rolePin"},
@@ -94,6 +95,7 @@ function VV.ProfileModified()
     if saved.party.growUp == nil then saved.party.growUp = false end
     if saved.party.rolePin == nil then saved.party.rolePin = "off" end
     if saved.nameplates.groupQuestMarkers == nil then saved.nameplates.groupQuestMarkers = false end
+    VV.Nameplates.NormalizeFocusSettings(saved.nameplates)
     -- Profiles saved before row layouts implicitly use the stacked layout.
     local swings = saved.nameplates and saved.nameplates.swingTimers
     if type(swings) == "table" and swings.layout == nil then swings.layout = "stack" end

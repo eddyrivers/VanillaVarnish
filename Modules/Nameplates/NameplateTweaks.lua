@@ -13,6 +13,7 @@ local questDirty = true
 local elapsed = 0
 local RemoveUnit
 local textures = "Interface\\AddOns\\VanillaVarnish\\Media\\"
+local focusDefaults = { focusEnabled = false, focusMode = "tank", focusScale = 0.75, focusOpacity = 0.5 }
 
 -- Forever can restrict unit data in combat. Unknown results never cause fading.
 local function Known(value)
@@ -277,14 +278,43 @@ local function CreateMarker(parent, kind)
     return marker
 end
 
-local function SetFade(state, faded)
-    state.faded = faded
-    local desired = state.baseAlpha * (faded and db.rangeOpacity or 1)
-    if Known(state.frame:GetAlpha()) ~= desired then
+local function ApplyAlpha(state)
+    if type(state.baseAlpha) ~= "number" then return end
+    local desired = state.focusAlpha or state.baseAlpha * (state.faded and db.rangeOpacity or 1)
+    local current = SafeCall(state.frame.GetAlpha, state.frame)
+    if type(current) == "number" and current ~= desired then
         state.settingAlpha = true
-        state.frame:SetAlpha(desired)
+        pcall(state.frame.SetAlpha, state.frame, desired)
         state.settingAlpha = false
     end
+end
+
+local function ApplyScale(state)
+    if not state.baseScale then return end
+    local desired = state.baseScale * (state.focusScale or 1)
+    local current = SafeCall(state.frame.GetScale, state.frame)
+    if type(current) == "number" and current ~= desired then
+        state.settingScale = true
+        pcall(state.frame.SetScale, state.frame, desired)
+        state.settingScale = false
+    end
+end
+
+local function SetFocusScale(state, factor)
+    local frame = state.frame
+    if factor and not state.watchingScale then
+        state.baseScale = SafeCall(frame.GetScale, frame)
+        if type(state.baseScale) ~= "number" then state.baseScale = nil; return end
+        state.watchingScale = true
+        hooksecurefunc(frame, "SetScale", function(_, scale)
+            if state.settingScale then return end
+            scale = Known(scale)
+            state.baseScale = type(scale) == "number" and scale or nil
+            if state.unit and state.focusScale then ApplyScale(state) end
+        end)
+    end
+    state.focusScale = factor
+    ApplyScale(state)
 end
 
 local function StateFor(plate)
@@ -293,17 +323,16 @@ local function StateFor(plate)
     if not frame or SafeCall(frame.IsForbidden, frame) ~= false then return nil end
     local state = frames[frame]
     if not state then
-        state = { frame = frame, baseAlpha = Known(frame:GetAlpha()) or 1, markers = {} }
+        state = { frame = frame, baseAlpha = SafeCall(frame.GetAlpha, frame), markers = {} }
         for _, kind in ipairs({"loot", "kill", "other"}) do
             state.markers[kind] = CreateMarker(frame, kind)
         end
         frames[frame] = state
         hooksecurefunc(frame, "SetAlpha", function(_, alpha)
             if state.settingAlpha then return end
-            local value = Known(alpha)
-            if type(value) ~= "number" then return end
-            state.baseAlpha = value
-            if state.unit and state.faded then SetFade(state, true) end
+            alpha = Known(alpha)
+            state.baseAlpha = type(alpha) == "number" and alpha or nil
+            if state.unit and (state.focusAlpha or state.faded) then ApplyAlpha(state) end
         end)
     end
     return state
@@ -368,16 +397,64 @@ local function SpellInRange(spell, unit)
 end
 ns.SpellInRange = SpellInRange
 
-local function UpdateRange(state)
-    if not VV.IsModuleEnabled("nameplates") or not db.rangeEnabled then SetFade(state, false); return end
-    local unit = state.unit
+local function IsOutOfRange(unit)
+    if not db.rangeEnabled then return false end
     local spell
     if SafeCall(UnitCanAttack, "player", unit) then
         spell = db.damage
     elseif SafeCall(UnitCanAssist, "player", unit) then
         spell = db.friendly
     end
-    SetFade(state, SpellInRange(spell, unit) == false)
+    return SpellInRange(spell, unit) == false
+end
+
+local function Casting(api, unit)
+    if not api then return nil end
+    -- Both spell APIs return a public tradeskill flag only while a spell is active.
+    -- The spell name and other details can be restricted.
+    local ok, name, _, _, _, _, tradeskill = pcall(api, unit)
+    if not ok then return nil end
+    if type(Known(tradeskill)) == "boolean" then return true end
+    if issecretvalue and issecretvalue(name) then return nil end
+    return name ~= nil
+end
+
+local function FocusTarget()
+    if not db.focusEnabled then return end
+    local plate = SafeCall(C_NamePlate.GetNamePlateForUnit, "target")
+    if plate and SafeCall(plate.IsForbidden, plate) == false then return plate.UnitFrame end
+end
+
+local function FocusAppearance(state, target)
+    if not db.focusEnabled then return end
+    local unit = state.unit
+    if SafeCall(UnitCanAttack, "player", unit) ~= true or SafeCall(UnitIsPlayer, unit) ~= false
+        or SafeCall(UnitIsDeadOrGhost, unit) ~= false then return end
+    if state.frame == target then return 1 end
+    if SafeCall(UnitAffectingCombat, unit) ~= true then return end
+
+    local casting, channeling = Casting(UnitCastingInfo, unit), Casting(UnitChannelInfo, unit)
+    -- Unavailable cast or threat data keeps potentially important enemies prominent.
+    if casting ~= false or channeling ~= false then return 1 end
+    if db.focusMode == "tank" then
+        if SafeCall(UnitThreatSituation, "player", unit) ~= 3 then return 1 end
+        if UnitThreatLeadSituation and SafeCall(UnitThreatLeadSituation, "player", unit) ~= 0 then return 1 end
+    end
+    return db.focusOpacity, db.focusScale < 1 and db.focusScale or nil
+end
+
+local function UpdateAppearance(state, target)
+    if SafeCall(state.frame.IsForbidden, state.frame) ~= false then return end
+    local alpha, scale = FocusAppearance(state, target)
+    state.focusAlpha = alpha
+    state.faded = alpha == nil and IsOutOfRange(state.unit)
+    SetFocusScale(state, scale)
+    ApplyAlpha(state)
+end
+
+local function UpdateAppearances()
+    local target = FocusTarget()
+    for _, state in pairs(active) do UpdateAppearance(state, target) end
 end
 
 local function AddUnit(unit)
@@ -389,15 +466,21 @@ local function AddUnit(unit)
     if state.unit and state.unit ~= unit then RemoveUnit(state.unit) end
     state.unit = unit
     active[unit] = state
+    UpdateAppearance(state, FocusTarget())
     UpdateMarkers(state)
-    UpdateRange(state)
 end
 
 RemoveUnit = function(unit)
     local state = active[unit]
     if not state then return end
     state.unit = nil
-    SetFade(state, false)
+    state.faded, state.focusAlpha = nil, nil
+    if SafeCall(state.frame.IsForbidden, state.frame) == false then
+        SetFocusScale(state, nil)
+        ApplyAlpha(state)
+    else
+        state.focusScale = nil
+    end
     for _, marker in pairs(state.markers) do marker:Hide() end
     active[unit] = nil
 end
@@ -436,7 +519,7 @@ local function SetSpell(kind, input)
         db[kind] = name
         Print(string.format("%s range spell set to %s. Out-of-range opacity: %g%%.", kind, name, db.rangeOpacity * 100))
     end
-    for _, state in pairs(active) do UpdateRange(state) end
+    UpdateAppearances()
     if VV.Party.RefreshModule then VV.Party.RefreshModule() end
     if ns.RefreshFeatureOptions then ns.RefreshFeatureOptions() end
     if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
@@ -444,15 +527,18 @@ end
 
 function ns.RefreshTweaks()
     questDirty = true
-    for _, state in pairs(active) do UpdateRange(state); UpdateMarkers(state) end
+    UpdateAppearances()
+    for _, state in pairs(active) do UpdateMarkers(state) end
     if ns.RefreshThreatColors then ns.RefreshThreatColors() end
     if ns.RefreshFeatureOptions then ns.RefreshFeatureOptions() end
 end
 
 function ns.SetFeature(key, value)
     if not db or type(value) ~= "boolean" then return false end
+    if key == "focusEnabled" then return ns.SetFocusOption(key, value) end
     if key ~= "rangeEnabled" and key ~= "markers" and key ~= "swingsEnabled"
-        and key ~= "comboPointsEnabled" and key ~= "questieFallback" and key ~= "groupQuestMarkers" and key ~= "threatColorsEnabled" then return false end
+        and key ~= "comboPointsEnabled" and key ~= "questieFallback" and key ~= "groupQuestMarkers"
+        and key ~= "threatColorsEnabled" then return false end
     db[key] = value
     ns.RefreshTweaks()
     if ns.Refresh then ns.Refresh() end
@@ -472,6 +558,29 @@ function ns.SetRangeOpacity(value)
     return true
 end
 
+local function ValidFocusOption(key, value)
+    value = Known(value)
+    if key == "focusEnabled" then return type(value) == "boolean" end
+    if key == "focusMode" then return value == "tank" or value == "damage" end
+    local minimum = key == "focusScale" and 0.25 or 0
+    return type(value) == "number" and value >= minimum and value <= 1
+end
+
+function ns.NormalizeFocusSettings(settings)
+    for key, default in pairs(focusDefaults) do
+        if not ValidFocusOption(key, settings[key]) then settings[key] = default end
+    end
+end
+
+function ns.SetFocusOption(key, value)
+    if not db or focusDefaults[key] == nil or not ValidFocusOption(key, value) then return false end
+    db[key] = value
+    UpdateAppearances()
+    if ns.RefreshFeatureOptions then ns.RefreshFeatureOptions() end
+    if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
+    return true
+end
+
 ns.SetRangeSpell = SetSpell
 
 local function Status()
@@ -482,6 +591,8 @@ local function Status()
         .. "; combo points: " .. (db.comboPointsEnabled and "on" or "off")
         .. "; threat colors: " .. (db.threatColorsEnabled and "on" or "off") .. ".")
     Print(string.format("Out-of-range opacity: %g%% of normal.", db.rangeOpacity * 100))
+    Print(string.format("Combat focus: %s (%s, %g%% size, %g%% opacity).", db.focusEnabled and "on" or "off",
+        db.focusMode == "tank" and "Tank" or "Damage / Healer", db.focusScale * 100, db.focusOpacity * 100))
 end
 
 local function Slash(message)
@@ -498,7 +609,7 @@ local function Slash(message)
     local feature = ({range = "rangeEnabled", quests = "markers", questicons = "markers",
         markers = "markers", swings = "swingsEnabled", swing = "swingsEnabled",
         combo = "comboPointsEnabled", combos = "comboPointsEnabled",
-        threat = "threatColorsEnabled", aggro = "threatColorsEnabled"})[command]
+        threat = "threatColorsEnabled", aggro = "threatColorsEnabled", focus = "focusEnabled"})[command]
     local mode = rest:lower()
     if feature and (mode == "on" or mode == "off" or mode == "toggle") then
         ns.SetFeature(feature, mode == "on" or mode == "toggle" and not db[feature])
@@ -549,7 +660,7 @@ local function Slash(message)
         ns.Slash(message)
         return
     end
-    Print("/vv nameplates opens settings. Add range, quests, swings, or combo to open a feature page.")
+    Print("/vv nameplates opens settings. Add range, quests, swings, combo, or focus to open a feature page.")
     Print("/vv nameplates range on or off; /vv nameplates quests on or off.")
     Print("/vv nameplates swings on or off; /vv nameplates combo on or off.")
     Print("/vv nameplates range damage Moonfire — set enemy range spell")
@@ -560,6 +671,7 @@ local function Slash(message)
     Print("/vv nameplates groupquests on or off includes your group's loot and kill objectives.")
     Print("/vv nameplates status; /vv nameplates debug. Settings save per character.")
     Print("/vv nameplates threat on or off — toggle role-aware threat colors.")
+    Print("/vv nameplates focus on or off — toggle combat focus.")
     if ns.SwingHelp then ns.SwingHelp() end
 end
 
@@ -578,6 +690,7 @@ function ns.InitializeTweaks()
     if type(db.groupQuestMarkers) ~= "boolean" then db.groupQuestMarkers = false end
     local opacity = Known(db.rangeOpacity)
     if type(opacity) ~= "number" or opacity ~= opacity or opacity < 0 or opacity > 1 then db.rangeOpacity = 0.5 end
+    ns.NormalizeFocusSettings(db)
     ns.tweaksDB = db
     for _, key in ipairs({"damage", "friendly"}) do
         if type(db[key]) ~= "string" or db[key] == "" then db[key] = nil end
@@ -585,8 +698,16 @@ function ns.InitializeTweaks()
 end
 
 local events = CreateFrame("Frame")
+local focusUnitEvents = {
+    UNIT_FLAGS = true, UNIT_THREAT_LIST_UPDATE = true, UNIT_THREAT_SITUATION_UPDATE = true,
+    UNIT_SPELLCAST_START = true, UNIT_SPELLCAST_STOP = true,
+    UNIT_SPELLCAST_FAILED = true, UNIT_SPELLCAST_INTERRUPTED = true,
+    UNIT_SPELLCAST_CHANNEL_START = true, UNIT_SPELLCAST_CHANNEL_STOP = true,
+    UNIT_SPELLCAST_EMPOWER_START = true, UNIT_SPELLCAST_EMPOWER_STOP = true,
+}
+for event in pairs(focusUnitEvents) do events:RegisterEvent(event) end
 for _, event in ipairs({"ADDON_LOADED", "PLAYER_ENTERING_WORLD", "NAME_PLATE_UNIT_ADDED",
-    "NAME_PLATE_UNIT_REMOVED", "PLAYER_REGEN_ENABLED", "QUEST_LOG_UPDATE", "BAG_UPDATE_DELAYED", "ITEM_DATA_LOAD_RESULT", "SPELLS_CHANGED", "UNIT_FACTION", "GROUP_ROSTER_UPDATE"}) do
+    "NAME_PLATE_UNIT_REMOVED", "PLAYER_REGEN_ENABLED", "QUEST_LOG_UPDATE", "BAG_UPDATE_DELAYED", "ITEM_DATA_LOAD_RESULT", "SPELLS_CHANGED", "UNIT_FACTION", "GROUP_ROSTER_UPDATE", "PLAYER_TARGET_CHANGED"}) do
     events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", function(_, event, arg)
@@ -606,7 +727,11 @@ events:SetScript("OnEvent", function(_, event, arg)
         end
         questDirty = true
     elseif event == "UNIT_FACTION" then
-        if active[arg] then UpdateRange(active[arg]); UpdateMarkers(active[arg]) end
+        if active[arg] then UpdateAppearance(active[arg], FocusTarget()); UpdateMarkers(active[arg]) end
+    elseif event == "PLAYER_TARGET_CHANGED" then
+        if db.focusEnabled then UpdateAppearances() end
+    elseif focusUnitEvents[event] then
+        if db.focusEnabled and active[arg] then UpdateAppearance(active[arg], FocusTarget()) end
     else questDirty = true end
 end)
 
@@ -623,8 +748,9 @@ events:SetScript("OnUpdate", function(_, delta)
         questDirty = false
         questElapsed = 0
     end
+    local target = FocusTarget()
     for _, state in pairs(active) do
-        UpdateRange(state)
+        UpdateAppearance(state, target)
         if updateQuests then UpdateMarkers(state) end
     end
 end)

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.34.13
+
+- Add optional **Combat focus** for enemy nameplates. Keep your target and active casts prominent in either mode. Tank mode also prioritizes shaky and lost threat.
+- Shrink lower-priority combat plates to 75% size and fade them to 50% opacity by default. Adjust both values under **Nameplates > Combat focus**.
+
 ## 1.0.34.12
 
 - Keep upward-growing party frames at their saved position when Edit Mode rounds the saved coordinates, including when the frame is scaled or the group size changes on reload.

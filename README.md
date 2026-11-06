@@ -14,12 +14,14 @@ Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. Active settings 
 
 | Module | What it adds |
 | --- | --- |
-| Nameplates | Spell-range fading, quest icons, swing timers, combo points, threat colors |
+| Nameplates | Spell-range fading, quest icons, swing timers, combo points, threat colors, combat focus |
 | Quest tracker | Quests grouped by zone, collapsible headings, and optional completed-first or completed-last sorting |
 | Party frames | Up to 16 buffs in two rows, larger player buffs and dispellable debuffs, class-colored health bars, and friendly-spell range fading |
 | Tooltips | Mouse following, configurable offsets, class/difficulty colors, immediate hover dismissal, and optional combat pause |
 
 **Nameplates:** choose damage and friendly range spells; unreadable range results keep normal opacity. Quest loot icons include a compact bundled pfQuest Vanilla baseline, so Questie and QuestieDB are optional. Native quest objectives still control progress and completion; native tooltips identify kill and other objectives. An installed drop database can fill quests absent from the baseline. No website-derived Forever overrides are included; changed or new Forever quests may need further coverage. Enable **Include your group's quest objectives** under **Nameplates > Quest icons** to include unfinished loot and kill needs from current party or raid members, even for quests you do not have. Group progress must be supplied by the game's mob tooltip. Swing timers and combo points share a live preview. Positive X moves right; positive Y moves down. Threat colors turn fighting enemies blue when you hold aggro as a tank, or when you avoid aggro as a damage dealer or healer. Other situations keep the game's colors.
+
+Under **Nameplates > Combat focus**, enable the optional toggle to shrink and fade lower-priority enemies in combat. Both modes keep your target and enemies that are casting or channeling at normal size and full opacity. **Tank** also prioritizes enemies you may lose or aren't holding. **Damage / Healer** prioritizes the target and active casts regardless of threat. Background plates start at **75% size** and **50% opacity**, with separate controls for each. Combat focus takes priority over range fading on the plates it adjusts. If cast or threat information is unavailable, fighting enemies stay prominent.
 
 Both feature previews follow **Settings > Nameplates**, including style, size, health text, cast details, buffs, debuffs, crowd control, aura size, and spacing. After viewing the game's Nameplates preview, they retain its last enemy/friendly sample type and icons for the session. Before that, they show an enemy NPC sample. The preview matches a visible target's scale so timer widths and horizontal alignment reflect the in-game layout; without a target, it uses the configured target enlargement. Preview frames stay separate from live units; game options update the preview without a reload.
 
@@ -39,7 +41,8 @@ All VanillaVarnish commands start with `/vv`.
 | `/vv profiles`, `/vv presets` | Open Profiles & Presets |
 | `/vv nameplates`, `/vv tracker`, `/vv party`, `/vv tooltips` | Open a module page |
 | `/vv <module> on`, `off`, or `toggle` | Enable or disable a whole module |
-| `/vv nameplates range`, `quests`, `swings`, or `combo` | Open a nameplate feature page |
+| `/vv nameplates range`, `quests`, `swings`, `combo`, or `focus` | Open a nameplate feature page |
+| `/vv nameplates focus on`, `/vv nameplates focus off` | Switch combat focus |
 | `/vv nameplates combo off`, `/vv nameplates threat on` | Switch an individual feature |
 | `/vv nameplates range damage Moonfire` | Choose an enemy range spell; names, IDs, and links work |
 | `/vv nameplates range friendly Healing Touch` | Choose a friendly range spell |

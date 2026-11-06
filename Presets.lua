@@ -78,6 +78,10 @@ local presets = {
             },
             ["swingsEnabled"] = true,
             ["threatColorsEnabled"] = true,
+            ["focusEnabled"] = false,
+            ["focusMode"] = "tank",
+            ["focusScale"] = 0.75,
+            ["focusOpacity"] = 0.5,
         },
         ["party"] = {
             ["buffs"] = true,

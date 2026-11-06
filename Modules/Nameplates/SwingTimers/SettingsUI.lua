@@ -393,7 +393,7 @@ function ns.OpenSwingOptions()
     ns.OpenSettingsCategory(ns.optionsCategory)
 end
 
-ns.UI = {Label = Label, Check = Check, Button = Button, Slider = Slider,
+ns.UI = {Label = Label, Check = Check, Button = Button, Slider = Slider, Dropdown = Dropdown,
     RefreshControls = function(list)
         local previous = updating
         updating = true
