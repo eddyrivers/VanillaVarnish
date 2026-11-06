@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.14
+
+- Expand and collapse quest tracker zones during combat with the zone headings or `/vv tracker` commands. Folds stay in place as objectives update. If the tracker contains a protected frame, the fold applies when combat ends.
+
 ## 1.0.34.13
 
 - Add optional **Combat focus** for enemy nameplates. Keep your target and active casts prominent in either mode. Tank mode also prioritizes shaky and lost threat.

@@ -1,15 +1,21 @@
 local _, VV = ...
 local addon = VV.QuestTracker
 local tracker, db
-local displayEnabled
+local displayEnabled, displaySort
 local eventFrame = CreateFrame("Frame")
-local pendingRefresh, queued = false, false
+local queued = false
 local snapshots, titles = {}, {}
 local originalFonts = setmetatable({}, { __mode = "k" })
 local hookedBlocks = setmetatable({}, { __mode = "k" })
 local headings = {}
 local moduleHeight
 local ApplyLayout, Refresh
+
+local function QueueLayout()
+    if not tracker or queued then return end
+    queued = true
+    C_Timer.After(0, function() if queued then ApplyLayout() end end)
+end
 
 local function Print(message)
     VV.Print(message)
@@ -27,21 +33,59 @@ local function SizeFont(region, smaller)
     region:SetFont(font[1], smaller and math.max(6, font[2] - 2) or font[2], font[3])
 end
 
-local function Snapshot(frame)
-    if snapshots[frame] then return end
-    local points = {}
-    for index = 1, frame:GetNumPoints() do points[index] = { frame:GetPoint(index) } end
-    snapshots[frame] = { points = points, height = frame:GetHeight(), shown = frame:IsShown() }
+local function Snapshot(frame, geometry)
+    local state = snapshots[frame]
+    if not state then
+        state = { shown = frame:IsShown() }
+        snapshots[frame] = state
+    end
+    if geometry and not state.points then
+        state.points, state.height = {}, frame:GetHeight()
+        for index = 1, frame:GetNumPoints() do state.points[index] = { frame:GetPoint(index) } end
+    end
+    return state
+end
+
+local function CanChangeInCombat(frame)
+    return not frame:IsForbidden() and not frame:IsProtected()
+end
+
+local function CanRestoreInCombat()
+    if not CanChangeInCombat(tracker) or not CanChangeInCombat(tracker.ContentsFrame) then return false end
+    for frame in pairs(snapshots) do
+        if not CanChangeInCombat(frame) then return false end
+    end
+    for _, heading in ipairs(headings) do
+        if not CanChangeInCombat(heading) or not CanChangeInCombat(heading.Icon) then return false end
+    end
+    return true
+end
+
+local function CanLayoutInCombat()
+    -- Check the whole layout before making changes. Moving a quest can move
+    -- its attached item button and the rows below it as well.
+    if not CanRestoreInCombat() then return false end
+    local block = tracker.firstBlock
+    while block do
+        if not CanChangeInCombat(block) then return false end
+        for region in pairs(block.addedRegions or {}) do
+            if not CanChangeInCombat(region) then return false end
+        end
+        block = block.nextBlock
+    end
+    return true
 end
 
 local function RestoreLayout()
     -- Only C-backed geometry/visibility/text is restored. Never write .height,
     -- .used, .nextBlock, .contentsHeight, or any other native Lua bookkeeping.
     for frame, state in pairs(snapshots) do
-        frame:ClearAllPoints()
-        for _, point in ipairs(state.points) do frame:SetPoint(unpack(point)) end
-        frame:SetHeight(state.height)
-        frame:SetShown(state.shown)
+        if state.points then
+            frame:ClearAllPoints()
+            for _, point in ipairs(state.points) do frame:SetPoint(unpack(point)) end
+            frame:SetHeight(state.height)
+        end
+        if frame:IsShown() ~= state.shown then frame:SetShown(state.shown) end
     end
     for region, title in pairs(titles) do region:SetText(title) end
     snapshots, titles = {}, {}
@@ -53,7 +97,7 @@ local function PreserveGroupedSlideAnchor(self)
     local block = self.firstBlock
     local state = block and snapshots[block]
     if not state or state.groupedTop == nil then return end
-    if InCombatLockdown() then pendingRefresh = true; return end
+    if InCombatLockdown() and (not CanChangeInCombat(block) or not CanChangeInCombat(self.ContentsFrame)) then return end
     -- Native sliding moves only firstBlock and relies on its linked anchors
     -- to move the remaining rows. Grouped rows have independent positions;
     -- keep this block in its assigned row, even on the final zero-offset tick.
@@ -106,7 +150,7 @@ local function Heading(index, group, sample)
             if button == "RightButton" then OpenZoneMenu(self, heading.zone); return end
             if button ~= "LeftButton" then return end
             db.collapsed[heading.zone] = not db.collapsed[heading.zone] or nil
-            Refresh()
+            QueueLayout()
         end
         local function OnEnter(self)
             GameTooltip:SetOwner(self, "ANCHOR_LEFT")
@@ -144,25 +188,25 @@ local function Heading(index, group, sample)
 end
 
 local function SetBlockVisible(block, visible)
-    Snapshot(block)
-    block:SetShown(visible)
+    Snapshot(block, true)
+    if block:IsShown() ~= visible then block:SetShown(visible) end
     -- Native item buttons, timers, and progress bars may be siblings, not
     -- children of their quest block. Fold and restore these with the block.
     for region in pairs(block.addedRegions or {}) do
-        Snapshot(region)
-        region:SetShown(visible and snapshots[region].shown)
+        local state = Snapshot(region)
+        local shown = visible and state.shown
+        if region:IsShown() ~= shown then region:SetShown(shown) end
     end
 end
 
 ApplyLayout = function()
     queued = false
     if not tracker or not db then return end
-    if InCombatLockdown() then pendingRefresh = true; return end
+    if InCombatLockdown() and not CanLayoutInCombat() then return end
     RestoreLayout()
-    pendingRefresh = false
-    if not VV.IsModuleEnabled("questTracker") or not db.enabled or not tracker:IsShown() or tracker:IsCollapsed() then return end
+    if not displayEnabled or not tracker:IsShown() or tracker:IsCollapsed() then return end
 
-    local groups = addon.ReadWatchGroups(db.completedSort)
+    local groups = addon.ReadWatchGroups(displaySort)
     addon.groups = groups
     local watched, blocks, special = {}, {}, {}
     for _, group in ipairs(groups) do
@@ -196,10 +240,10 @@ ApplyLayout = function()
     local function Place(frame, height)
         local offset = count == 0 and firstGap or gap
         if y + offset + height > budget then return false end
-        Snapshot(frame)
-        snapshots[frame].groupedTop = -(y - (tracker.headerHeight or 0) + offset)
+        local state = Snapshot(frame, true)
+        state.groupedTop = -(y - (tracker.headerHeight or 0) + offset)
         frame:ClearAllPoints()
-        frame:SetPoint("TOP", tracker.ContentsFrame, "TOP", 0, snapshots[frame].groupedTop)
+        frame:SetPoint("TOP", tracker.ContentsFrame, "TOP", 0, state.groupedTop)
         frame:SetPoint("LEFT", tracker.ContentsFrame, "LEFT", frame.offsetX or tracker.blockOffsetX, 0)
         if not frame.fixedWidth then frame:SetPoint("RIGHT", tracker.ContentsFrame, "RIGHT", 0, 0) end
         frame:SetHeight(height)
@@ -246,7 +290,11 @@ end
 
 Refresh = function(immediate)
     if not tracker then return end
-    if InCombatLockdown() then pendingRefresh = true; return end
+    if InCombatLockdown() then
+        if immediate then ApplyLayout() end
+        return
+    end
+    displaySort = db.completedSort
     local enabled = VV.IsModuleEnabled("questTracker") and db.enabled
     if displayEnabled ~= enabled then
         displayEnabled = enabled
@@ -258,16 +306,13 @@ Refresh = function(immediate)
     -- Native post-hooks finish before the game can draw this frame. Apply here
     -- so restoring/rebuilding native blocks never leaves an ungrouped frame on
     -- screen. Event-only requests can still coalesce behind the native update.
-    if immediate then ApplyLayout(); return end
-    if queued then return end
-    queued = true
-    C_Timer.After(0, function() if queued then ApplyLayout() end end)
+    if immediate then ApplyLayout() else QueueLayout() end
 end
 
 local function TryInstall()
     if tracker then return true end
     if not VV.IsModuleEnabled("questTracker") then return true end
-    if InCombatLockdown() then pendingRefresh = true; return false end
+    if InCombatLockdown() then return false end
     local module = QuestObjectiveTracker
     if not module or not module.ContentsFrame or type(module.BeginLayout) ~= "function"
         or type(module.Update) ~= "function" or type(module.GetExistingBlock) ~= "function" then return false end
@@ -276,8 +321,7 @@ local function TryInstall()
         hooksecurefunc(module, "AdjustSlideAnchor", PreserveGroupedSlideAnchor)
     end
     hooksecurefunc(module, "BeginLayout", function()
-        if InCombatLockdown() then pendingRefresh = true; return end
-        RestoreLayout()
+        if not InCombatLockdown() or CanRestoreInCombat() then RestoreLayout() end
     end)
     hooksecurefunc(module, "Update", function() Refresh(true) end)
     if module.parentContainer then
@@ -314,6 +358,7 @@ local function Initialize()
     if db.enabled == nil then db.enabled = true end
     if type(db.collapsed) ~= "table" then db.collapsed = {} end
     displayEnabled = VV.IsModuleEnabled("questTracker") and db.enabled
+    displaySort = db.completedSort
     db.position = nil -- Remove the retired separate panel's saved position.
     addon.db = db
     addon.RegisterOptions()
@@ -338,7 +383,7 @@ function addon.SetAllZonesCollapsed(collapsed)
     else
         db.collapsed = {}
     end
-    Refresh()
+    QueueLayout()
 end
 
 function addon.ResetOptions()

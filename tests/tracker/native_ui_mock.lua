@@ -72,7 +72,14 @@ CreateFrame = function(kind, name, parent, template)
     function frame:SetNormalTexture(texture) self.normalTexture = texture end
     function frame:SetHighlightTexture(texture) self.highlightTexture = texture end
     function frame:RegisterForDrag() end
+    function frame:IsForbidden() return self.forbidden == true end
+    function frame:IsProtected() return self.protected == true end
+    local function CheckLayout(self)
+        assert(not (InCombatLockdown() and (self:IsProtected() or self:IsForbidden())),
+            "An addon cannot change a protected frame in combat")
+    end
     function frame:SetPoint(...)
+        CheckLayout(self)
         local point = { ... }
         local points = MockGeometry[self].points
         for index, current in ipairs(points) do
@@ -82,10 +89,10 @@ CreateFrame = function(kind, name, parent, template)
     end
     function frame:GetNumPoints() return #MockGeometry[self].points end
     function frame:GetPoint(index) return unpack(MockGeometry[self].points[index or 1] or {}) end
-    function frame:ClearAllPoints() MockGeometry[self].points = {} end
+    function frame:ClearAllPoints() CheckLayout(self); MockGeometry[self].points = {} end
     function frame:SetWidth(width) MockGeometry[self].width = width end
     function frame:GetWidth() return MockGeometry[self].width end
-    function frame:SetHeight(height) MockGeometry[self].height = height end
+    function frame:SetHeight(height) CheckLayout(self); MockGeometry[self].height = height end
     function frame:SetSize(width, height) MockGeometry[self].width, MockGeometry[self].height = width, height end
     function frame:GetSize() return MockGeometry[self].width, MockGeometry[self].height end
     function frame:SetFrameStrata() end
@@ -106,10 +113,11 @@ CreateFrame = function(kind, name, parent, template)
     function frame:IsShown() return MockGeometry[self].shown end
     function frame:SetShown(shown) if shown then self:Show() else self:Hide() end end
     function frame:Show()
+        CheckLayout(self)
         local wasShown = MockGeometry[self].shown
         MockGeometry[self].shown = true
         if not wasShown and self.scripts.OnShow then self.scripts.OnShow(self) end
     end
-    function frame:Hide() MockGeometry[self].shown = false end
+    function frame:Hide() CheckLayout(self); MockGeometry[self].shown = false end
     return frame
 end

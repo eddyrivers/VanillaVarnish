@@ -69,7 +69,7 @@ function addon.RegisterOptions()
         16, -166, "GameFontHighlightSmall")
     Button("Expand all zones", 16, -218, function() addon.SetAllZonesCollapsed(false) end)
     Button("Collapse all zones", 172, -218, function() addon.SetAllZonesCollapsed(true) end)
-    Label("Click a zone heading to expand or collapse it. Right-click to track or untrack the zone.\nMove and resize the tracker in Edit Mode. Changes made in combat apply when combat ends.",
+    Label("Click a zone heading to expand or collapse it, including in combat.\nRight-click to track or untrack the zone outside combat. Move and resize in Edit Mode.",
         16, -266, "GameFontHighlightSmall")
     Button("Restore defaults", 16, -338, addon.ResetOptions)
     VV.RegisterOptions()
