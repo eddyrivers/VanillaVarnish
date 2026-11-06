@@ -291,13 +291,20 @@ end
 
 local function ApplyScale(state)
     if not state.baseScale then return end
+    local frame = state.frame
+    if SafeCall(frame.IsForbidden, frame) ~= false then return end
+    local current = SafeCall(frame.GetScale, frame)
+    if type(current) ~= "number" then return end
     local desired = state.baseScale * (state.focusScale or 1)
-    local current = SafeCall(state.frame.GetScale, state.frame)
-    if type(current) == "number" and current ~= desired then
-        state.settingScale = true
-        pcall(state.frame.SetScale, state.frame, desired)
-        state.settingScale = false
+    state.scaleDeferred = nil
+    if current == desired then return end
+    if InCombatLockdown() and SafeCall(frame.IsProtected, frame) ~= false then
+        state.scaleDeferred = true
+        return
     end
+    state.settingScale = true
+    pcall(frame.SetScale, frame, desired)
+    state.settingScale = false
 end
 
 local function SetFocusScale(state, factor)
@@ -730,6 +737,12 @@ events:SetScript("OnEvent", function(_, event, arg)
         if active[arg] then UpdateAppearance(active[arg], FocusTarget()); UpdateMarkers(active[arg]) end
     elseif event == "PLAYER_TARGET_CHANGED" then
         if db.focusEnabled then UpdateAppearances() end
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        if db.focusEnabled then UpdateAppearances() end
+        for _, state in pairs(frames) do
+            if state.scaleDeferred then ApplyScale(state) end
+        end
+        questDirty = true
     elseif focusUnitEvents[event] then
         if db.focusEnabled and active[arg] then UpdateAppearance(active[arg], FocusTarget()) end
     else questDirty = true end

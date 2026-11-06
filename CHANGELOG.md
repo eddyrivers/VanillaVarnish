@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.34.15
+
+- Pause Polite UI. Character settings and existing profiles retain their beta rules for later.
+- Add optional **Combat focus** for enemy nameplates, with Tank and Damage / Healer modes and adjustable background size and opacity. Protected plates defer resizing until combat ends.
+- Let quest tracker zones expand and collapse during combat while keeping quests tracked. Protected tracker layouts apply folds after combat.
+- Keep upward-growing party frames at their saved Edit Mode position. Use standard-size buffs in combat and a thin gold border on your own buffs outside combat.
+
 ## 1.0.34.14
 
 - Expand and collapse quest tracker zones during combat with the zone headings or `/vv tracker` commands. Folds stay in place as objectives update. If the tracker contains a protected frame, the fold applies when combat ends.

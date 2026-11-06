@@ -130,3 +130,28 @@ old.focusEnabled, old.focusMode, old.focusScale, old.focusOpacity = nil, nil, ni
 assert(vv.LoadProfile("Combat design") and not vv.ProfileModified())
 assert(not ns.tweaksDB.focusEnabled and ns.tweaksDB.focusMode == "tank"
     and ns.tweaksDB.focusScale == 0.75 and ns.tweaksDB.focusOpacity == 0.5)
+
+local protected = Mock.Plate("nameplate8")
+local protectedFrame = protected.UnitFrame
+protectedFrame.protected = true
+local nativeSetScale = protectedFrame.SetScale
+local blockedScaleWrites = 0
+function protectedFrame:SetScale(value)
+    if InCombatLockdown() then blockedScaleWrites = blockedScaleWrites + 1; return end
+    nativeSetScale(self, value)
+end
+Add("nameplate8", {combat = true}, protected)
+ns.SetFocusOption("focusMode", "damage")
+Mock.lockdown = true
+ns.SetFeature("focusEnabled", true)
+Check(protectedFrame, 1, 0.5, "Protected scale is deferred while opacity still updates")
+Mock.lockdown = false
+Mock.Event("PLAYER_REGEN_ENABLED")
+Check(protectedFrame, 0.75, 0.5, "Deferred scale can apply outside lockdown")
+Mock.lockdown = true
+Mock.Event("NAME_PLATE_UNIT_REMOVED", "nameplate8")
+Check(protectedFrame, 0.75, 1, "Removing the unit defers protected scale restoration")
+Mock.lockdown = false
+Mock.Event("PLAYER_REGEN_ENABLED")
+Check(protectedFrame, 1, 1, "Removing a protected unit still restores its scale after combat")
+assert(blockedScaleWrites == 0, "Combat focus never attempts a protected resize")

@@ -137,4 +137,25 @@ check(vv.LoadProfile("Party layout") and vv.db.party.spacing == 4 and not vv.db.
     and not vv.ProfileModified(), "Older profiles use compact downward defaults without appearing modified")
 check(vv.LoadPreset("Default") and vv.db.party.spacing == 4 and not vv.db.party.growUp,
     "Built-in presets restore the default party layout")
+
+-- Characters and profiles can still contain rules from the paused beta.
+local rules = {player={fadeOut={outOfCombat=true}}}
+vv.db.politeUI, vv.db.modules.politeUI = {rules=rules}, true
+check(not vv.PresetModified() and not vv.IsModuleEnabled("politeUI") and not vv.GetModule("politeUI"),
+    "Dormant character data has no active module or effect on preset status")
+check(vv.SaveProfile("Current design") and vv.profileStore["Current design"].settings.modules.politeUI == nil,
+    "New profiles only record active modules")
+local beta = vv.Copy(vv.profileStore["Current design"])
+beta.settings.politeUI, beta.settings.modules.politeUI = {rules=vv.Copy(rules)}, false
+vv.profileStore["Beta design"] = beta
+check(vv.LoadProfile("Beta design") and not vv.ProfileModified() and vv.db.modules.politeUI == true,
+    "Loading a beta profile ignores dormant preferences and reports a clean active design")
+ns.SetValue("width", 303)
+check(vv.ProfileModified() and vv.SaveProfile("Beta design"), "Active edits to a beta profile can be saved")
+local revised = vv.profileStore["Beta design"].settings
+check(revised.modules.politeUI == false and revised.politeUI.rules.player.fadeOut.outOfCombat
+    and revised.nameplates.swingTimers.width == 303 and not vv.ProfileModified(),
+    "Saving active edits preserves dormant beta preferences on that profile")
+check(vv.LoadPreset("Default") and not vv.PresetModified() and vv.db.politeUI.rules == rules
+    and vv.db.modules.politeUI == true, "Preset application preserves dormant character data")
 VV_PROFILE_CHECKS = checks

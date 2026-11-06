@@ -130,6 +130,7 @@ function Object:RegisterUnitEvent(event, unit)
     self.eventUnits[event] = unit
 end
 function Object:IsForbidden() return self.forbidden or false end
+function Object:IsProtected() return self.protected == true end
 function Object:GetUnit() return self.unit end
 function Object:RegisterEvent(event) self.events[event] = true end
 function Object:UnregisterEvent(event) self.events[event] = nil end

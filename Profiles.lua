@@ -69,11 +69,12 @@ function VV.ProfileNames()
     return names
 end
 
-local function snapshot()
-    local settings = {modules=VV.Copy(VV.db.modules)}
+local function snapshot(source)
+    local settings = {modules={}}
+    for _, key in ipairs(VV.moduleOrder) do settings.modules[key] = source.modules[key] end
     for section, keys in pairs(fields) do
         settings[section] = {}
-        for _, key in ipairs(keys) do settings[section][key] = VV.Copy(VV.db[section][key]) end
+        for _, key in ipairs(keys) do settings[section][key] = VV.Copy(source[section][key]) end
     end
     return settings
 end
@@ -90,7 +91,7 @@ function VV.ProfileModified()
     local name = VV.FindProfile(VV.db.profileName)
     local record = name and VV.profileStore[name]
     if type(record) ~= "table" or record.version ~= 1 or not validSettings(record.settings) then return true end
-    local saved = VV.Copy(record.settings)
+    local saved = snapshot(record.settings)
     if saved.party.spacing == nil then saved.party.spacing = 4 end
     if saved.party.growUp == nil then saved.party.growUp = false end
     if saved.party.rolePin == nil then saved.party.rolePin = "off" end
@@ -99,19 +100,30 @@ function VV.ProfileModified()
     -- Profiles saved before row layouts implicitly use the stacked layout.
     local swings = saved.nameplates and saved.nameplates.swingTimers
     if type(swings) == "table" and swings.layout == nil then swings.layout = "stack" end
-    return not same(snapshot(), saved)
+    return not same(snapshot(VV.db), saved)
 end
 
 function VV.PresetModified()
     local settings = VV.GetPreset(VV.db.presetName)
-    return not settings or not same(snapshot(), settings)
+    return not settings or not same(snapshot(VV.db), settings)
 end
 
 function VV.SaveProfile(input)
     local name = VV.ProfileName(input)
     if not name then return false, "Enter a profile name (1-48 characters, without control characters or |)." end
     name = VV.FindProfile(name) or name
-    VV.profileStore[name] = {version=1, settings=snapshot()}
+    local settings = snapshot(VV.db)
+    local existing = VV.profileStore[name]
+    if type(existing) == "table" and existing.version == 1 and validSettings(existing.settings) then
+        -- Keep inactive module preferences when updating a design from another version.
+        for section, value in pairs(existing.settings) do
+            if section ~= "modules" and not fields[section] then settings[section] = VV.Copy(value) end
+        end
+        for key, value in pairs(existing.settings.modules) do
+            if not VV.moduleLabels[key] then settings.modules[key] = VV.Copy(value) end
+        end
+    end
+    VV.profileStore[name] = {version=1, settings=settings}
     VV.db.profileName, VV.selectedProfile = name, name
     VV.db.presetName = nil
     if VV.RefreshOptions then VV.RefreshOptions() end
@@ -133,7 +145,7 @@ end
 local function apply(settings, name, preset)
     if not validSettings(settings) then return false, "That profile has invalid settings." end
     local collapsed = VV.db.questTracker.collapsed
-    replace(VV.db.modules, settings.modules)
+    for _, key in ipairs(VV.moduleOrder) do VV.db.modules[key] = settings.modules[key] end
     for section in pairs(fields) do replace(VV.db[section], settings[section]) end
     -- Quest folds describe this character's current quests, not a shared design.
     VV.db.questTracker.collapsed = collapsed

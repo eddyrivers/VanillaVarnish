@@ -26,7 +26,7 @@ function VV.IsLegacyLoaded(name)
 end
 
 function VV.IsModuleEnabled(key)
-    return VV.db and VV.db.modules[key] == true and not VV.conflicts[key]
+    return VV.moduleLabels[key] ~= nil and VV.db and VV.db.modules[key] == true and not VV.conflicts[key]
 end
 
 function VV.InitDB()
