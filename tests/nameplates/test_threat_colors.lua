@@ -16,6 +16,7 @@ PlayerUtil.IsPlayerEffectivelyTank = nativeTank or function()
 end
 function UnitCanAttack(_, unit) return info.attackable end
 function UnitIsPlayer(unit) return info.player end
+function UnitPlayerControlled(unit) return info.playerControlled == true end
 function UnitIsDeadOrGhost(unit) return info.dead end
 function UnitIsTapDenied(unit) return info.tapped end
 function UnitAffectingCombat(unit) return unit == "player" and Mock.combat or info.combat end
@@ -95,16 +96,41 @@ Mock.Event("UNIT_FLAGS", "nameplate1"); ColorIs(bar, native)
 info.combat, info.status = true, 0
 ThreatEvent(); Check(IsBlue(bar))
 
--- Preserve friendly, player, dead, tapped, and restricted unit displays.
-for field, value in pairs({attackable=false, player=true, dead=true, tapped=true}) do
+-- Preserve friendly, player, dead, and restricted unit displays.
+for field, value in pairs({attackable=false, player=true, dead=true}) do
     local original = info[field]
     info[field] = value
     Mock.Event("UNIT_FACTION", "nameplate1"); ColorIs(bar, native)
     info[field] = original
     ThreatEvent(); Check(IsBlue(bar))
 end
+
+-- Blizzard can repaint a tapped health bar red when the group gains threat.
+info.tapped = true
+local gray = {0.9, 0.9, 0.9, 0.6}
+Mock.Event("UNIT_FLAGS", "nameplate1"); ColorIs(bar, gray)
+bar:SetStatusBarColor(unpack(gray))
+info.status, role = 3, "TANK"
+ThreatEvent(); ColorIs(bar, gray)
+local red = {1, 0, 0, 0.45}
+gray[4] = red[4]
+bar:SetStatusBarColor(unpack(red)); ColorIs(bar, gray)
+ns.SetFeature("threatColorsEnabled", false); ColorIs(bar, gray)
+bar:SetStatusBarColor(unpack(red)); ColorIs(bar, gray)
+vv.SetModuleEnabled("nameplates", false); ColorIs(bar, red)
+vv.SetModuleEnabled("nameplates", true); ColorIs(bar, gray)
+info.playerControlled = true
+ThreatEvent(); ColorIs(bar, red)
+info.playerControlled = false
+ThreatEvent(); ColorIs(bar, gray)
+info.tapped = false
+Mock.Event("GROUP_ROSTER_UPDATE"); ColorIs(bar, red)
+role, info.status = "DAMAGER", 0
+bar:SetStatusBarColor(unpack(native))
+ns.SetFeature("threatColorsEnabled", true); Check(IsBlue(bar), "Ordinary threat colors return when the tag clears")
+
 local secret = {secret=true}
-for _, field in ipairs({attackable, "attackable", "player", "combat", "dead", "tapped", "status"}) do
+for _, field in ipairs({"attackable", "player", "combat", "dead", "tapped", "status"}) do
     local original = info[field]
     info[field] = secret
     ThreatEvent(); ColorIs(bar, native)

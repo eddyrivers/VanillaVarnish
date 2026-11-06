@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.16
+
+- Keep enemy health bars gray when another group owns the tag, even if your group gains aggro or the Threat colors option is off.
+
 ## 1.0.34.15
 
 - Pause Polite UI. Character settings and existing profiles retain their beta rules for later.

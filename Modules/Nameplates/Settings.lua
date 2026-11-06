@@ -61,7 +61,7 @@ function ns.RegisterFeatureOptions()
     FeatureCheck(root, "swingsEnabled", "Swing timers", -206, "swingsEnabled",
         "Show weapon swing timers beneath your target's nameplate.")
     FeatureCheck(root, "threatColorsEnabled", "Threat colors", -246, "threatColorsEnabled",
-        "Blue on fighting enemies when tanks hold aggro, or damage dealers and healers do not. Other situations keep the game's colors.")
+        "Blue on fighting enemies when tanks hold aggro, or damage dealers and healers do not. Enemies tagged by another group stay gray.")
     FeatureCheck(root, "focusEnabled", "Combat focus", -286, "focusEnabled",
         "Shrink and fade lower-priority enemies in combat.")
     VV.RegisterOptions()

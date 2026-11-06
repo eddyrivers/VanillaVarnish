@@ -89,7 +89,7 @@ review_nameplates.execute((ROOT / "tests/test_review_nameplates.lua").read_text(
 print(f"PASS: {review_nameplates.globals().VV_REVIEW_NAMEPLATE_CHECKS} nameplate pooling, restricted quest data, disabled scans, and idle rendering checks")
 threat = nameplates()
 threat.execute((ROOT / "tests/nameplates/test_threat_colors.lua").read_text())
-print(f"PASS: {threat.globals().NST_THREAT_CHECKS} threat color checks for roles, tank auras, restoration, restricted data, and pooled plates")
+print(f"PASS: {threat.globals().NST_THREAT_CHECKS} threat and tag color checks for roles, restoration, restricted data, and pooled plates")
 focus = nameplates(full=True)
 focus.execute((ROOT / "tests/nameplates/test_combat_focus.lua").read_text())
 print("PASS: combat focus roles, casts, threat, range precedence, native restoration, pooling, and settings")

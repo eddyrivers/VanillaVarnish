@@ -3,6 +3,7 @@ local ns = VV.Nameplates
 local active = {}
 local bars = setmetatable({}, { __mode = "k" })
 local BLUE = { 0.25, 0.65, 1 }
+local TAP_GRAY = { 0.9, 0.9, 0.9 }
 
 local function Known(value)
     if issecretvalue and issecretvalue(value) then return nil end
@@ -16,7 +17,7 @@ local function Read(fn, ...)
 end
 
 local function Enabled()
-    return VV.IsModuleEnabled("nameplates") and ns.tweaksDB and ns.tweaksDB.threatColorsEnabled
+    return VV.IsModuleEnabled("nameplates") and ns.tweaksDB
 end
 
 local function IsTank()
@@ -54,9 +55,18 @@ local function SetColor(state, color)
 end
 
 local function Restore(state)
-    if state.tinted then
-        if SetColor(state, state.original) then state.tinted = nil end
+    if state.tint and SetColor(state, state.original) then state.tint = nil end
+end
+
+local function Tint(state, color)
+    if state.tint == color then return end
+    if not state.original then
+        local ok, r, g, b, a = pcall(state.bar.GetStatusBarColor, state.bar)
+        if not ok then return end
+        -- Preserve native display channels, including restricted values.
+        state.original = { r, g, b, a }
     end
+    if SetColor(state, { color[1], color[2], color[3], state.original[4] }) then state.tint = color end
 end
 
 local function Update(state)
@@ -64,22 +74,22 @@ local function Update(state)
     if not Enabled() or not unit
         or Read(UnitCanAttack, "player", unit) ~= true
         or Read(UnitIsPlayer, unit) ~= false
-        or Read(UnitAffectingCombat, unit) ~= true
-        or Read(UnitIsDeadOrGhost, unit) ~= false
-        or Read(UnitIsTapDenied, unit) ~= false then
+        or Read(UnitIsDeadOrGhost, unit) ~= false then
+        Restore(state); return
+    end
+    local tapDenied = Read(UnitIsTapDenied, unit)
+    -- Native health-bar threat colors can take precedence over tap gray.
+    if tapDenied == true and Read(UnitPlayerControlled, unit) == false then
+        Tint(state, TAP_GRAY); return
+    end
+    if tapDenied ~= false or not ns.tweaksDB.threatColorsEnabled or Read(UnitAffectingCombat, unit) ~= true then
         Restore(state); return
     end
     local tank, aggro = IsTank(), HasAggro(unit)
     if type(tank) ~= "boolean" or type(aggro) ~= "boolean" or tank ~= aggro then
         Restore(state); return
     end
-    if not state.original then
-        local ok, r, g, b, a = pcall(state.bar.GetStatusBarColor, state.bar)
-        if not ok then return end
-        -- Preserve display channels without inspecting or comparing them.
-        state.original = { r, g, b, a }
-    end
-    if SetColor(state, { BLUE[1], BLUE[2], BLUE[3], state.original[4] }) then state.tinted = true end
+    Tint(state, BLUE)
 end
 
 local function Remove(unit)
@@ -109,7 +119,7 @@ local function Add(unit)
         hooksecurefunc(bar, "SetStatusBarColor", function(_, ...)
             if state.settingColor then return end
             state.original = { ... }
-            state.tinted = nil -- This native write has already replaced VV's tint.
+            state.tint = nil -- This native write has already replaced VV's tint.
             if state.unit then Update(state) end
         end)
     end
@@ -132,7 +142,8 @@ end
 local driver = CreateFrame("Frame")
 for _, event in ipairs({"PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "NAME_PLATE_UNIT_ADDED",
     "NAME_PLATE_UNIT_REMOVED", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_THREAT_LIST_UPDATE",
-    "PLAYER_ROLES_ASSIGNED", "UPDATE_SHAPESHIFT_FORM", "PLAYER_REGEN_ENABLED", "UNIT_FLAGS", "UNIT_FACTION"}) do
+    "PLAYER_ROLES_ASSIGNED", "UPDATE_SHAPESHIFT_FORM", "PLAYER_REGEN_ENABLED", "UNIT_FLAGS", "UNIT_FACTION",
+    "GROUP_ROSTER_UPDATE"}) do
     driver:RegisterEvent(event)
 end
 driver:SetScript("OnEvent", function(_, event, unit)
