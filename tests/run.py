@@ -186,7 +186,7 @@ compact_roles.execute("VV_TEST_NS.RegisterOptions = function() end; VV_TEST_NS.I
 load(compact_roles, "Modules/Party/NativeBuffs.lua")
 load(compact_roles, "Modules/Party/PartyTweaks.lua")
 compact_roles.execute((ROOT / "tests/test_party_compact_roles.lua").read_text())
-print(f"PASS: {compact_roles.globals().VV_COMPACT_ROLE_CHECKS} raid-style party role sorting, targeting, pets, native restoration, and combat checks")
+print(f"PASS: {compact_roles.globals().VV_COMPACT_ROLE_CHECKS} raid-style role layout, untouched native sorting/bindings, anchor cycles, pets, borders, restoration, and combat checks")
 
 party_range = runtime()
 party_range.execute((ROOT / "tests/party/mock.lua").read_text())

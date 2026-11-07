@@ -1,97 +1,142 @@
 local vv = VV_TEST_NS
-local checks = 0
+local checks, writes, roleReads = 0, 0, 0
 local function check(value, message) checks = checks + 1; assert(value, message) end
-local units = {"player", "party1", "party2", "party3", "party4"}
 local roles = {player="HEALER", party1="DAMAGER", party2="TANK", party3="DAMAGER", party4="HEALER"}
-local roleReads, sortWrites = 0, 0
 function UnitGroupRolesAssigned(unit)
-    assert(not Mock.combat, "Compact sorting must not read roles during combat")
+    assert(not Mock.combat, "Addon role reads must wait for combat to end")
     roleReads = roleReads + 1
     return roles[unit]
 end
-local natural = {}
-for index, unit in ipairs(units) do natural[unit] = index end
-natural.pet, natural.partypet1 = 6, 7
-local function nativeSort(a, b) return natural[a] < natural[b] end
-local function reverseSort(a, b) return natural[a] > natural[b] end
-CompactPartyFrame = CreateFrame("Frame")
+local function anchors(frame)
+    frame.anchors = {}
+    function frame:GetNumPoints() return #self.anchors end
+    function frame:GetPoint(index) return unpack(self.anchors[index]) end
+    function frame:ClearAllPoints()
+        assert(not Mock.combat or Mock.nativeLayout, "Addon cleared protected anchors in combat")
+        writes = writes + 1
+        self.anchors = {}
+    end
+    function frame:SetPoint(...)
+        assert(not Mock.combat or Mock.nativeLayout, "Addon moved protected anchors in combat")
+        writes = writes + 1
+        self.anchors[#self.anchors+1] = {...}
+    end
+    return frame
+end
+CompactPartyFrame = anchors(CreateFrame("Frame"))
 local compact = CompactPartyFrame
-compact.flowSortFunc, compact.memberUnitFrames, compact.petUnitFrames = nativeSort, {}, {}
-for index, unit in ipairs(units) do
-    local member = Mock.Member(unit)
+local nativeUnits = {"player", "party1", "party2", "party3", "party4"}
+compact.memberUnitFrames, compact.petUnitFrames = {}, {}
+local originals = {}
+for index, unit in ipairs(nativeUnits) do
+    local member = anchors(Mock.Member(unit))
     member.parent = compact
-    compact.memberUnitFrames[index] = member
+    compact.memberUnitFrames[index], originals[index] = member, member
 end
 Mock.active = {}
 for index, unit in ipairs({"pet", "partypet1"}) do
-    local pet = CreateFrame("Frame", nil, compact)
+    local pet = anchors(CreateFrame("Frame", nil, compact))
     pet.unit = unit
     compact.petUnitFrames[index] = pet
 end
-local horizontal = false
--- Model the native contract: sorting refreshes unit bindings first, then the
--- layout places member slots and pets. The addon must use that entry point.
-function compact:RefreshMembers()
-    local sorted = {unpack(units)}
-    table.sort(sorted, self.flowSortFunc)
-    local offset = 0
+compact.borderFrame = anchors(CreateFrame("Frame", nil, compact))
+local nativeSort = function(a, b) return a < b end
+compact.flowSortFunc = nativeSort
+function compact:SetFlowSortFunction() error("Addon sorting taints native restricted health updates") end
+local horizontal, border = false, false
+local function nativeLayout(self)
+    assert(Mock.nativeLayout, "Addon must not invoke native layout or unit setup")
     for index, member in ipairs(self.memberUnitFrames) do
-        member.unit = sorted[index]
         member:ClearAllPoints()
-        member:SetPoint("TOPLEFT", self, "TOPLEFT", horizontal and offset or 0, horizontal and 0 or -offset)
-        offset = offset + member:GetHeight()
+        if index == 1 then member:SetPoint("TOPLEFT", self, "TOPLEFT", 0, -10)
+        elseif horizontal then member:SetPoint("TOPLEFT", self.memberUnitFrames[index-1], "TOPRIGHT", 0, 0)
+        else member:SetPoint("TOPLEFT", self.memberUnitFrames[index-1], "BOTTOMLEFT", 0, 0) end
     end
-    local pets = {"pet", "partypet1"}
-    table.sort(pets, self.flowSortFunc)
+    self.borderFrame:ClearAllPoints()
+    self.borderFrame:SetPoint("TOPLEFT", self.memberUnitFrames[1], "TOPLEFT", -2, 2)
+    local last = 1
+    for index, member in ipairs(self.memberUnitFrames) do if member:IsShown() then last = index end end
+    self.borderFrame:SetPoint("BOTTOMRIGHT", self.memberUnitFrames[last], "BOTTOMRIGHT", 2, -3)
     for index, pet in ipairs(self.petUnitFrames) do
-        pet.unit = pets[index]
-        pet:SetPoint("TOPLEFT", self.memberUnitFrames[horizontal and 1 or 5], "BOTTOMLEFT", 0, -(index-1)*53)
+        pet:ClearAllPoints()
+        pet:SetPoint("TOPLEFT", index > 1 and self.petUnitFrames[index-1]
+            or border and self.borderFrame or self.memberUnitFrames[horizontal and 1 or last], "BOTTOMLEFT", 0, 0)
     end
 end
-function compact:SetFlowSortFunction(sorter)
-    assert(not Mock.combat, "Protected compact sorting changed in combat")
-    sortWrites = sortWrites + 1
-    self.flowSortFunc = sorter
-    self:RefreshMembers()
+compact.updateLayoutFunc = nativeLayout
+function compact:RefreshMembers()
+    assert(Mock.nativeLayout, "Addon must not invoke native member/health setup")
+    for index, member in ipairs(self.memberUnitFrames) do member.unit = nativeUnits[index] end
+    self:updateLayoutFunc()
 end
-compact:RefreshMembers()
+local function refreshNative()
+    Mock.nativeLayout = true
+    compact:RefreshMembers()
+    Mock.nativeLayout = false
+end
+refreshNative()
 EditModeManagerFrame = {UseRaidStylePartyFrames=function() return Mock.raidStyle end}
 Mock.raidStyle = true
 Mock.Event("PLAYER_LOGIN")
-local function order(expected)
-    for index, unit in ipairs(expected) do
-        check(compact.memberUnitFrames[index].unit == unit, "Compact member order and targeting match " .. unit)
-    end
-    check(compact.petUnitFrames[1].point[2] == compact.memberUnitFrames[horizontal and 1 or 5],
-        "Native pet anchors follow the member layout")
+local function position(frame, seen)
+    if frame == compact then return 0, 0 end
+    seen = seen or {}
+    assert(not seen[frame], "Layout introduced an anchor cycle")
+    seen[frame] = true
+    local p = frame.anchors[1]
+    local x, y = position(p[2], seen)
+    if p[3]:find("RIGHT") then x = x + p[2]:GetWidth() end
+    if p[3]:find("BOTTOM") then y = y - p[2]:GetHeight() end
+    return x + (p[4] or 0), y + (p[5] or 0)
 end
-order(units)
-check(compact.flowSortFunc == nativeSort, "Off leaves native sorting untouched")
+local function order(expected)
+    local physical = {}
+    for index, frame in ipairs(compact.memberUnitFrames) do
+        check(frame == originals[index] and frame.unit == nativeUnits[index], "Native frame table and unit bindings remain untouched")
+        if frame:IsShown() then physical[#physical+1] = frame end
+        position(frame)
+    end
+    table.sort(physical, function(a,b)
+        local ax, ay = position(a)
+        local bx, by = position(b)
+        return horizontal and ax < bx or not horizontal and ay > by
+    end)
+    for index, unit in ipairs(expected) do check(physical[index].unit == unit, "Physical role order matches " .. unit) end
+    check(compact.flowSortFunc == nativeSort, "Native comparator must never be replaced")
+    local first, last = physical[1], physical[#physical]
+    check(compact.borderFrame.anchors[1][2] == first and compact.borderFrame.anchors[2][2] == last,
+        "Both border anchors follow physical member edges")
+    check(compact.petUnitFrames[1].anchors[1][2] == (border and compact.borderFrame or horizontal and first or last),
+        "Pets stay below the physical member block")
+    for _, pet in ipairs(compact.petUnitFrames) do position(pet) end
+end
+order(nativeUnits)
 vv.Party.SetOption("rolePin", "top")
 order({"party2", "player", "party4", "party1", "party3"})
 vv.Party.SetOption("rolePin", "bottom")
 order({"party1", "party3", "party2", "player", "party4"})
 vv.Party.SetOption("growUp", true)
 order({"party1", "party3", "party2", "player", "party4"})
-local writes = sortWrites
+local previousWrites = writes
 Mock.Tick(1); Mock.Event("GROUP_ROSTER_UPDATE")
-check(sortWrites == writes, "Unchanged compact roles do not trigger native layout churn")
-horizontal = true
-compact:RefreshMembers()
+check(writes == previousWrites, "Unchanged role layouts do not rewrite anchors on the periodic refresh")
+refreshNative()
+order({"party1", "party3", "party2", "player", "party4"})
+horizontal, border = true, true
+refreshNative()
 vv.Party.SetOption("rolePin", "top")
 order({"party2", "player", "party4", "party1", "party3"})
-check(compact.memberUnitFrames[2].point[4] > 0 and compact.memberUnitFrames[2].point[5] == 0,
-    "Horizontal groups retain their native layout")
-check(compact.petUnitFrames[1].unit == "pet" and compact.petUnitFrames[2].unit == "partypet1",
-    "Role pinning preserves native pet order")
 Mock.combat = true
-local reads = roleReads
+local beforeCombat, reads = writes, roleReads
 roles.player, roles.party2 = "TANK", "DAMAGER"
 vv.Party.SetOption("rolePin", "bottom")
 Mock.Event("PLAYER_ROLES_ASSIGNED"); Mock.Tick(1)
-compact:RefreshMembers()
 order({"party2", "player", "party4", "party1", "party3"})
-check(roleReads == reads and sortWrites == writes + 1, "Combat keeps the last safe sort without role reads or protected writes")
+check(writes == beforeCombat and roleReads == reads, "Combat defers all addon role reads and protected layout changes")
+-- A secure native refresh may reset anchors in combat. The addon must neither
+-- intervene nor mistake those fresh native positions for an old pinned layout.
+refreshNative()
+order(nativeUnits)
 Mock.combat = false
 Mock.Event("PLAYER_REGEN_ENABLED")
 order({"party1", "party2", "party3", "player", "party4"})
@@ -102,43 +147,40 @@ roles.player, roles.party4 = {secret=true}, {secret=true}
 Mock.Event("PLAYER_ROLES_ASSIGNED")
 order({"player", "party1", "party2", "party4", "party3"})
 UnitGroupRolesAssigned = nil
-Enum = {LFGRole={Tank=1, Healer=2}}
+Enum = {LFGRole={Tank=1,Healer=2}}
 function UnitGroupRolesAssignedEnum(unit) return unit == "party2" and 1 or unit == "player" and 2 or 3 end
 Mock.Event("PLAYER_ROLES_ASSIGNED")
 order({"party1", "party3", "party4", "party2", "player"})
--- Native sort changes should remain the tie-breaker, and Off must restore the
--- latest native choice rather than the one active at login.
-compact:SetFlowSortFunction(reverseSort)
-Mock.Event("GROUP_ROSTER_UPDATE")
-order({"party4", "party3", "party1", "party2", "player"})
 vv.Party.SetOption("rolePin", "off")
-order({"party4", "party3", "party2", "party1", "player"})
-check(compact.flowSortFunc == reverseSort, "Off restores the latest native comparator")
+order(nativeUnits)
+-- Layout changes made while pinning is off become the new restoration baseline.
+horizontal, border = false, false
+refreshNative()
 vv.Party.SetOption("rolePin", "top")
+order({"party2", "player", "party1", "party3", "party4"})
 vv.SetModuleEnabled("party", false)
-check(compact.flowSortFunc == reverseSort, "Disabling the module restores native sorting")
+order(nativeUnits)
 vv.SetModuleEnabled("party", true)
-order({"party2", "player", "party4", "party3", "party1"})
+order({"party2", "player", "party1", "party3", "party4"})
 Mock.raidStyle = false
 Mock.Event("EDIT_MODE_LAYOUTS_UPDATED")
-check(compact.flowSortFunc == reverseSort, "Switching to portraits restores compact native sorting")
+order(nativeUnits)
 Mock.raidStyle = true
 Mock.Event("EDIT_MODE_LAYOUTS_UPDATED")
-order({"party2", "player", "party4", "party3", "party1"})
+order({"party2", "player", "party1", "party3", "party4"})
 Mock.combat = true
-local combatSorter, combatWrites = compact.flowSortFunc, sortWrites
 vv.Party.SetOption("rolePin", "off")
-check(compact.flowSortFunc == combatSorter and sortWrites == combatWrites,
-    "Turning pinning off in combat defers native sort restoration")
+order({"party2", "player", "party1", "party3", "party4"})
 Mock.combat = false
 Mock.Event("PLAYER_REGEN_ENABLED")
-check(compact.flowSortFunc == reverseSort, "Deferred Off restores the native comparator after combat")
+order(nativeUnits)
 vv.Party.SetOption("rolePin", "top")
--- Member slots are reused by the client when someone joins or leaves.
-units = {"player", "party1", "party2"}
+-- Native slot reuse and hidden slots keep their original chained anchors.
+nativeUnits = {"player", "party2", "party1", "party3", "party4"}
 compact.memberUnitFrames[4]:Hide(); compact.memberUnitFrames[5]:Hide()
-compact:RefreshMembers()
+refreshNative()
 Mock.Event("GROUP_ROSTER_UPDATE")
-check(compact.memberUnitFrames[1].unit == "party2" and compact.memberUnitFrames[2].unit == "player"
-    and compact.memberUnitFrames[3].unit == "party1", "Roster reuse retains role ordering and current native unit bindings")
+order({"party2", "player", "party1"})
+vv.Party.SetOption("rolePin", "off")
+order({"player", "party2", "party1"})
 VV_COMPACT_ROLE_CHECKS = checks

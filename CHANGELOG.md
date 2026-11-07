@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.18
+
+- Fix repeated restricted-health errors after enabling raid-style party pinning. Move existing frames outside combat without replacing Blizzard's sorter or running native unit setup from addon code. Keep member targeting, pets, borders, and horizontal groups aligned; Off restores native positions. Reload after updating to clear the previous session's taint.
+
 ## 1.0.34.17
 
 - Apply **Pin tanks, then healers** to raid-style party frames, including the player. Keep native member and pet layouts, preserve the game's order within each role, and defer sorting changes until combat ends. Turning pinning off restores native sorting.

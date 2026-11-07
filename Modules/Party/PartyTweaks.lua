@@ -686,47 +686,67 @@ local function memberRole(unit)
     end
 end
 
-local function arrangeCompactParty()
-    local party = _G.CompactPartyFrame
-    if not party or InCombatLockdown() or partyIsDragging(_G.PartyFrame)
-        or type(party.SetFlowSortFunction) ~= "function" or type(party.flowSortFunc) ~= "function" then return end
+local function arrangeCompactParty(party, nativeLayout)
+    party = party or _G.CompactPartyFrame
+    if not party then return end
+    if nativeLayout and compactLayouts[party] then compactLayouts[party].native = nil end
+    if InCombatLockdown() or partyIsDragging(_G.PartyFrame)
+        or not party.memberUnitFrames or type(party.updateLayoutFunc) ~= "function" then return end
     local layout = compactLayouts[party]
     if not layout then
         layout = {}
         compactLayouts[party] = layout
-        -- Use the native sorting API so member bindings, pets, horizontal
-        -- layouts, borders and container bounds are refreshed together.
-        layout.sorter = function(a, b)
-            local rankA, rankB = layout.ranks[a] or 1, layout.ranks[b] or 1
-            if rankA ~= rankB then return rankA < rankB end
-            return layout.nativeSort(a, b)
-        end
-        hooksecurefunc(party, "SetFlowSortFunction", function()
-            if not layout.applying then queueRefresh() end
-        end)
+        -- Never replace flowSortFunc or call native unit setup/refresh methods:
+        -- addon execution there taints subsequent restricted health updates.
+        -- This alias is the entry point used by native member and border layouts.
+        hooksecurefunc(party, "updateLayoutFunc", function(self) arrangeCompactParty(self, true) end)
     end
-    if party.flowSortFunc ~= layout.sorter then layout.nativeSort = party.flowSortFunc end
     local mode = VV.db.party.rolePin
     local enabled = VV.IsModuleEnabled("party") and raidStyle() and (mode == "top" or mode == "bottom")
-    if not enabled and not layout.applied then return end
-    local ranks, changed = {}, layout.mode ~= mode or party.flowSortFunc ~= layout.sorter
+    if not enabled and not layout.applied then layout.native = nil; return end
+    local frames, members = {}, {}
+    for _, member in ipairs(party.memberUnitFrames) do
+        frames[#frames + 1] = member
+        if readable(member:IsShown()) == true then members[#members + 1] = member end
+    end
+    for _, pet in ipairs(party.petUnitFrames or {}) do frames[#frames + 1] = pet end
+    if party.borderFrame then frames[#frames + 1] = party.borderFrame end
+    if nativeLayout or not layout.native then
+        layout.native = {}
+        for _, frame in ipairs(frames) do layout.native[frame] = points(frame) end
+    end
+    local mapping = {}
     if enabled then
-        -- Snapshot readable roles outside combat. Native roster refreshes can
-        -- invoke the comparator in combat without needing addon role reads.
-        local units = {"player", "party1", "party2", "party3", "party4", "raid1", "raid2", "raid3", "raid4", "raid5"}
-        for _, unit in ipairs(units) do
-            local role = memberRole(unit)
-            local rank = role == "TANK" and 1 or role == "HEALER" and 2 or 3
-            if mode == "bottom" then rank = rank == 3 and 1 or rank + 1 end
-            ranks[unit] = rank
-            if not layout.ranks or layout.ranks[unit] ~= rank then changed = true end
+        local tanks, healers, others = {}, {}, {}
+        for _, member in ipairs(members) do
+            local role = memberRole(memberUnit(member))
+            local group = role == "TANK" and tanks or role == "HEALER" and healers or others
+            group[#group + 1] = member
+        end
+        local ordered = {}
+        local groups = mode == "top" and {tanks, healers, others} or {others, tanks, healers}
+        for _, group in ipairs(groups) do for _, member in ipairs(group) do ordered[#ordered + 1] = member end end
+        for index, member in ipairs(members) do mapping[member] = ordered[index] end
+    end
+    local desired, changed = {}, false
+    for _, frame in ipairs(frames) do
+        local target, anchors = mapping[frame] or frame, {}
+        for index, point in ipairs(layout.native[frame] or {}) do
+            local relative = type(point[2]) == "string" and _G[point[2]] or point[2]
+            anchors[index] = {point[1], mapping[relative] or point[2], point[3], point[4], point[5]}
+        end
+        desired[target] = anchors
+        if not samePoints(points(target), anchors) then changed = true end
+    end
+    if changed then
+        -- Clear the whole anchor graph before reconnecting it, preventing
+        -- temporary cycles when swapping frames in Blizzard's chained layout.
+        for _, frame in ipairs(frames) do frame:ClearAllPoints() end
+        for _, frame in ipairs(frames) do
+            for _, point in ipairs(desired[frame]) do frame:SetPoint(unpack(point, 1, 5)) end
         end
     end
-    if enabled and layout.applied and not changed then return end
-    layout.ranks, layout.mode, layout.applied = ranks, mode, enabled
-    layout.applying = true
-    attempt(party.SetFlowSortFunction, party, enabled and layout.sorter or layout.nativeSort)
-    layout.applying = false
+    layout.applied = enabled
 end
 
 local function arrangeParty(party, nativeLayout)
