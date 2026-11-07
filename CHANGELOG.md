@@ -2,7 +2,9 @@
 
 ## 1.0.34.18
 
-- Fix repeated restricted-health errors after enabling raid-style party pinning. Move existing frames outside combat without replacing Blizzard's sorter or running native unit setup from addon code. Keep member targeting, pets, borders, and horizontal groups aligned; Off restores native positions. Reload after updating to clear the previous session's taint.
+- bugfix: Raid-style party frames now respect tank and healer pinning, including your own frame.
+- bugfix: Switching to raid-style party frames no longer causes repeated addon warnings or error sounds.
+- After updating, type `/reload` once to load the fix.
 
 ## 1.0.34.17
 
