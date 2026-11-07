@@ -22,6 +22,7 @@ local colorRecords = setmetatable({}, {__mode="k"})
 local desaturationRecords = setmetatable({}, {__mode="k"})
 local debuffHooks = setmetatable({}, {__mode="k"})
 local partyLayouts = setmetatable({}, {__mode="k"})
+local compactLayouts = setmetatable({}, {__mode="k"})
 local colorHealth
 local popupSuppressed, previousPopupSetting
 
@@ -672,6 +673,62 @@ local function partyIsDragging(party)
     return party and party.IsEditModeDragging and party:IsEditModeDragging()
 end
 
+local function memberRole(unit)
+    if unit and UnitGroupRolesAssigned then
+        local ok, value = attempt(UnitGroupRolesAssigned, unit)
+        if ok then return readable(value) end
+    elseif unit and UnitGroupRolesAssignedEnum then
+        local ok, value = attempt(UnitGroupRolesAssignedEnum, unit)
+        value = ok and readable(value)
+        if Enum and Enum.LFGRole then
+            return value == Enum.LFGRole.Tank and "TANK" or value == Enum.LFGRole.Healer and "HEALER" or nil
+        end
+    end
+end
+
+local function arrangeCompactParty()
+    local party = _G.CompactPartyFrame
+    if not party or InCombatLockdown() or partyIsDragging(_G.PartyFrame)
+        or type(party.SetFlowSortFunction) ~= "function" or type(party.flowSortFunc) ~= "function" then return end
+    local layout = compactLayouts[party]
+    if not layout then
+        layout = {}
+        compactLayouts[party] = layout
+        -- Use the native sorting API so member bindings, pets, horizontal
+        -- layouts, borders and container bounds are refreshed together.
+        layout.sorter = function(a, b)
+            local rankA, rankB = layout.ranks[a] or 1, layout.ranks[b] or 1
+            if rankA ~= rankB then return rankA < rankB end
+            return layout.nativeSort(a, b)
+        end
+        hooksecurefunc(party, "SetFlowSortFunction", function()
+            if not layout.applying then queueRefresh() end
+        end)
+    end
+    if party.flowSortFunc ~= layout.sorter then layout.nativeSort = party.flowSortFunc end
+    local mode = VV.db.party.rolePin
+    local enabled = VV.IsModuleEnabled("party") and raidStyle() and (mode == "top" or mode == "bottom")
+    if not enabled and not layout.applied then return end
+    local ranks, changed = {}, layout.mode ~= mode or party.flowSortFunc ~= layout.sorter
+    if enabled then
+        -- Snapshot readable roles outside combat. Native roster refreshes can
+        -- invoke the comparator in combat without needing addon role reads.
+        local units = {"player", "party1", "party2", "party3", "party4", "raid1", "raid2", "raid3", "raid4", "raid5"}
+        for _, unit in ipairs(units) do
+            local role = memberRole(unit)
+            local rank = role == "TANK" and 1 or role == "HEALER" and 2 or 3
+            if mode == "bottom" then rank = rank == 3 and 1 or rank + 1 end
+            ranks[unit] = rank
+            if not layout.ranks or layout.ranks[unit] ~= rank then changed = true end
+        end
+    end
+    if enabled and layout.applied and not changed then return end
+    layout.ranks, layout.mode, layout.applied = ranks, mode, enabled
+    layout.applying = true
+    attempt(party.SetFlowSortFunction, party, enabled and layout.sorter or layout.nativeSort)
+    layout.applying = false
+end
+
 local function arrangeParty(party, nativeLayout)
     if InCombatLockdown() or not party.GetNumPoints or partyIsDragging(party) then return end
     local layout = partyLayouts[party]
@@ -716,18 +773,7 @@ local function arrangeParty(party, nativeLayout)
         local tanks, healers, others = {}, {}, {}
         for position = 1, #members do
             local member = members[config.growUp and #members + 1 - position or position]
-            local role
-            local unit = memberUnit(member)
-            if unit and UnitGroupRolesAssigned then
-                local ok, value = attempt(UnitGroupRolesAssigned, unit)
-                if ok then role = readable(value) end
-            elseif unit and UnitGroupRolesAssignedEnum then
-                local ok, value = attempt(UnitGroupRolesAssignedEnum, unit)
-                value = ok and readable(value)
-                if Enum and Enum.LFGRole then
-                    role = value == Enum.LFGRole.Tank and "TANK" or value == Enum.LFGRole.Healer and "HEALER" or nil
-                end
-            end
+            local role = memberRole(memberUnit(member))
             local group = role == "TANK" and tanks or role == "HEALER" and healers or others
             group[#group + 1] = member
         end
@@ -970,6 +1016,7 @@ local function refresh()
     elseif _G.PartyFrame then
         arrangeParty(_G.PartyFrame, false)
     end
+    arrangeCompactParty()
 end
 
 queueRefresh = function()

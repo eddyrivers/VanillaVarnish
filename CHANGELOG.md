@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.17
+
+- Apply **Pin tanks, then healers** to raid-style party frames, including the player. Keep native member and pet layouts, preserve the game's order within each role, and defer sorting changes until combat ends. Turning pinning off restores native sorting.
+
 ## 1.0.34.16
 
 - Keep enemy health bars gray when another group owns the tag, even if your group gains aggro or the Threat colors option is off.
