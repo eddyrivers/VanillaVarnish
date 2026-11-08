@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.21
+
+- Reduce empty space between portrait party members while keeping all 16 buff slots. Extra room returns only when larger buffs need it, and party positions stay fixed during combat.
+
 ## 1.0.34.20
 
 - Enlarge drinking buffs to match your own buffs and give them a light cyan, one-pixel border outside combat.

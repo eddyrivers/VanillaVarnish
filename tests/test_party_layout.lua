@@ -17,9 +17,18 @@ top = function(frame)
     return y
 end
 local create = CreateFrame
-CreateFrame = function(...)
-    local frame = create(...)
+AuraContainerSortMethod = {Default=0}
+CustomAuraContainerGroupDefaultOptions = {}
+CreateFrame = function(kind, ...)
+    local frame = create(kind, ...)
     frame.GetTop, frame.GetBottom = top, bottom
+    if kind == "AuraContainer" then
+        function frame:SetEnabled(value) self.enabled = value end
+        function frame:SetUnit(unit) self.unit = unit end
+        function frame:SetFlowLayoutAnchorPoint() end
+        function frame:SetFlowLayoutMaximumLineSize(value) self.lineWidth = value end
+        function frame:AddAuraGroup(_, _, options) self.options = options end
+    end
     return frame
 end
 UIParent = CreateFrame("Frame")
@@ -107,6 +116,46 @@ PartyFrame:UpdatePartyMemberBackground()
 check(PartyFrame.Background.point[2] == PartyFrame, "Native background updates follow the entire upward container")
 vv.Party.SetOption("spacing", 0)
 check(near(PartyFrame:GetHeight(), 350), "Zero extra gap retains room for all aura rows")
+local function buffs(count, ownCount)
+    for _, member in ipairs(members) do
+        local list = {}
+        for index = 1, count do
+            list[index] = {icon=index, auraInstanceID=index, sourceUnit=index <= ownCount and "player" or "party2"}
+        end
+        Mock.auras[member.unit] = list
+    end
+    Mock.Event("UNIT_AURA", "party1")
+end
+buffs(1, 1)
+check(near(PartyFrame:GetHeight(), 310) and near(bottom(PartyFrame), fixedBottom),
+    "Sparse buffs shorten the party by forty units without shifting the upward anchor")
+for _, member in ipairs(members) do
+    check(member:GetHeight() == 77 and Mock.Row(member):GetHeight() == 30,
+        "A sparse row reserves only two standard-size combat rows")
+end
+buffs(0, 0)
+check(near(PartyFrame:GetHeight(), 310), "Empty rows retain room for buffs gained in combat")
+buffs(16, 0)
+for _, member in ipairs(members) do
+    local row = Mock.Row(member)
+    local icons = Mock.Icons(row)
+    check(icons[16]:IsShown() and icons[9].point[5] == -16 and bottom(icons[16]) >= bottom(member),
+        "All sixteen ordinary buffs fit the smaller reservation without overlap")
+end
+check(near(PartyFrame:GetHeight(), 310), "Two ordinary rows need no enlarged-row padding")
+buffs(16, 8)
+check(members[1]:GetHeight() == 82 and Mock.Row(members[1]):GetHeight() == 35,
+    "A mixed pair of rows grows only enough to fit its enlarged first row")
+buffs(1, 1)
+Mock.combat = true
+buffs(16, 16)
+Mock.Tick(1)
+check(members[1]:GetHeight() == 77 and Mock.Row(members[1]):GetHeight() == 30
+    and near(PartyFrame:GetHeight(), 310), "Combat gains preserve protected member and container geometry")
+Mock.combat = false
+Mock.Event("PLAYER_REGEN_ENABLED")
+check(members[1]:GetHeight() == 87 and near(PartyFrame:GetHeight(), 350) and near(bottom(PartyFrame), fixedBottom),
+    "Leaving combat expands for sixteen enlarged buffs while preserving the bottom edge")
 local previousPoint, previousHeight = members[1].point, PartyFrame:GetHeight()
 Mock.combat = true
 vv.Party.SetOption("spacing", 12)
@@ -156,6 +205,15 @@ vv.Party.SetOption("buffs", true)
 PartyFrame.scale = 1.8
 Mock.Event("EDIT_MODE_LAYOUTS_UPDATED")
 check(near(members[1]:GetHeight(), 87), "Scaling the entire party does not duplicate aura height")
+local scaledBottom = bottom(PartyFrame)
+buffs(1, 1)
+check(near(members[1]:GetHeight(), 77) and near(bottom(PartyFrame), scaledBottom),
+    "Scaled parties also reclaim sparse buff space without moving the saved bottom edge")
+vv.Party.SetOption("growUp", false)
+check(near(members[1]:GetHeight(), 77) and members[1].point[1] == "TOPLEFT",
+    "Sparse buff space also compresses in downward-growing parties")
+buffs(16, 16)
+vv.Party.SetOption("growUp", true)
 local roles = {party1="DAMAGER", party2="HEALER", party3="TANK", party4="DAMAGER"}
 function UnitGroupRolesAssigned(unit) return roles[unit] end
 local function order(expected)

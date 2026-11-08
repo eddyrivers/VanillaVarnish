@@ -1,6 +1,6 @@
 local _, VV = ...
 local addon = VV.Party
-local SIZE, GAP, ROW_STEP, PER_ROW, LIMIT = 14, 2, 21, 8, 16
+local SIZE, GAP, PER_ROW, LIMIT = 14, 2, 8, 16
 
 function addon.NativeBuffsAvailable()
     return type(AuraContainerSortMethod) == "table" and type(CustomAuraContainerGroupDefaultOptions) == "table"
@@ -53,7 +53,7 @@ function addon.CreateNativeBuffs(parent)
             maxFrameCount = LIMIT,
             sortMethod = AuraContainerSortMethod.Default,
             initializeFrame = InitializeButton,
-            layout = {elementWidth=SIZE, elementHeight=SIZE, elementSpacing=GAP, lineSpacing=ROW_STEP - SIZE},
+            layout = {elementWidth=SIZE, elementHeight=SIZE, elementSpacing=GAP, lineSpacing=GAP},
         })
     end)
     if ok then return container end

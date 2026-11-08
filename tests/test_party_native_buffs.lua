@@ -89,8 +89,10 @@ check(container and container.unit == "party1" and not container.enabled and ord
 check(container.filter == "HELPFUL" and container.options.maxFrameCount == 16
     and container.options.sortMethod == AuraContainerSortMethod.Default, "Native display is limited to sixteen helpful buffs")
 check(container.lineWidth == 126 and container.options.layout.elementWidth == 14
-    and container.options.layout.elementHeight == 14 and container.options.layout.lineSpacing == 7,
-    "Standard-sized native icons fit eight per reserved row")
+    and container.options.layout.elementHeight == 14 and container.options.layout.lineSpacing == 2,
+    "Standard-sized native icons fit eight per row with a two-unit gap")
+check(row:GetHeight() == 30 and member:GetHeight() == 85,
+    "A single enlarged buff no longer reserves two enlarged rows")
 check(container.buttons[1].clicks == false and container.buttons[1].hideTooltipInCombat == false
     and container.buttons[1].tooltipAnchor == "ANCHOR_BOTTOMRIGHT", "Native tooltips keep working without intercepting party targeting")
 
@@ -109,6 +111,13 @@ check(ordinaryIcon.width == 19 and container.buttons[1].width == 14 and containe
     and not container.buttons[3]:IsShown(), "Combat shows each buff once at the standard size without guessing its caster")
 check(reads == 0, "No addon aura API reads are attempted while native combat rendering is active")
 check(member:GetHeight() == height and #Mock.frames == frameCount, "Combat never rebuilds the protected layout or creates another container")
+for index = 3, 16 do Mock.auras.party1[index] = {icon=index, auraInstanceID=200+index, sourceUnit="player"} end
+render(container)
+Mock.Event("UNIT_AURA", "party1")
+check(container.buttons[16]:IsShown() and container.buttons[16].width == 14 and member:GetHeight() == height,
+    "A sparse pre-combat row can gain all sixteen buffs without resizing protected frames")
+check(container.options.layout.elementHeight * 2 + container.options.layout.lineSpacing <= row:GetHeight()
+    and reads == 0, "The full native combat list fits its compact reservation without addon aura reads")
 newcomer:Show()
 Mock.Event("GROUP_ROSTER_UPDATE")
 local newContainer

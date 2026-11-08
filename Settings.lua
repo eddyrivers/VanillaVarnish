@@ -173,7 +173,7 @@ function VV.RegisterOptions()
     spacing:SetHeight(30)
     controls["party.spacing"] = UI.Slider(spacing, "vv.party.spacing", "Space between members", 0, 0, 40, 1, false,
         function() return VV.db.party.spacing end, function(value) VV.Party.SetOption("spacing", value) end,
-        "Extra space between portrait-style party members in UI units. Buff rows and visible pets keep enough room. Changes apply after combat.")
+        "Extra space between portrait-style party members in UI units. Buff rows fit their icons while keeping room for 16 combat buffs. Visible pets keep enough room. Changes apply after combat.")
     UI.Label(party, "Pin tanks, then healers", 16, -320)
     local roles = CreateFrame("DropdownButton", nil, party, "WowStyle1DropdownTemplate")
     roles:SetPoint("TOPLEFT", party, "TOPLEFT", 208, -314)

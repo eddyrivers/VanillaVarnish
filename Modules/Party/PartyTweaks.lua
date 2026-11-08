@@ -6,7 +6,7 @@ local ICON_SIZE, ICON_GAP, BUFFS_PER_ROW, MAX_BUFFS = 14, 2, 8, 16
 local PLAYER_ICON_SIZE, AURA_SCAN_LIMIT = ICON_SIZE + 5, 40
 local ROW_STEP = PLAYER_ICON_SIZE + ICON_GAP
 local ROW_HEIGHT = PLAYER_ICON_SIZE * 2 + ICON_GAP
-local EXTRA_HEIGHT = ROW_HEIGHT + 2
+local COMBAT_HEIGHT = ICON_SIZE * 2 + ICON_GAP
 -- Blizzard's DebuffTypeColor values (FrameXML/BuffFrame.lua). Prefer the
 -- client's table when present, including any accessibility customization.
 local debuffColors = {
@@ -463,7 +463,7 @@ local function styleBuffBorder(icon, own, drinking, pixel)
 end
 
 local function updateBuffs(state)
-    state.buffCount, state.buffSource, state.buffReadFailed = 0, nil, false
+    state.buffCount, state.buffSource, state.buffReadFailed, state.buffHeight = 0, nil, false, 0
     if not feature("buffs") then state.buffStatus = "buffs disabled"; clearRow(state); return end
     if state.compact or raidStyle() then state.buffStatus = "raid-style party frames"; clearRow(state); return end
     local unit = memberUnit(state.member)
@@ -549,6 +549,16 @@ local function updateBuffs(state)
     local ordered = recovery
     for _, entry in ipairs(ownBuffs) do ordered[#ordered + 1] = entry end
     for _, entry in ipairs(others) do ordered[#ordered + 1] = entry end
+    local rowHeights = {0, 0}
+    for index = 1, MAX_BUFFS do
+        local entry = ordered[index]
+        if entry then
+            entry.size = (entry.own or entry.recovery == "drink") and PLAYER_ICON_SIZE or ICON_SIZE
+            local row = math.floor((index - 1) / BUFFS_PER_ROW) + 1
+            rowHeights[row] = math.max(rowHeights[row], entry.size)
+        end
+    end
+    state.buffHeight = rowHeights[1] + (rowHeights[2] > 0 and ICON_GAP + rowHeights[2] or 0)
     local received = 0
     local x = 0
     local pixel = PixelUtil and PixelUtil.GetPixelToUIUnitFactor
@@ -563,10 +573,10 @@ local function updateBuffs(state)
             if (index - 1) % BUFFS_PER_ROW == 0 then x = 0 end
             received = received + 1
             local drinking = entry.recovery == "drink"
-            local size = (entry.own or drinking) and PLAYER_ICON_SIZE or ICON_SIZE
+            local size = entry.size
             icon:SetSize(size, size)
             icon:ClearAllPoints()
-            icon:SetPoint("TOPLEFT", state.row, "TOPLEFT", x, -math.floor((index - 1) / BUFFS_PER_ROW) * ROW_STEP)
+            icon:SetPoint("TOPLEFT", state.row, "TOPLEFT", x, index > BUFFS_PER_ROW and -(rowHeights[1] + ICON_GAP) or 0)
             x = x + size + ICON_GAP
             if attempt(setAura, icon, unit, aura, indexed and entry.index or nil, entry.instanceID) then
                 styleBuffBorder(icon, entry.own, drinking, pixel)
@@ -606,14 +616,18 @@ local function layoutRow(state)
     else
         state.row:SetPoint("TOPLEFT", member, "TOPLEFT", 7, -(state.baseHeight + 2))
     end
-    -- Reserve both rows for buffs gained in combat, but count the native area
-    -- above them only once. GetTop uses each frame's effective scale.
-    local height = state.baseHeight + EXTRA_HEIGHT
+    -- Keep room for all sixteen standard-size native combat buffs without
+    -- reserving two enlarged rows when only a few personal buffs are present.
+    -- Without a native container, the fallback can still show enlarged buffs
+    -- during combat and needs the full reservation.
+    local buffHeight = math.max(state.nativeBuffs and COMBAT_HEIGHT or ROW_HEIGHT, state.buffHeight or 0)
+    if state.row:GetHeight() ~= buffHeight then state.row:SetHeight(buffHeight) end
+    local height = state.baseHeight + buffHeight + 2
     if member.GetTop and state.row.GetTop then
         local top, rowTop = readable(member:GetTop()), readable(state.row:GetTop())
         local scale, rowScale = member:GetEffectiveScale(), state.row:GetEffectiveScale()
         if type(top) == "number" and type(rowTop) == "number" and scale > 0 then
-            height = math.max(state.baseHeight, top - rowTop * rowScale / scale + ROW_HEIGHT * rowScale / scale + 2)
+            height = math.max(state.baseHeight, top - rowTop * rowScale / scale + buffHeight * rowScale / scale + 2)
         end
     end
     local changed = member:GetHeight() ~= height
@@ -1051,9 +1065,12 @@ local function refresh()
         if state then
             state.active = true
             if not compact then prepareNativeBuffs(state) end
-            if not compact and layoutRow(state) then layoutChanged = true end
             colorHealth(state)
-            if not compact then updateBuffs(state); updateDebuffs(state) end
+            if not compact then
+                updateBuffs(state)
+                if layoutRow(state) then layoutChanged = true end
+                updateDebuffs(state)
+            end
             updateRange(state)
         end
     end)
