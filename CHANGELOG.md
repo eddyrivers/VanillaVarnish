@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.20
+
+- Enlarge drinking buffs to match your own buffs and give them a light cyan, one-pixel border outside combat.
+
 ## 1.0.34.19
 
 - bugfix: Keep tanks and healers pinned when party members zone or change form.

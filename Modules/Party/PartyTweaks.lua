@@ -126,7 +126,7 @@ local function createState(member)
         icon.border = icon:CreateTexture(nil, "BACKGROUND")
         icon.border:SetAllPoints()
         icon.border:SetColorTexture(0.08, 0.08, 0.08, 1)
-        icon.goldBorder, icon.borderInset = false, 1
+        icon.borderStyle, icon.borderInset = "plain", 1
         icon.texture = icon:CreateTexture(nil, "ARTWORK")
         icon.texture:SetPoint("TOPLEFT", 1, -1)
         icon.texture:SetPoint("BOTTOMRIGHT", -1, 1)
@@ -380,10 +380,10 @@ local function resting(aura)
     -- recovery effects, never lasting Well Fed bonuses or arbitrary names
     -- containing "food". Unknown/restricted names retain normal priority.
     if not restNames then
-        restNames = {Food=true, Drink=true}
-        for _, id in ipairs({433, 430}) do
-            local name = spellName(id)
-            if name then restNames[name] = true end
+        restNames = {Food="food", Drink="drink"}
+        for _, entry in ipairs({{433, "food"}, {430, "drink"}}) do
+            local name = spellName(entry[1])
+            if name then restNames[name] = entry[2] end
         end
     end
     local name = auraField(aura, "name")
@@ -391,7 +391,7 @@ local function resting(aura)
         local id = auraField(aura, "spellId")
         if type(id) == "number" then name = spellName(id) end
     end
-    return type(name) == "string" and restNames[name] == true
+    return type(name) == "string" and restNames[name] or nil
 end
 
 local function instanceBuffs(unit)
@@ -445,13 +445,15 @@ local function castByPlayer(unit, aura, instanceID)
     return playerOK and caster == readable(player)
 end
 
-local function styleBuffBorder(icon, own, pixel)
-    if icon.goldBorder ~= own then
-        if own then icon.border:SetColorTexture(1, 0.82, 0.25, 1)
+local function styleBuffBorder(icon, own, drinking, pixel)
+    local style = drinking and "drink" or own and "gold" or "plain"
+    if icon.borderStyle ~= style then
+        if drinking then icon.border:SetColorTexture(0.5, 0.9, 1, 1)
+        elseif own then icon.border:SetColorTexture(1, 0.82, 0.25, 1)
         else icon.border:SetColorTexture(0.08, 0.08, 0.08, 1) end
-        icon.goldBorder = own
+        icon.borderStyle = style
     end
-    local inset = own and pixel or 1
+    local inset = (own or drinking) and pixel or 1
     if icon.borderInset ~= inset then
         icon.texture:ClearAllPoints()
         icon.texture:SetPoint("TOPLEFT", inset, -inset)
@@ -539,8 +541,8 @@ local function updateBuffs(state)
         if type(aura) == "table" then
             local instanceID = instances and instances[index]
             local own = castByPlayer(unit, aura, instanceID)
-            local entry = {aura=aura, index=index, own=own, instanceID=instanceID}
-            local destination = resting(aura) and recovery or own and ownBuffs or others
+            local entry = {aura=aura, index=index, own=own, instanceID=instanceID, recovery=resting(aura)}
+            local destination = entry.recovery and recovery or own and ownBuffs or others
             destination[#destination + 1] = entry
         end
     end
@@ -560,13 +562,14 @@ local function updateBuffs(state)
         if type(aura) == "table" then
             if (index - 1) % BUFFS_PER_ROW == 0 then x = 0 end
             received = received + 1
-            local size = entry.own and PLAYER_ICON_SIZE or ICON_SIZE
+            local drinking = entry.recovery == "drink"
+            local size = (entry.own or drinking) and PLAYER_ICON_SIZE or ICON_SIZE
             icon:SetSize(size, size)
             icon:ClearAllPoints()
             icon:SetPoint("TOPLEFT", state.row, "TOPLEFT", x, -math.floor((index - 1) / BUFFS_PER_ROW) * ROW_STEP)
             x = x + size + ICON_GAP
             if attempt(setAura, icon, unit, aura, indexed and entry.index or nil, entry.instanceID) then
-                styleBuffBorder(icon, entry.own, pixel)
+                styleBuffBorder(icon, entry.own, drinking, pixel)
                 state.buffCount = state.buffCount + 1
             else hideIcon(icon) end
         else

@@ -16,6 +16,15 @@ check(icons[1].texture.textureValue == 20 and icons[2].texture.textureValue == 2
     "Eating and drinking beyond the display limit move ahead of other buffs")
 check(icons[3].texture.textureValue == 3 and icons[4].texture.textureValue == 22 and icons[3].width == 19,
     "Player buffs follow recovery buffs, including late native entries, and retain larger size")
+check(icons[1]:GetWidth() == icons[3]:GetWidth() and icons[1]:GetHeight() == icons[3]:GetHeight(),
+    "Drinking matches enlarged player buffs even without player ownership")
+check(icons[1].border.color[1] == 0.5 and icons[1].border.color[2] == 0.9 and icons[1].border.color[3] == 1
+    and icons[2]:GetWidth() == 14, "Only drinking receives the enlarged light cyan recovery styling")
+PixelUtil = {GetPixelToUIUnitFactor=function() return 0.8 end}
+member.scale = 2
+Mock.Event("UNIT_AURA", "party1")
+check(icons[1].borderInset == 0.4 and icons[3].borderInset == 0.4 and icons[2].borderInset == 1,
+    "Drinking and player borders remain one screen pixel as the party frame scales")
 check(icons[5].texture.textureValue == 1 and icons[6].texture.textureValue == 2, "Remaining buffs retain native order")
 check(icons[8].point[5] == 0 and icons[9].point[4] == 0 and icons[9].point[5] == -21
     and icons[16].point[5] == -21, "Eight icons per row wrap without widening the row")
@@ -36,6 +45,8 @@ buffs[20].name, buffs[24].name = "Well Fed", "Food Aura Test"
 Mock.Event("UNIT_AURA", "party1")
 check(icons[1].texture.textureValue == 3 and icons[2].texture.textureValue == 22,
     "Long-lasting food bonuses and arbitrary names are not treated as eating/drinking")
+check(icons[1].border.color[1] == 1 and icons[1].border.color[2] == 0.82,
+    "Reusing a drinking icon for a player buff restores its gold border")
 buffs[20].name = {secret=true}; buffs[20].spellId = {secret=true}
 Mock.Event("UNIT_AURA", "party1")
 check(icons[1].texture.textureValue == 3, "Restricted recovery metadata leaves normal priority unchanged")
@@ -45,4 +56,15 @@ C_UnitAuras.GetUnitAuras = function(unit) return Mock.auras[unit] end
 Mock.Event("UNIT_AURA", "party1")
 check(icons[1].texture.textureValue == 100 and icons[2].texture.textureValue == 102,
     "Localized food/drink names are prioritized")
+check(icons[2]:GetWidth() == 19 and icons[2].border.color[1] == 0.5 and icons[2].borderInset == 0.4,
+    "Localized drinking overrides the player's gold border with one-pixel light cyan")
+Mock.combat = false
+Mock.auras.party1 = {{icon=104, spellId=22734}}
+Mock.Event("UNIT_AURA", "party1")
+check(icons[1]:GetWidth() == 19 and icons[1].border.color[1] == 0.5,
+    "Drinking identified by a localized spell name receives the same styling")
+Mock.auras.party1 = {{icon=103, name="Other", sourceUnit="party2"}}
+Mock.Event("UNIT_AURA", "party1")
+check(icons[1]:GetWidth() == 14 and icons[1].border.color[1] == 0.08 and icons[1].borderInset == 1,
+    "Reused recovery icons restore ordinary size and border for other buffs")
 VV_PARTY_PRIORITY_CHECKS = checks
