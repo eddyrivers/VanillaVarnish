@@ -190,6 +190,7 @@ local blocks, rendered = {}, {}
 local nativeClick = function() end
 native.OnBlockHeaderClick = nativeClick
 function native:IsCollapsed() return self.isCollapsed end
+function native:SetContainer(frame) self.parentContainer = frame; self:SetParent(frame) end
 function native:GetContentsHeight() return self.contentsHeight end
 function native:MarkDirty()
     assert(inSecureCall, "MarkDirty must run through Blizzard's security boundary")
@@ -248,10 +249,14 @@ function native:LayoutBlock(block)
     return true
 end
 function native:EnumQuestWatchData(callback)
-    for _, id in ipairs(watches) do if not callback(self, id) then return end end
+    for index = 1, C_QuestLog.GetNumQuestWatches() do
+        local id = C_QuestLog.GetQuestIDForQuestWatchIndex(index)
+        if id and not callback(self, id) then return end
+    end
 end
 local originalEnum = native.EnumQuestWatchData
 local function render(self, id)
+    if type(id) == "table" then id = id:GetID() end
     local block = self:GetBlock(id)
     local metadata = addon.ReadMetadata()[id] or { title = "Quest" }
     block:SetHeader(metadata.title)
@@ -261,8 +266,9 @@ local function render(self, id)
     rendered[#rendered + 1] = id
     return self:LayoutBlock(block)
 end
-function native:Update()
+function native:Update(availableHeight)
     self:BeginLayout()
+    if availableHeight then self.availableHeight = availableHeight end
     self:EnumQuestWatchData(render)
     self:SetHeight(self.contentsHeight)
     return self.contentsHeight, false

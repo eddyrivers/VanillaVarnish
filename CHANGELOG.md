@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.22
+
+- bugfix: Reach all tracked quests by scrolling the existing tracker, without untracking another zone. Keep the familiar quest rows and item buttons, with a scrollbar that appears only when needed.
+
 ## 1.0.34.21
 
 - Reduce empty space between portrait party members while keeping all 16 buff slots. Extra room returns only when larger buffs need it, and party positions stay fixed during combat.

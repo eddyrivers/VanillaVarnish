@@ -158,4 +158,13 @@ check(revised.modules.politeUI == false and revised.politeUI.rules.player.fadeOu
     "Saving active edits preserves dormant beta preferences on that profile")
 check(vv.LoadPreset("Default") and not vv.PresetModified() and vv.db.politeUI.rules == rules
     and vv.db.modules.politeUI == true, "Preset application preserves dormant character data")
+vv.QuestTracker.SetOption("scrolling", false)
+check(vv.SaveProfile("Short tracker") and not vv.profileStore["Short tracker"].settings.questTracker.scrolling,
+    "Profiles retain the overflow scrolling preference")
+vv.QuestTracker.SetOption("scrolling", true)
+check(vv.LoadProfile("Short tracker") and not vv.db.questTracker.scrolling and not vv.ProfileModified(),
+    "Loading a profile restores scrolling without dirtying its status")
+vv.profileStore["Short tracker"].settings.questTracker.scrolling = nil
+check(vv.LoadProfile("Short tracker") and vv.db.questTracker.scrolling and not vv.ProfileModified(),
+    "Profiles saved before scrolling use its default without appearing modified")
 VV_PROFILE_CHECKS = checks

@@ -71,7 +71,9 @@ function addon.RegisterOptions()
     Button("Collapse all zones", 172, -218, function() addon.SetAllZonesCollapsed(true) end)
     Label("Click a zone heading to expand or collapse it, including in combat.\nRight-click to track or untrack the zone outside combat. Move and resize in Edit Mode.",
         16, -266, "GameFontHighlightSmall")
-    Button("Restore defaults", 16, -338, addon.ResetOptions)
+    Check("scrolling", "Scroll overflowing objectives", -322,
+        "Use the mouse wheel or scrollbar to reach all tracked quests in the existing tracker. Keeps Blizzard's quest rows and item buttons.")
+    Button("Restore defaults", 16, -378, addon.ResetOptions)
     VV.RegisterOptions()
     category = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, panel, "Quest tracker")
     Settings.RegisterAddOnCategory(category)

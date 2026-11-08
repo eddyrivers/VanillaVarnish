@@ -2,6 +2,8 @@
 MockFrames = {}
 MockGeometry = {}
 UIParent = {}
+function UIParent:GetRight() return 1920 end
+function UIParent:GetEffectiveScale() return 1 end
 MockTimers = {}
 function MockDropdownMenu(dropdown)
     local root = {items={}}
@@ -50,6 +52,13 @@ CreateFrame = function(kind, name, parent, template)
         self.scripts[event] = callback
         if event == "OnEvent" then self.callback = callback end
     end
+    function frame:GetScript(event) return self.scripts[event] end
+    function frame:GetParent() return self.parent end
+    function frame:SetParent(parent) self.parent = parent end
+    function frame:EnableMouseWheel(enabled) self.mouseWheel = enabled end
+    function frame:SetHideIfUnscrollable(enabled) self.hideIfUnscrollable = enabled end
+    function frame:GetEffectiveScale() return 1 end
+    function frame:GetRight() return 1900 end
     function frame:RegisterEvent() end
     function frame:HookScript(event, callback)
         local original = self.scripts[event]
@@ -92,7 +101,12 @@ CreateFrame = function(kind, name, parent, template)
     function frame:ClearAllPoints() CheckLayout(self); MockGeometry[self].points = {} end
     function frame:SetWidth(width) MockGeometry[self].width = width end
     function frame:GetWidth() return MockGeometry[self].width end
-    function frame:SetHeight(height) CheckLayout(self); MockGeometry[self].height = height end
+    function frame:SetHeight(height)
+        CheckLayout(self)
+        local changed = MockGeometry[self].height ~= height
+        MockGeometry[self].height = height
+        if changed and self.scripts.OnSizeChanged then self.scripts.OnSizeChanged(self, self:GetWidth(), height) end
+    end
     function frame:SetSize(width, height) MockGeometry[self].width, MockGeometry[self].height = width, height end
     function frame:GetSize() return MockGeometry[self].width, MockGeometry[self].height end
     function frame:SetFrameStrata() end
@@ -108,6 +122,8 @@ CreateFrame = function(kind, name, parent, template)
     function frame:SetScrollChild(child) self.child = child end
     function frame:SetVerticalScroll(value) self.scroll = value end
     function frame:GetVerticalScroll() return self.scroll end
+    function frame:GetVerticalScrollRange() return math.max(0, self.child:GetHeight() - self:GetHeight()) end
+    function frame:UpdateScrollChildRect() end
     function frame:CreateFontString() return region() end
     function frame:CreateTexture() return region() end
     function frame:IsShown() return MockGeometry[self].shown end
@@ -119,5 +135,8 @@ CreateFrame = function(kind, name, parent, template)
         if not wasShown and self.scripts.OnShow then self.scripts.OnShow(self) end
     end
     function frame:Hide() CheckLayout(self); MockGeometry[self].shown = false end
+    if template == "ScrollFrameTemplate" then
+        frame.ScrollBar = CreateFrame("Slider", nil, frame)
+    end
     return frame
 end

@@ -1,7 +1,7 @@
 local _, VV = ...
 local addon = VV.QuestTracker
 local tracker, db
-local displayEnabled, displaySort
+local displayEnabled, displaySort, displayScrolling
 local eventFrame = CreateFrame("Frame")
 local queued = false
 local snapshots, titles = {}, {}
@@ -204,7 +204,10 @@ ApplyLayout = function()
     if not tracker or not db then return end
     if InCombatLockdown() and not CanLayoutInCombat() then return end
     RestoreLayout()
-    if not displayEnabled or not tracker:IsShown() or tracker:IsCollapsed() then return end
+    if not displayEnabled or not tracker:IsShown() or tracker:IsCollapsed() then
+        if addon.Scrolling then addon.Scrolling.UpdateRange() end
+        return
+    end
 
     local groups = addon.ReadWatchGroups(displaySort)
     addon.groups = groups
@@ -223,7 +226,9 @@ ApplyLayout = function()
     moduleHeight = tracker:GetHeight()
     local budget = tracker.availableHeight
     local container = tracker.parentContainer
-    if container and container.modules then
+    if addon.Scrolling and addon.Scrolling.IsActive() then
+        budget = math.huge
+    elseif container and container.modules then
         local others, count = 0, 0
         for _, module in ipairs(container.modules) do
             if module ~= tracker then
@@ -286,6 +291,7 @@ ApplyLayout = function()
     -- Frame height is C-backed; native .contentsHeight and return values stay
     -- unchanged. Following native modules already anchor to this frame's bottom.
     tracker:SetHeight(y + (tracker.bottomSpacing or 0))
+    if addon.Scrolling then addon.Scrolling.UpdateRange() end
 end
 
 Refresh = function(immediate)
@@ -295,6 +301,11 @@ Refresh = function(immediate)
         return
     end
     displaySort = db.completedSort
+    local scrolling = VV.IsModuleEnabled("questTracker") and db.scrolling
+    if displayScrolling ~= scrolling then
+        displayScrolling = scrolling
+        if addon.Scrolling then addon.Scrolling.Refresh() end
+    end
     local enabled = VV.IsModuleEnabled("questTracker") and db.enabled
     if displayEnabled ~= enabled then
         displayEnabled = enabled
@@ -310,13 +321,21 @@ Refresh = function(immediate)
 end
 
 local function TryInstall()
-    if tracker then return true end
+    if tracker then
+        if addon.Scrolling then addon.Scrolling.Install(tracker.parentContainer) end
+        return true
+    end
     if not VV.IsModuleEnabled("questTracker") then return true end
     if InCombatLockdown() then return false end
     local module = QuestObjectiveTracker
     if not module or not module.ContentsFrame or type(module.BeginLayout) ~= "function"
         or type(module.Update) ~= "function" or type(module.GetExistingBlock) ~= "function" then return false end
     tracker = module
+    if type(module.SetContainer) == "function" then
+        hooksecurefunc(module, "SetContainer", function(self)
+            if addon.Scrolling then addon.Scrolling.Install(self.parentContainer) end
+        end)
+    end
     if type(module.AdjustSlideAnchor) == "function" then
         hooksecurefunc(module, "AdjustSlideAnchor", PreserveGroupedSlideAnchor)
     end
@@ -348,6 +367,7 @@ local function TryInstall()
             for region in pairs(self.addedRegions or {}) do snapshots[region] = nil end
         end)
     end)
+    if addon.Scrolling then addon.Scrolling.Install(module.parentContainer) end
     Refresh()
     return true
 end
@@ -367,7 +387,7 @@ end
 function addon.SetOption(key, value)
     if key == "completedSort" then
         if value ~= "off" and value ~= "top" and value ~= "bottom" then return false end
-    elseif key == "enabled" then
+    elseif key == "enabled" or key == "scrolling" then
         value = not not value
     else return false end
     db[key] = value
@@ -389,6 +409,7 @@ end
 function addon.ResetOptions()
     local defaults = VV.GetPreset and VV.GetPreset("Default").questTracker
     db.enabled, db.completedSort, db.collapsed = true, defaults and defaults.completedSort or "off", {}
+    db.scrolling = true
     addon.RefreshOptions()
     if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
     Refresh()
@@ -427,6 +448,7 @@ local function Slash(message)
         Print("Grouping " .. (db.enabled and "on" or "off") .. "; native tracker " .. (tracker and "connected" or "unavailable") .. ".")
         local label = ({off = "off", top = "completed on top", bottom = "completed on bottom"})[db.completedSort]
         Print("Completed quest sorting: " .. label .. ".")
+        Print("Overflow scrolling " .. (db.scrolling and "on" or "off") .. ".")
     else
         Print("/vv tracker opens settings. /vv tracker group on | group off | expand | collapse | status | help. Click a native zone heading to fold it.")
     end

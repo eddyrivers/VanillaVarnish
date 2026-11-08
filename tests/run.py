@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--lua-runtime")
 parser.add_argument("--blizzard-source")
 parser.add_argument("--tooltip-source", help="Optional cached Forever tooltip sources (shared.lua, tooltip.lua, optional container.lua)")
+parser.add_argument("--quest-source", help="Optional cached Forever quest tracker source (tracker.lua)")
 args = parser.parse_args()
 if args.lua_runtime:
     sys.path.insert(0, args.lua_runtime)
@@ -106,6 +107,29 @@ if args.blizzard_source:
 
 tracker = runtime()
 tracker.execute((ROOT / "tests/tracker/test_tracker.lua").read_text())
+if args.quest_source:
+    tracker.execute('''
+function CreateFromMixins(...)
+    local result = {}
+    for index = 1, select("#", ...) do
+        for key, value in pairs(select(index, ...) or {}) do result[key] = value end
+    end
+    return result
+end
+Enum = {QuestClassification = {Campaign = 1}}
+QuestCache = {Get = function(_, id)
+    return {GetID=function() return id end, IsCalling=function() return false end,
+        IsDisabledForSession=function() return false end, GetQuestClassification=function() return 0 end}
+end}
+''')
+    tracker.execute((Path(args.quest_source) / "tracker.lua").read_text(encoding="utf-8-sig"))
+    tracker.execute('''
+QuestObjectiveTracker.EnumQuestWatchData = QuestObjectiveTrackerMixin.EnumQuestWatchData
+QuestObjectiveTracker.BuildQuestWatchInfos = QuestObjectiveTrackerMixin.BuildQuestWatchInfos
+QuestObjectiveTracker.ShouldDisplayQuest = QuestObjectiveTrackerMixin.ShouldDisplayQuest
+''')
+    print("PASS: scrolling fixture uses cached native quest watch filtering, sorting, and early-stop enumeration")
+tracker.execute((ROOT / "tests/tracker/test_scrolling.lua").read_text())
 
 party = runtime()
 party.execute((ROOT / "tests/party/mock.lua").read_text())
