@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.19
+
+- bugfix: Keep tanks and healers pinned when party members zone or change form.
+
 ## 1.0.34.18
 
 - bugfix: Raid-style party frames now respect tank and healer pinning, including your own frame.

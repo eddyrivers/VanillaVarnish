@@ -23,6 +23,7 @@ local desaturationRecords = setmetatable({}, {__mode="k"})
 local debuffHooks = setmetatable({}, {__mode="k"})
 local partyLayouts = setmetatable({}, {__mode="k"})
 local compactLayouts = setmetatable({}, {__mode="k"})
+local assignedRoles, rosterRolesPending = {}, false
 local colorHealth
 local popupSuppressed, previousPopupSetting
 
@@ -673,22 +674,53 @@ local function partyIsDragging(party)
     return party and party.IsEditModeDragging and party:IsEditModeDragging()
 end
 
+local function memberGUID(unit)
+    if unit and UnitGUID then
+        local ok, value = attempt(UnitGUID, unit)
+        value = ok and readable(value)
+        if type(value) == "string" and value ~= "" then return value end
+    end
+end
+
+local function pruneAssignedRoles()
+    if not rosterRolesPending or InCombatLockdown() then return end
+    rosterRolesPending = false
+    local current = {}
+    for index = 0, 4 do
+        local guid = memberGUID(index == 0 and "player" or "party" .. index)
+        if guid then current[guid] = assignedRoles[guid] end
+    end
+    assignedRoles = current
+end
+
 local function memberRole(unit)
-    if unit and UnitGroupRolesAssigned then
-        local ok, value = attempt(UnitGroupRolesAssigned, unit)
-        if ok then return readable(value) end
-    elseif unit and UnitGroupRolesAssignedEnum then
+    if not unit then return end
+    local role
+    -- Match the native assigned-role icon before consulting the string API.
+    if UnitGroupRolesAssignedEnum and Enum and Enum.LFGRole then
         local ok, value = attempt(UnitGroupRolesAssignedEnum, unit)
         value = ok and readable(value)
-        if Enum and Enum.LFGRole then
-            return value == Enum.LFGRole.Tank and "TANK" or value == Enum.LFGRole.Healer and "HEALER" or nil
+        if value ~= nil then
+            role = value == Enum.LFGRole.Tank and "TANK" or value == Enum.LFGRole.Healer and "HEALER"
+                or value == Enum.LFGRole.Damage and "DAMAGER" or nil
         end
     end
+    if not role and UnitGroupRolesAssigned then
+        local ok, value = attempt(UnitGroupRolesAssigned, unit)
+        value = ok and readable(value)
+        if value == "TANK" or value == "HEALER" or value == "DAMAGER" then role = value end
+    end
+    -- Zoning can temporarily hide a role. Remember only verified identities,
+    -- never a frame or party slot that may now belong to somebody else.
+    local guid = memberGUID(unit)
+    if guid and role then assignedRoles[guid] = role end
+    return role or guid and assignedRoles[guid] or nil
 end
 
 local function arrangeCompactParty(party, nativeLayout)
     party = party or _G.CompactPartyFrame
     if not party then return end
+    pruneAssignedRoles()
     if nativeLayout and compactLayouts[party] then compactLayouts[party].native = nil end
     if InCombatLockdown() or partyIsDragging(_G.PartyFrame)
         or not party.memberUnitFrames or type(party.updateLayoutFunc) ~= "function" then return end
@@ -751,6 +783,7 @@ end
 
 local function arrangeParty(party, nativeLayout)
     if InCombatLockdown() or not party.GetNumPoints or partyIsDragging(party) then return end
+    pruneAssignedRoles()
     local layout = partyLayouts[party]
     if not layout then return end
     if party.IsInitialized and not party:IsInitialized() then return end
@@ -1070,6 +1103,7 @@ end
 driver:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_LOGIN" then ready = true end
     if not ready then return end
+    if event == "GROUP_ROSTER_UPDATE" then rosterRolesPending = true end
     if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
         for _, state in pairs(states) do if state.row then updateBuffs(state) end end
         queueRefresh()

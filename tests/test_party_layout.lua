@@ -192,6 +192,23 @@ check(not vv.Party.SetOption("rolePin", true) and not vv.Party.SetOption("rolePi
 vv.Party.HandleSlash("roles top")
 check(vv.db.party.rolePin == "top", "Role pinning is accessible from slash commands")
 
+-- Portrait layouts share the native assigned-role lookup and zoning memory.
+local guids = {party1="damage1", party2="healer", party3="tank", party4="damage4"}
+function UnitGUID(unit) return guids[unit] end
+Enum.LFGRole.Damage = 3
+local enumRoles = {party1=3, party2=2, party3=1, party4=3}
+function UnitGroupRolesAssignedEnum(unit) return enumRoles[unit] end
+function UnitGroupRolesAssigned(unit) return roles[unit] end
+roles.party3 = "DAMAGER"
+Mock.Event("UNIT_AURA", "party3"); Mock.Tick(1); order({3,2,4,1})
+enumRoles.party3, roles.party3 = 0, "NONE"
+Mock.Event("UNIT_CONNECTION", "party3"); Mock.Tick(1); order({3,2,4,1})
+Mock.Event("GROUP_ROSTER_UPDATE"); order({3,2,4,1})
+enumRoles.party3, roles.party3 = 3, "DAMAGER"
+Mock.Event("PLAYER_ROLES_ASSIGNED"); order({2,4,3,1})
+enumRoles.party3, roles.party3 = 1, "TANK"
+Mock.Event("ROLE_CHANGED_INFORM"); order({3,2,4,1})
+
 local editing = true
 function EditModeManagerFrame:IsEditModeActive() return editing end
 local editX, editY, editScale = 123.4567, -209.8765, 1.3

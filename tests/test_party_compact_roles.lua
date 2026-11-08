@@ -183,4 +183,77 @@ Mock.Event("GROUP_ROSTER_UPDATE")
 order({"party2", "player", "party1"})
 vv.Party.SetOption("rolePin", "off")
 order({"player", "party2", "party1"})
+
+-- Role lookups can disagree or become unavailable while a remote member zones.
+-- Use the native enum first and remember roles by identity, not by frame/slot.
+local guids = {player="healer", party1="damage", party2="tank"}
+function UnitGUID(unit)
+    check(not Mock.combat, "Identity reads also wait until combat ends")
+    return guids[unit]
+end
+local enumRoles = {player=2, party1=3, party2=1}
+Enum.LFGRole.Damage = 3
+function UnitGroupRolesAssignedEnum(unit) return enumRoles[unit] end
+roles = {player="HEALER", party1="DAMAGER", party2="DAMAGER"}
+function UnitGroupRolesAssigned(unit) return roles[unit] end
+vv.Party.SetOption("rolePin", "top")
+order({"party2", "player", "party1"})
+Mock.Event("UNIT_AURA", "party2"); Mock.Tick(1)
+order({"party2", "player", "party1"})
+enumRoles.party2, roles.party2 = 0, "NONE"
+Mock.Event("UNIT_CONNECTION", "party2"); Mock.Tick(1)
+order({"party2", "player", "party1"})
+Mock.Event("GROUP_ROSTER_UPDATE")
+refreshNative()
+order({"party2", "player", "party1"})
+enumRoles.party2, roles.party2 = nil, nil
+Mock.Event("PLAYER_ENTERING_WORLD"); Mock.Tick(1)
+order({"party2", "player", "party1"})
+local enumReader = UnitGroupRolesAssignedEnum
+function UnitGroupRolesAssignedEnum(unit)
+    if unit == "party2" then error("role temporarily unavailable") end
+    return enumReader(unit)
+end
+Mock.Tick(1)
+order({"party2", "player", "party1"})
+UnitGroupRolesAssignedEnum = enumReader
+enumRoles.party2, roles.party2 = {secret=true}, {secret=true}
+Mock.Tick(1)
+order({"party2", "player", "party1"})
+enumRoles.party2, roles.party2 = 3, "TANK"
+Mock.Event("PLAYER_ROLES_ASSIGNED")
+order({"player", "party2", "party1"})
+enumRoles.party2, roles.party2 = 1, "TANK"
+Mock.Event("ROLE_CHANGED_INFORM")
+-- Party slots can swap without losing the remembered role of either identity.
+guids.party1, guids.party2 = guids.party2, guids.party1
+enumRoles.party1, roles.party1, enumRoles.party2, roles.party2 = 0, "NONE", 0, "NONE"
+Mock.Event("GROUP_ROSTER_UPDATE")
+order({"party1", "player", "party2"})
+-- A replacement must not inherit the tank role from the recycled unit token.
+guids.party1 = "replacement"
+Mock.Event("GROUP_ROSTER_UPDATE")
+order({"player", "party2", "party1"})
+guids.party1 = "tank"
+Mock.Event("GROUP_ROSTER_UPDATE")
+order({"player", "party2", "party1"})
+-- Restricted identity is never a cache key, and missing identity is not a slot fallback.
+enumRoles.party1, roles.party1 = 1, "TANK"
+Mock.Event("PLAYER_ROLES_ASSIGNED")
+guids.party1, enumRoles.party1, roles.party1 = {secret=true}, 0, "NONE"
+Mock.Tick(1)
+order({"player", "party2", "party1"})
+guids.party1 = nil
+Mock.Tick(1)
+order({"player", "party2", "party1"})
+-- A real role change during combat applies on leaving combat.
+guids.party1, enumRoles.party1, roles.party1 = "tank", 1, "TANK"
+Mock.Event("PLAYER_ROLES_ASSIGNED")
+Mock.combat = true
+enumRoles.party1, roles.party1 = 3, "DAMAGER"
+Mock.Event("GROUP_ROSTER_UPDATE"); Mock.Event("PLAYER_ROLES_ASSIGNED"); Mock.Tick(1)
+order({"party1", "player", "party2"})
+Mock.combat = false
+Mock.Event("PLAYER_REGEN_ENABLED")
+order({"player", "party2", "party1"})
 VV_COMPACT_ROLE_CHECKS = checks

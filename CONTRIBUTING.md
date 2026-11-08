@@ -27,6 +27,8 @@ For portrait buffs, enter combat with a full row and add/remove buffs. `/vv part
 
 For party buff priority, show more than eight buffs, eat and drink, and verify recovery effects appear before player buffs with correct tooltips in both rows. For profiles, save a name, change settings, load the saved snapshot, and log into a second character. Check that designs transfer, local changes do not overwrite snapshots, quest folds remain personal, and loading is disabled during combat.
 
+For role stability, leave one party member outside an instance while the tank zones in and out. Change the tank's form or stance outside combat, then repeat in combat and leave combat. In portrait and raid-style frames, verify that pinning follows the assigned role icon, survives temporarily unavailable roles, and still updates when a member is reassigned to damage. Replace a party member and confirm the replacement does not inherit the departed member's role.
+
 ## Review regression checklist
 
 After `/reload` on WoW Forever 1.60.x / Interface 16001:

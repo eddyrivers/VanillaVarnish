@@ -12,6 +12,8 @@ Native party-buff checks block all addon aura readers during combat and exercise
 
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for setup, native-source options, and the in-game checks that mocks cannot replace.
 
+Role pinning checks also cover disagreement between native enum and string roles, temporary missing or restricted roles while zoning, identity-based role retention, roster slot swaps and replacements, and real role changes after combat in portrait and raid-style layouts.
+
 For native aura-preview coverage, include `auras.lua` and `classification.lua` from Blizzard_NamePlates in the optional source cache. Add `optionspreview.lua` from Blizzard_SettingsDefinitions_Frame/Nameplates.lua to exercise the native preview sample handoff. The suite tests each aura display combination, native icon limits and scaling, changes while pages are hidden, and isolation from Blizzard's registered preview.
 
 Native alignment checks resolve screen coordinates from Blizzard's health-bar anchors and compare live and preview timer edges, widths, and combo-point offsets across target, UI, and canvas scales in stacked and row layouts.
