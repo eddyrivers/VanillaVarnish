@@ -38,6 +38,10 @@ local function region()
     function value:SetTexture(texture) self.texture = texture end
     function value:GetText() return self.text end
     function value:GetSize() return self.width or 20, self.height or 20 end
+    function value:GetWidth() return self.width or 20 end
+    function value:GetHeight() return self.height or 20 end
+    function value:GetScale() return self.scale or 1 end
+    function value:SetScale(scale) self.scale = scale end
     function value:GetPoint() return unpack(self.point) end
     function value:Show() self.shown = true end
     function value:Hide() self.shown = false end

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.26
+
+- bugfix: Match quest circles to the zone +/− button size in normal and compact tracker views. Keep the circles aligned and consistently sized as quests change or become ready to turn in.
+
 ## 1.0.34.25
 
 - bugfix: Keep the space above Quests small after reloading and automatic tracker updates, in both normal and compact views. No need to toggle quest log settings to close the gap.

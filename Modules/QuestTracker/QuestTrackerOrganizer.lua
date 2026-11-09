@@ -3,11 +3,15 @@ local addon = VV.QuestTracker
 local tracker, db
 local displayEnabled, displaySort, displayScrolling, displayCompact
 local COMPACT_SCALE, COMPACT_FONT_REDUCTION = 0.9, 1.5
+-- Standard POI circles fill the inner 24 units of their 32-unit artwork.
+local MARKER_CIRCLE_FILL = 24 / 32
 local eventFrame = CreateFrame("Frame")
 local queued = false
 local snapshots, titles = {}, {}
 local originalFonts = setmetatable({}, { __mode = "k" })
 local hookedBlocks = setmetatable({}, { __mode = "k" })
+local markerSizes, markerOwners = {}, setmetatable({}, { __mode = "kv" })
+local hookedMarkers = setmetatable({}, { __mode = "k" })
 local headings = {}
 local moduleHeight
 local ApplyLayout, Refresh
@@ -53,6 +57,57 @@ local function CanChangeInCombat(frame)
     return not frame:IsForbidden() and not frame:IsProtected()
 end
 
+local function CanSizeMarker(marker)
+    return not marker:IsForbidden() and (not InCombatLockdown() or CanChangeInCombat(marker))
+        and (not marker.Display or (not marker.Display:IsForbidden()
+            and (not InCombatLockdown() or CanChangeInCombat(marker.Display))))
+end
+
+local function RestoreMarker(marker)
+    local sizes = markerSizes[marker]
+    if not sizes or not CanSizeMarker(marker) then return end
+    for _, size in ipairs(sizes) do size[1]:SetSize(size[2], size[3]) end
+    markerSizes[marker] = nil
+end
+
+local function SizeMarker(block, nativeUpdated)
+    local marker = block.poiButton
+    if not marker or not CanSizeMarker(marker) then return end
+    if nativeUpdated then markerSizes[marker] = nil else RestoreMarker(marker) end
+    if not (displayEnabled or displayCompact) then return end
+    local normal = marker.NormalTexture
+    if not normal then return end
+    local width, height = normal:GetSize()
+    local scale = normal.GetScale and normal:GetScale() or 1
+    if width <= 0 or height <= 0 or scale <= 0 then return end
+    local targetWidth, targetHeight = marker:GetSize()
+    if displayCompact then targetWidth, targetHeight = targetWidth * COMPACT_SCALE, targetHeight * COMPACT_SCALE end
+    local ratio = math.min(targetWidth / (width * scale * MARKER_CIRCLE_FILL),
+        targetHeight / (height * scale * MARKER_CIRCLE_FILL))
+    local sizes, seen = {}, {}
+    local function Resize(region)
+        if not region or seen[region] then return end
+        seen[region] = true
+        local w, h = region:GetSize()
+        sizes[#sizes + 1] = { region, w, h }
+        region:SetSize(w * ratio, h * ratio)
+    end
+    -- Native POI artwork is larger than its hit frame. Resize the complete
+    -- visual together, leaving native click handlers and quest state intact.
+    for _, key in ipairs({ "NormalTexture", "PushedTexture", "HighlightTexture", "Glow",
+        "UnderlayAtlas", "UnderlayBannerAtlas", "UnderlayBannerAtlasHighlight" }) do Resize(marker[key]) end
+    if marker.Display then Resize(marker.Display.Icon) end
+    markerSizes[marker] = sizes
+    markerOwners[marker] = block
+    if not hookedMarkers[marker] and type(marker.UpdateButtonStyle) == "function" then
+        hookedMarkers[marker] = true
+        hooksecurefunc(marker, "UpdateButtonStyle", function(self)
+            local owner = markerOwners[self]
+            if owner and owner.poiButton == self then SizeMarker(owner, true) end
+        end)
+    end
+end
+
 local function CanRestoreInCombat()
     if not CanChangeInCombat(tracker) or not CanChangeInCombat(tracker.ContentsFrame) then return false end
     for frame in pairs(snapshots) do
@@ -61,6 +116,7 @@ local function CanRestoreInCombat()
     for _, heading in ipairs(headings) do
         if not CanChangeInCombat(heading) or not CanChangeInCombat(heading.Icon) then return false end
     end
+    for marker in pairs(markerSizes) do if not CanSizeMarker(marker) then return false end end
     return true
 end
 
@@ -71,6 +127,7 @@ local function CanLayoutInCombat()
     local block = tracker.firstBlock
     while block do
         if not CanChangeInCombat(block) then return false end
+        if block.poiButton and not CanSizeMarker(block.poiButton) then return false end
         for region in pairs(block.addedRegions or {}) do
             if not CanChangeInCombat(region) then return false end
         end
@@ -82,6 +139,7 @@ end
 local function RestoreLayout()
     -- Only C-backed geometry/visibility/text is restored. Never write .height,
     -- .used, .nextBlock, .contentsHeight, or any other native Lua bookkeeping.
+    for marker in pairs(markerSizes) do RestoreMarker(marker) end
     for frame, state in pairs(snapshots) do
         if state.points then
             frame:ClearAllPoints()
@@ -183,8 +241,13 @@ local function Heading(index, group, sample)
         if relative == sample.HeaderText then point, relativePoint, x, y = p, rp, px, py end
     end
     if displayCompact then
-        width, height = width * COMPACT_SCALE, height * COMPACT_SCALE
-        x, y = x * COMPACT_SCALE, y * COMPACT_SCALE
+        local newWidth, newHeight = width * COMPACT_SCALE, height * COMPACT_SCALE
+        -- Keep both kinds of circle on the native marker's center line.
+        if point:find("RIGHT") then x = x - (width - newWidth) / 2
+        elseif point:find("LEFT") then x = x + (width - newWidth) / 2 end
+        if point:find("TOP") then y = y - (height - newHeight) / 2
+        elseif point:find("BOTTOM") then y = y + (height - newHeight) / 2 end
+        width, height = newWidth, newHeight
     end
     heading.Icon:SetSize(width, height)
     heading.Icon:ClearAllPoints()
@@ -227,6 +290,7 @@ ApplyLayout = function()
     local block = tracker.firstBlock
     while block do
         nativeOrder[#nativeOrder + 1] = block
+        SizeMarker(block)
         if watched[block.id] and not block.cached then blocks[block.id] = block
         else special[#special + 1] = block end
         block = block.nextBlock
@@ -381,6 +445,11 @@ local function TryInstall()
         hooksecurefunc(block, "FreeLine", function(_, line) SizeFont(line.Text, false); SizeFont(line.Dash, false) end)
         hooksecurefunc(block, "Free", function(self)
             SizeFont(self.HeaderText, false)
+            if self.poiButton then
+                RestoreMarker(self.poiButton)
+                markerSizes[self.poiButton] = nil
+                markerOwners[self.poiButton] = nil
+            end
             -- A freed frame can be acquired by another module before the next
             -- quest layout. Never restore stale geometry/text onto that owner.
             snapshots[self] = nil

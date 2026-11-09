@@ -12,7 +12,7 @@ local normalHeight, normalTop = native:GetHeight(), top(block)
 local checkbox = addon.optionControls.compact
 checkbox:SetChecked(true); checkbox.scripts.OnClick(checkbox); rebuild()
 check(block.HeaderText.size == 10.5 and block.lines[1].Text.size == 8.5, "compact reduces normal grouped text by 1.5 points")
-check(heading.Text.size == 12.5 and heading.Icon:GetSize() == 24 * 0.9, "zone titles and buttons shrink gently")
+check(heading.Text.size == 12.5 and heading.Icon:GetSize() == 20 * 0.9, "zone titles and buttons shrink gently")
 check(native:GetHeight() < normalHeight and top(block) > normalTop, "compact text and gaps fit more quest rows")
 check(block.height == 23, "native renderer measures the smaller fonts itself")
 local compactHeight = native:GetHeight()

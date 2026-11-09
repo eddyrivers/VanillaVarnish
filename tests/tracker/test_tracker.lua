@@ -221,8 +221,25 @@ function native:GetBlock(id)
         block.ProgressBar = CreateFrame("Frame", nil, self.ContentsFrame)
         block.addedRegions = { [block.ItemButton] = true, [block.ProgressBar] = true }
         block.poiButton = CreateFrame("Button", nil, block)
-        block.poiButton:SetSize(24, 24)
+        block.poiButton:SetSize(20, 20)
         block.poiButton:SetPoint("TOPRIGHT", block.HeaderText, "TOPLEFT", -7, 5)
+        local marker = block.poiButton
+        marker:SetScript("OnClick", nativeClick)
+        for _, key in ipairs({"NormalTexture", "PushedTexture", "HighlightTexture", "Glow"}) do
+            marker[key] = marker:CreateTexture()
+        end
+        marker.Display = CreateFrame("Frame", nil, marker)
+        marker.Display.Icon = marker.Display:CreateTexture()
+        function marker:UpdateButtonStyle()
+            local diameter = self.nativeDiameter or 32
+            self.NormalTexture:SetSize(diameter, diameter)
+            self.PushedTexture:SetSize(diameter, diameter)
+            self.HighlightTexture:SetSize(diameter, diameter)
+            self.Glow:SetSize(50, 50)
+            self.Display.Icon:SetSize(self.complete and 18 or 16, self.complete and 22 or 10)
+            self.Display.Icon:SetTexture(self.complete and "question" or "ellipsis")
+        end
+        marker:UpdateButtonStyle()
         function block:SetHeader(text)
             self.HeaderText:SetText(text)
             self.height = self.HeaderText:GetStringHeight()
@@ -268,6 +285,7 @@ local originalEnum = native.EnumQuestWatchData
 local function render(self, id)
     if type(id) == "table" then id = id:GetID() end
     local block = self:GetBlock(id)
+    block.poiButton:UpdateButtonStyle()
     local metadata = addon.ReadMetadata()[id] or { title = "Quest" }
     block:SetHeader(metadata.title)
     local line = block:GetLine(1)
@@ -330,8 +348,8 @@ equal(#heads, 2, "two headings integrated into native contents")
 equal(heads[1].parent, native.ContentsFrame, "heading uses native contents")
 equal(heads[1].Text:GetText(), "Elwynn Forest (1)", "first zone label")
 equal(heads[2].Text:GetText(), "Westfall (5)", "second zone count")
-equal(heads[1]:GetHeight(), 24, "heading reserves native marker height")
-equal(heads[2].Icon:GetSize(), 24, "heading icon matches native marker")
+equal(heads[1]:GetHeight(), 20, "heading reserves native marker height")
+equal(heads[2].Icon:GetSize(), 20, "heading icon matches native marker")
 local function top(frame) return select(5, frame:GetPoint(1)) end
 equal(top(blocks[5]) > top(blocks[1]), true, "native blocks arranged by zone")
 equal(top(blocks[1]) > top(blocks[2]), true, "native blocks arranged by level")
