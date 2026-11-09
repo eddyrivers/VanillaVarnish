@@ -107,6 +107,7 @@ if args.blizzard_source:
 
 tracker = runtime()
 tracker.execute((ROOT / "tests/tracker/test_tracker.lua").read_text())
+tracker.execute((ROOT / "tests/tracker/test_compact.lua").read_text())
 if args.quest_source:
     tracker.execute('''
 function CreateFromMixins(...)
@@ -130,6 +131,7 @@ QuestObjectiveTracker.ShouldDisplayQuest = QuestObjectiveTrackerMixin.ShouldDisp
 ''')
     print("PASS: scrolling fixture uses cached native quest watch filtering, sorting, and early-stop enumeration")
 tracker.execute((ROOT / "tests/tracker/test_scrolling.lua").read_text())
+tracker.execute((ROOT / "tests/tracker/test_quest_log.lua").read_text())
 
 party = runtime()
 party.execute((ROOT / "tests/party/mock.lua").read_text())

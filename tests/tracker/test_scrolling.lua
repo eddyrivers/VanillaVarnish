@@ -17,6 +17,8 @@ InCombatLockdown = function() return combat end
 EventRegistry = { RegisterCallback = function(_, event, callback) callbacks[event] = callback end }
 EditModeManagerFrame = { IsEditModeActive = function() return editing end }
 container.Header = CreateFrame("Frame", nil, container)
+container.Header:SetHeight(32)
+container.Header:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0)
 container.NineSlice = CreateFrame("Frame", nil, container)
 container:SetSize(300, 150)
 container.topModulePadding, container.bottomModulePadding = 38, 10
@@ -69,6 +71,16 @@ for _, frame in ipairs(MockFrames) do
     if frame.template == "ScrollFrameTemplate" then viewport = frame end
 end
 check(viewport and viewport:GetHeight() == 102, "viewport respects native header and bottom padding")
+-- Resolve the scroll canvas and module against the fixed header. An
+-- unanchored scroll child can retain the temporary native top inset.
+local function topInContainer(frame)
+    if frame == container then return 0 end
+    local _, relative, relativePoint, _, y = frame:GetPoint(1)
+    assert(relative and (relativePoint == "TOPLEFT" or relativePoint == "TOP"), "top anchor resolves to a parent")
+    return topInContainer(relative) + y
+end
+check(topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6,
+    "Quests starts directly below All Objectives with only the native six-unit header gap")
 check(viewport:GetVerticalScrollRange() > 0 and viewport.ScrollBar:IsShown(), "overflow has a native scrollbar")
 check(native:GetParent() == viewport.child, "existing native module is inside the scroll canvas")
 check(select(2, container.NineSlice:GetPoint(1)) == viewport, "overflow background ends at the visible tracker edge")

@@ -73,7 +73,11 @@ function addon.RegisterOptions()
         16, -266, "GameFontHighlightSmall")
     Check("scrolling", "Scroll overflowing objectives", -322,
         "Use the mouse wheel or scrollbar to reach all tracked quests in the existing tracker. Keeps Blizzard's quest rows and item buttons.")
-    Button("Restore defaults", 16, -378, addon.ResetOptions)
+    Check("compact", "Compact view", -362,
+        "Use quest text at 75% of its usual size, smaller zone headings, and tighter row spacing to fit more quests. Off by default.")
+    Check("compactLog", "Compact quest log", -402,
+        "Use smaller titles, objectives, and zone headings in the quest log list. Separate from tracker Compact view and off by default. Also available in the quest log's settings menu.")
+    Button("Restore defaults", 16, -458, addon.ResetOptions)
     VV.RegisterOptions()
     category = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, panel, "Quest tracker")
     Settings.RegisterAddOnCategory(category)

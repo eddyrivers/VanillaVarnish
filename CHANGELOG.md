@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.34.23
+
+- bugfix: Remove the extra empty space between All Objectives and Quests when scrolling the tracker.
+- Add optional **Compact view** for the tracker: 75% quest text, smaller zone buttons, and tighter spacing to fit more quests. Off by default.
+- Add a separate **Compact quest log** option with smaller titles, objectives, and zone headings. Find it in the quest log's settings menu or under `/vv tracker`. Off by default; both choices save with profiles.
+
 ## 1.0.34.22
 
 - bugfix: Reach all tracked quests by scrolling the existing tracker, without untracking another zone. Keep the familiar quest rows and item buttons, with a scrollbar that appears only when needed.

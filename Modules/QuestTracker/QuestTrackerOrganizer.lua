@@ -1,7 +1,8 @@
 local _, VV = ...
 local addon = VV.QuestTracker
 local tracker, db
-local displayEnabled, displaySort, displayScrolling
+local displayEnabled, displaySort, displayScrolling, displayCompact
+local COMPACT_SCALE = 0.75
 local eventFrame = CreateFrame("Frame")
 local queued = false
 local snapshots, titles = {}, {}
@@ -21,7 +22,7 @@ local function Print(message)
     VV.Print(message)
 end
 
-local function SizeFont(region, smaller)
+local function SizeFont(region, smaller, compact)
     if not region then return end
     local font = originalFonts[region]
     if not font then
@@ -30,7 +31,9 @@ local function SizeFont(region, smaller)
         font = { path, size, flags }
         originalFonts[region] = font
     end
-    region:SetFont(font[1], smaller and math.max(6, font[2] - 2) or font[2], font[3])
+    local size = smaller and math.max(6, font[2] - 2) or font[2]
+    if compact then size = math.max(6, size * COMPACT_SCALE) end
+    region:SetFont(font[1], size, font[3])
 end
 
 local function Snapshot(frame, geometry)
@@ -169,7 +172,7 @@ local function Heading(index, group, sample)
     heading:SetWidth(tracker.ContentsFrame:GetWidth() - tracker.blockOffsetX)
     heading.Text:SetWidth(heading:GetWidth())
     local font = sample and originalFonts[sample.HeaderText]
-    if font then heading.Text:SetFont(unpack(font)) end
+    if font then heading.Text:SetFont(font[1], displayCompact and math.max(6, font[2] * COMPACT_SCALE) or font[2], font[3]) end
     heading.Text:SetText(group.zone .. " (" .. #group.quests .. ")")
     local marker = sample and sample.poiButton
     local width, height = 20, 20
@@ -178,6 +181,10 @@ local function Heading(index, group, sample)
         width, height = marker:GetSize()
         local p, relative, rp, px, py = marker:GetPoint(1)
         if relative == sample.HeaderText then point, relativePoint, x, y = p, rp, px, py end
+    end
+    if displayCompact then
+        width, height = width * COMPACT_SCALE, height * COMPACT_SCALE
+        x, y = x * COMPACT_SCALE, y * COMPACT_SCALE
     end
     heading.Icon:SetSize(width, height)
     heading.Icon:ClearAllPoints()
@@ -204,14 +211,14 @@ ApplyLayout = function()
     if not tracker or not db then return end
     if InCombatLockdown() and not CanLayoutInCombat() then return end
     RestoreLayout()
-    if not displayEnabled or not tracker:IsShown() or tracker:IsCollapsed() then
+    if not (displayEnabled or displayCompact) or not tracker:IsShown() or tracker:IsCollapsed() then
         if addon.Scrolling then addon.Scrolling.UpdateRange() end
         return
     end
 
     local groups = addon.ReadWatchGroups(displaySort)
     addon.groups = groups
-    local watched, blocks, special = {}, {}, {}
+    local watched, blocks, special, nativeOrder = {}, {}, {}, {}
     for _, group in ipairs(groups) do
         for _, entry in ipairs(group.quests) do watched[entry.id] = true end
     end
@@ -219,6 +226,7 @@ ApplyLayout = function()
     -- Blizzard rendered participate; cached/autocomplete blocks are retained.
     local block = tracker.firstBlock
     while block do
+        nativeOrder[#nativeOrder + 1] = block
         if watched[block.id] and not block.cached then blocks[block.id] = block
         else special[#special + 1] = block end
         block = block.nextBlock
@@ -241,6 +249,7 @@ ApplyLayout = function()
     local y = tracker.headerHeight or 0
     local gap = -(tracker.fromBlockOffsetY or -10)
     local firstGap = -(tracker.fromHeaderOffsetY or -10)
+    if displayCompact then gap, firstGap = gap * COMPACT_SCALE, firstGap * COMPACT_SCALE end
     local count = 0
     local function Place(frame, height)
         local offset = count == 0 and firstGap or gap
@@ -255,6 +264,15 @@ ApplyLayout = function()
         frame:Show()
         y, count = y + offset + height, count + 1
         return true
+    end
+    -- Compact spacing also works without grouping, preserving native order.
+    if not displayEnabled then
+        for _, block in ipairs(nativeOrder) do
+            SetBlockVisible(block, Place(block, block:GetHeight()))
+        end
+        tracker:SetHeight(y + (tracker.bottomSpacing or 0))
+        if addon.Scrolling then addon.Scrolling.UpdateRange() end
+        return
     end
     for _, block in ipairs(special) do
         if not Place(block, block:GetHeight()) then SetBlockVisible(block, false) end
@@ -295,6 +313,7 @@ ApplyLayout = function()
 end
 
 Refresh = function(immediate)
+    if addon.RefreshQuestLog then addon.RefreshQuestLog() end
     if not tracker then return end
     if InCombatLockdown() then
         if immediate then ApplyLayout() end
@@ -307,9 +326,11 @@ Refresh = function(immediate)
         if addon.Scrolling then addon.Scrolling.Refresh() end
     end
     local enabled = VV.IsModuleEnabled("questTracker") and db.enabled
-    if displayEnabled ~= enabled then
+    local compact = VV.IsModuleEnabled("questTracker") and db.compact
+    if displayEnabled ~= enabled or displayCompact ~= compact then
         displayEnabled = enabled
-        for region in pairs(originalFonts) do SizeFont(region, displayEnabled) end
+        displayCompact = compact
+        for region in pairs(originalFonts) do SizeFont(region, displayEnabled, displayCompact) end
         -- Do not write shared dirty flags from addon execution. The native
         -- callable handles its own state through Blizzard's security boundary.
         securecallfunction(tracker.MarkDirty, tracker)
@@ -350,12 +371,12 @@ local function TryInstall()
         if type(id) ~= "number" or (template and template ~= self.blockTemplate) then return end
         local block = self:GetExistingBlock(id, template)
         if not block then return end
-        SizeFont(block.HeaderText, displayEnabled)
+        SizeFont(block.HeaderText, displayEnabled, displayCompact)
         if hookedBlocks[block] then return end
         hookedBlocks[block] = true
         hooksecurefunc(block, "GetLine", function(self, key)
             local line = self:GetExistingLine(key)
-            if line then SizeFont(line.Text, displayEnabled); SizeFont(line.Dash, displayEnabled) end
+            if line then SizeFont(line.Text, displayEnabled, displayCompact); SizeFont(line.Dash, displayEnabled, displayCompact) end
         end)
         hooksecurefunc(block, "FreeLine", function(_, line) SizeFont(line.Text, false); SizeFont(line.Dash, false) end)
         hooksecurefunc(block, "Free", function(self)
@@ -378,6 +399,7 @@ local function Initialize()
     if db.enabled == nil then db.enabled = true end
     if type(db.collapsed) ~= "table" then db.collapsed = {} end
     displayEnabled = VV.IsModuleEnabled("questTracker") and db.enabled
+    displayCompact = VV.IsModuleEnabled("questTracker") and db.compact
     displaySort = db.completedSort
     db.position = nil -- Remove the retired separate panel's saved position.
     addon.db = db
@@ -387,7 +409,7 @@ end
 function addon.SetOption(key, value)
     if key == "completedSort" then
         if value ~= "off" and value ~= "top" and value ~= "bottom" then return false end
-    elseif key == "enabled" or key == "scrolling" then
+    elseif key == "enabled" or key == "scrolling" or key == "compact" or key == "compactLog" then
         value = not not value
     else return false end
     db[key] = value
@@ -410,6 +432,8 @@ function addon.ResetOptions()
     local defaults = VV.GetPreset and VV.GetPreset("Default").questTracker
     db.enabled, db.completedSort, db.collapsed = true, defaults and defaults.completedSort or "off", {}
     db.scrolling = true
+    db.compact = false
+    db.compactLog = false
     addon.RefreshOptions()
     if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
     Refresh()
@@ -438,6 +462,9 @@ local function Slash(message)
     elseif command == "group on" or command == "group off" then
         addon.SetOption("enabled", command == "group on")
         Print(db.enabled and "Native zone grouping enabled." or "Native quest ordering restored.")
+    elseif command == "compact on" or command == "compact off" then
+        addon.SetOption("compact", command == "compact on")
+        Print(db.compact and "Compact quest view enabled." or "Usual quest size restored.")
     elseif command == "expand" then
         addon.SetAllZonesCollapsed(false)
     elseif command == "collapse" then
@@ -449,8 +476,9 @@ local function Slash(message)
         local label = ({off = "off", top = "completed on top", bottom = "completed on bottom"})[db.completedSort]
         Print("Completed quest sorting: " .. label .. ".")
         Print("Overflow scrolling " .. (db.scrolling and "on" or "off") .. ".")
+        Print("Compact view " .. (db.compact and "on" or "off") .. ".")
     else
-        Print("/vv tracker opens settings. /vv tracker group on | group off | expand | collapse | status | help. Click a native zone heading to fold it.")
+        Print("/vv tracker opens settings. /vv tracker group on | group off | compact on | compact off | expand | collapse | status | help. Click a native zone heading to fold it.")
     end
 end
 

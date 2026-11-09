@@ -92,6 +92,8 @@ local presets = {
             ["rolePin"] = "off",
         },
         ["questTracker"] = {
+            ["compact"] = false,
+            ["compactLog"] = false,
             ["scrolling"] = true,
             ["completedSort"] = "bottom",
             ["enabled"] = true,

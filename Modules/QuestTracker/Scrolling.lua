@@ -91,6 +91,11 @@ local function SizeViewport()
     viewport:SetSize(container:GetWidth() + LEFT_MARGIN,
         math.max(1, container:GetHeight() - padding - (container.bottomModulePadding or 0)))
     canvas:SetWidth(viewport:GetWidth())
+    -- The native pass temporarily anchors the first module below its own
+    -- container padding. Pin the scroll child itself to the viewport as well,
+    -- so that temporary content bounds cannot leave a second top inset.
+    canvas:ClearAllPoints()
+    canvas:SetPoint("TOPLEFT", viewport, "TOPLEFT", 0, 0)
 end
 
 local function Begin()

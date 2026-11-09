@@ -15,7 +15,7 @@ Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. Active settings 
 | Module | What it adds |
 | --- | --- |
 | Nameplates | Spell-range fading, quest icons, swing timers, combo points, threat colors, combat focus |
-| Quest tracker | Quests grouped by zone, collapsible headings, and optional completed-first or completed-last sorting |
+| Quest tracker | Zone grouping, collapsible headings, completion sorting, scrolling, and optional compact tracker and quest log views |
 | Party frames | Up to 16 buffs in two rows, larger player buffs and dispellable debuffs, class-colored health bars, and friendly-spell range fading |
 | Tooltips | Mouse following, configurable offsets, class/difficulty colors, immediate hover dismissal, and optional combat pause |
 
@@ -26,6 +26,8 @@ Under **Nameplates > Combat focus**, enable the optional toggle to shrink and fa
 Both feature previews follow **Settings > Nameplates**, including style, size, health text, cast details, buffs, debuffs, crowd control, aura size, and spacing. After viewing the game's Nameplates preview, they retain its last enemy/friendly sample type and icons for the session. Before that, they show an enemy NPC sample. The preview matches a visible target's scale so timer widths and horizontal alignment reflect the in-game layout; without a target, it uses the configured target enlargement. Preview frames stay separate from live units; game options update the preview without a reload.
 
 **Quest tracker:** use the mouse wheel or scrollbar to reach tracked quests when the list exceeds the tracker's height. Scrolling is on by default and keeps Blizzard's quest rows, clicks, and quest item buttons. The scrollbar appears only when needed; at the screen's right edge it appears to the left of the tracker. Turn **Scroll overflowing objectives** off under `/vv tracker` to restore the game's height limit. Scrolling also works with zone grouping off. Edit Mode temporarily restores the native layout for moving and resizing.
+
+Enable **Compact view** under `/vv tracker` for quest text at 75% of its usual size, smaller zone buttons, and tighter row spacing. It also works with grouping off. **Compact quest log** separately reduces titles, objectives, and zone headings in the quest log list; toggle it in the quest log's settings menu or on the same addon settings page. Both options start off, save per character and in profiles, and apply size changes after combat. Quest details keep their usual size.
 
 Click a zone heading to collapse or expand it, including in combat. Collapsing a zone keeps its quests tracked. Protected layout changes wait until combat ends. Right-click outside combat to track or untrack a zone's quests. Completed sorting groups quests marked ready for turn-in (including click-to-complete quests). Quests with remaining travel or delivery instructions stay in level order.
 
@@ -55,6 +57,7 @@ All VanillaVarnish commands start with `/vv`.
 | `/vv nameplates layout stack`, `/vv nameplates layout row` | Stack swing timers vertically or pack them into a row |
 | `/vv nameplates help` | List swing appearance and nameplate commands |
 | `/vv tracker group on`, `/vv tracker group off` | Switch zone grouping while preserving the module switch |
+| `/vv tracker compact on`, `/vv tracker compact off` | Switch compact tracker text and spacing |
 | `/vv tracker expand`, `/vv tracker collapse` | Expand or collapse all zones |
 | `/vv party buffs off`, `/vv party colors on` | Switch party features |
 | `/vv party range on`, `/vv party range off` | Switch party portrait and buff fading |

@@ -58,6 +58,8 @@ function VV.InitDB()
     if type(db.tooltips) ~= "table" then db.tooltips = defaults and defaults.tooltips or {} end
     if type(db.questTracker.enabled) ~= "boolean" then db.questTracker.enabled = true end
     if type(db.questTracker.scrolling) ~= "boolean" then db.questTracker.scrolling = true end
+    if type(db.questTracker.compact) ~= "boolean" then db.questTracker.compact = false end
+    if type(db.questTracker.compactLog) ~= "boolean" then db.questTracker.compactLog = false end
     local sort = db.questTracker.completedSort
     if sort ~= "off" and sort ~= "top" and sort ~= "bottom" then
         db.questTracker.completedSort = db.questTracker.completedFirst == true and "top" or "off"

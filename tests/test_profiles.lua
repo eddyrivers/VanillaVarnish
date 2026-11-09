@@ -13,10 +13,13 @@ ns.SetRangeSpell("friendly", "Healing Touch")
 vv.Party.SetOption("classColors", false)
 vv.Tooltips.SetOption("offsetX", 80)
 vv.QuestTracker.SetOption("completedSort", "bottom")
+vv.QuestTracker.SetOption("compact", true)
+vv.QuestTracker.SetOption("compactLog", true)
 vv.db.questTracker.collapsed.Westfall = true
 vv.SetModuleEnabled("party", false)
 check(vv.SaveProfile("  Raid setup  "), "Named snapshot can be saved")
 local stored = vv.profileStore["Raid setup"].settings
+check(stored.questTracker.compact and stored.questTracker.compactLog, "Profiles save both compact quest preferences")
 check(stored.nameplates.swingTimers.width == 260 and stored.nameplates.comboPoints.size == 20
     and stored.questTracker.completedSort == "bottom" and not stored.modules.party, "Snapshot includes all module designs and switches")
 check(stored.questTracker.collapsed == nil and stored.nameplates ~= vv.db.nameplates
@@ -29,6 +32,8 @@ ns.SetBarValue("main", "color", "blue", 1)
 ns.ComboPoints.SetValue("size", 8)
 vv.Tooltips.SetOption("offsetX", -20)
 vv.SetModuleEnabled("party", true)
+vv.QuestTracker.SetOption("compact", false)
+vv.QuestTracker.SetOption("compactLog", false)
 check(stored.nameplates.swingTimers.width == 260 and stored.nameplates.swingTimers.bars.main.color == "coral"
     and stored.tooltips.offsetX == 80 and vv.ProfileModified(), "Edits remain local and mark the profile modified")
 local plate = Mock.Plate("nameplate1")
@@ -36,6 +41,7 @@ Mock.plates.target, Mock.units.target, Mock.units.nameplate1 = plate, true, true
 Mock.Event("PLAYER_TARGET_CHANGED")
 Mock.Event("PLAYER_SWING", 3, Enum.PlayerSwingType.MainHand)
 check(vv.LoadProfile("raid SETUP"), "Case-insensitive profile lookup")
+check(vv.db.questTracker.compact and vv.db.questTracker.compactLog, "Profiles restore both compact quest preferences")
 check(ns.db.width == 260 and ns.db.bars.main.color == "coral" and ns.ComboPoints.db.size == 20
     and vv.Tooltips.db.offsetX == 80 and not vv.db.modules.party and not vv.db.party.classColors, "Loading applies designs across modules")
 check(vv.db == tables[1] and ns.tweaksDB == tables[2] and ns.db == tables[3]
@@ -165,6 +171,10 @@ vv.QuestTracker.SetOption("scrolling", true)
 check(vv.LoadProfile("Short tracker") and not vv.db.questTracker.scrolling and not vv.ProfileModified(),
     "Loading a profile restores scrolling without dirtying its status")
 vv.profileStore["Short tracker"].settings.questTracker.scrolling = nil
+vv.profileStore["Short tracker"].settings.questTracker.compact = nil
+vv.profileStore["Short tracker"].settings.questTracker.compactLog = nil
 check(vv.LoadProfile("Short tracker") and vv.db.questTracker.scrolling and not vv.ProfileModified(),
     "Profiles saved before scrolling use its default without appearing modified")
+check(not vv.db.questTracker.compact and not vv.db.questTracker.compactLog,
+    "Older profiles leave tracker and quest log compact views off")
 VV_PROFILE_CHECKS = checks

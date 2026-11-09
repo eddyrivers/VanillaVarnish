@@ -3,7 +3,7 @@ local fields = {
     nameplates = {"markers", "rangeEnabled", "swingsEnabled", "comboPointsEnabled", "threatColorsEnabled",
         "focusEnabled", "focusMode", "focusScale", "focusOpacity",
         "questieFallback", "groupQuestMarkers", "rangeOpacity", "damage", "friendly", "swingTimers", "comboPoints"},
-    questTracker = {"enabled", "completedSort", "scrolling"},
+    questTracker = {"enabled", "completedSort", "scrolling", "compact", "compactLog"},
     party = {"buffs", "classColors", "rangeFade", "spacing", "growUp", "rolePin"},
     tooltips = {"followMouse", "offsetX", "offsetY", "unitColors", "pauseInCombat"},
 }
@@ -96,6 +96,8 @@ function VV.ProfileModified()
     if saved.party.growUp == nil then saved.party.growUp = false end
     if saved.party.rolePin == nil then saved.party.rolePin = "off" end
     if saved.questTracker.scrolling == nil then saved.questTracker.scrolling = true end
+    if saved.questTracker.compact == nil then saved.questTracker.compact = false end
+    if saved.questTracker.compactLog == nil then saved.questTracker.compactLog = false end
     if saved.nameplates.groupQuestMarkers == nil then saved.nameplates.groupQuestMarkers = false end
     VV.Nameplates.NormalizeFocusSettings(saved.nameplates)
     -- Profiles saved before row layouts implicitly use the stacked layout.
