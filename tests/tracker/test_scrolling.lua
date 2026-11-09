@@ -19,6 +19,7 @@ EditModeManagerFrame = { IsEditModeActive = function() return editing end }
 container.Header = CreateFrame("Frame", nil, container)
 container.Header:SetHeight(32)
 container.Header:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0)
+function container.Header:GetTop() return container:GetTop() + select(5, self:GetPoint(1)) end
 container.NineSlice = CreateFrame("Frame", nil, container)
 container:SetSize(300, 150)
 container.topModulePadding, container.bottomModulePadding = 38, 10
@@ -29,7 +30,8 @@ container:SetScript("OnSizeChanged", nativeSizeChanged)
 function container:IsCollapsed() return collapsed end
 function container:ShouldShowHeader() return true end
 function container:GetAvailableHeight() return self:GetHeight() - self.topModulePadding end
-function container:UpdateTopPadding() self.topModulePadding = 38 end
+local nativePadding, headerOffset = 38, 0
+function container:UpdateTopPadding() self.topModulePadding = nativePadding end
 function container:MarkDirty() dirty = dirty + 1 end
 local fail, managedHeight
 function container:Update()
@@ -46,6 +48,7 @@ function container:Update()
     -- while its space accounting reads native contentsHeight.
     self.modules[2]:SetPoint("TOP", native, "BOTTOM", 0, -self.moduleSpacing)
     if managedHeight then self:SetHeight(managedHeight) end
+    self.Header:SetPoint("TOPLEFT", self, "TOPLEFT", 0, headerOffset)
     return "native result", 17
 end
 container:Update(); RunMockTimers()
@@ -76,11 +79,25 @@ check(viewport and viewport:GetHeight() == 102, "viewport respects native header
 local function topInContainer(frame)
     if frame == container then return 0 end
     local _, relative, relativePoint, _, y = frame:GetPoint(1)
-    assert(relative and (relativePoint == "TOPLEFT" or relativePoint == "TOP"), "top anchor resolves to a parent")
-    return topInContainer(relative) + y
+    assert(relative and (relativePoint == "TOPLEFT" or relativePoint == "TOP" or relativePoint == "BOTTOMLEFT"),
+        "top anchor resolves to a parent")
+    return topInContainer(relative) + y - (relativePoint == "BOTTOMLEFT" and relative:GetHeight() or 0)
 end
 check(topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6,
     "Quests starts directly below All Objectives with only the native six-unit header gap")
+nativePadding = 96
+addon.SetOption("compact", true); container:Update(); RunMockTimers()
+check(topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6
+    and container.topModulePadding == 96 and viewport:GetHeight() == 102,
+    "compact view ignores extra reserved padding without changing native padding bookkeeping")
+headerOffset = -12
+container:Update(); RunMockTimers()
+check(topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6
+    and viewport:GetHeight() == 90, "viewport follows header moves made at the end of native layout")
+headerOffset, nativePadding = 0, 38
+addon.SetOption("compact", false); container:Update(); RunMockTimers()
+check(topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6,
+    "normal view keeps the same small header gap after compact is disabled")
 check(viewport:GetVerticalScrollRange() > 0 and viewport.ScrollBar:IsShown(), "overflow has a native scrollbar")
 check(native:GetParent() == viewport.child, "existing native module is inside the scroll canvas")
 check(select(2, container.NineSlice:GetPoint(1)) == viewport, "overflow background ends at the visible tracker edge")
@@ -128,6 +145,14 @@ addon.SetOption("enabled", true); RunMockTimers()
 container:SetHeight(600)
 container:Update(); RunMockTimers()
 check(viewport:GetVerticalScrollRange() == 0 and not viewport.ScrollBar:IsShown(), "scrollbar disappears when all objectives fit")
+nativePadding = 96
+addon.SetOption("compact", true)
+container:Update(); RunMockTimers(); container:Update(); RunMockTimers()
+check(viewport:GetVerticalScrollRange() == 0 and not viewport.ScrollBar:IsShown()
+    and topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6,
+    "compact list without overflow keeps quests immediately below the header across native updates")
+nativePadding = 38
+addon.SetOption("compact", false); container:Update(); RunMockTimers()
 check(sizes == 1, "real resize still reaches the native size handler")
 managedHeight = 200
 container:Update(); RunMockTimers()

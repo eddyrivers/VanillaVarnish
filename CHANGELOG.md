@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.34.24
+
+- bugfix: Keep Quests close below All Objectives in compact and normal views, including after tracker updates.
+- Make both compact views easier to read: text is now just 1.5 points smaller, with gentler spacing and button reductions.
+- Give **Quest log** its own settings page under VanillaVarnish, also opened with `/vv questlog`. Each quest page now restores only its own defaults.
+
 ## 1.0.34.23
 
 - bugfix: Remove the extra empty space between All Objectives and Quests when scrolling the tracker.

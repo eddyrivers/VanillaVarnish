@@ -27,7 +27,7 @@ Both feature previews follow **Settings > Nameplates**, including style, size, h
 
 **Quest tracker:** use the mouse wheel or scrollbar to reach tracked quests when the list exceeds the tracker's height. Scrolling is on by default and keeps Blizzard's quest rows, clicks, and quest item buttons. The scrollbar appears only when needed; at the screen's right edge it appears to the left of the tracker. Turn **Scroll overflowing objectives** off under `/vv tracker` to restore the game's height limit. Scrolling also works with zone grouping off. Edit Mode temporarily restores the native layout for moving and resizing.
 
-Enable **Compact view** under `/vv tracker` for quest text at 75% of its usual size, smaller zone buttons, and tighter row spacing. It also works with grouping off. **Compact quest log** separately reduces titles, objectives, and zone headings in the quest log list; toggle it in the quest log's settings menu or on the same addon settings page. Both options start off, save per character and in profiles, and apply size changes after combat. Quest details keep their usual size.
+Enable **Compact view** under `/vv tracker` for quest text just 1.5 points smaller, slightly smaller zone buttons, and tighter row spacing. It also works with grouping off. The separate **Quest log** settings page has its own **Compact view** for quest log titles, objectives, and zone headings; open **Settings > AddOns > VanillaVarnish > Quest log**, or type `/vv questlog`. Both options start off, save per character and in profiles, and apply size changes after combat. Quest details keep their usual size. Each page's **Restore defaults** resets only that page.
 
 Click a zone heading to collapse or expand it, including in combat. Collapsing a zone keeps its quests tracked. Protected layout changes wait until combat ends. Right-click outside combat to track or untrack a zone's quests. Completed sorting groups quests marked ready for turn-in (including click-to-complete quests). Quests with remaining travel or delivery instructions stay in level order.
 
@@ -44,6 +44,7 @@ All VanillaVarnish commands start with `/vv`.
 | `/vv` | Open settings |
 | `/vv profiles`, `/vv presets` | Open Profiles & Presets |
 | `/vv nameplates`, `/vv tracker`, `/vv party`, `/vv tooltips` | Open a module page |
+| `/vv questlog` | Open the separate Quest log settings page |
 | `/vv <module> on`, `off`, or `toggle` | Enable or disable a whole module |
 | `/vv nameplates range`, `quests`, `swings`, `combo`, or `focus` | Open a nameplate feature page |
 | `/vv nameplates focus on`, `/vv nameplates focus off` | Switch combat focus |

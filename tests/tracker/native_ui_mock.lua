@@ -118,6 +118,7 @@ CreateFrame = function(kind, name, parent, template)
     function frame:StopMovingOrSizing() self.moving = false end
     function frame:GetLeft() return 100 end
     function frame:GetTop() return 500 end
+    function frame:GetBottom() return self:GetTop() - self:GetHeight() end
     function frame:GetHeight() return MockGeometry[self].height end
     function frame:SetScrollChild(child) self.child = child end
     function frame:SetVerticalScroll(value) self.scroll = value end

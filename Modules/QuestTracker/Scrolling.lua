@@ -86,8 +86,19 @@ end
 
 local function SizeViewport()
     local padding = container.topModulePadding or 38
+    local header = container.Header
+    local headerBottom = header and header:GetBottom()
+    local top = container:GetTop()
+    -- Native padding may include space reserved by other UI providers. The
+    -- visible header is the boundary we need, including when its own anchor
+    -- changes during a native update. Do not reserve that space twice.
+    if top and headerBottom then padding = math.max(0, top - headerBottom + 6) end
     viewport:ClearAllPoints()
-    viewport:SetPoint("TOPLEFT", container, "TOPLEFT", -LEFT_MARGIN, -padding)
+    if top and headerBottom then
+        viewport:SetPoint("TOPLEFT", header, "BOTTOMLEFT", -LEFT_MARGIN, -6)
+    else
+        viewport:SetPoint("TOPLEFT", container, "TOPLEFT", -LEFT_MARGIN, -padding)
+    end
     viewport:SetSize(container:GetWidth() + LEFT_MARGIN,
         math.max(1, container:GetHeight() - padding - (container.bottomModulePadding or 0)))
     canvas:SetWidth(viewport:GetWidth())

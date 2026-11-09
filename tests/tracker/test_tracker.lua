@@ -22,18 +22,21 @@ securecallfunction = function(callback, ...)
     return unpack(results)
 end
 local registeredCategory, openedCategory, settingsOpens = nil, nil, 0
+local logCategory
 Settings = {
     RegisterCanvasLayoutCategory = function(panel, name)
         assert(not registeredCategory, "settings should only register once")
         registeredCategory = { panel = panel, name = name, GetID = function() return 123 end }
         return registeredCategory
     end,
-    RegisterAddOnCategory = function(category) equal(category, registeredCategory, "AddOns category registered") end,
+    RegisterAddOnCategory = function(category)
+        equal(category == registeredCategory or category == logCategory, true, "AddOns category registered")
+    end,
     OpenToCategory = function(id)
         assert(inSecureCall, "Settings must open through Blizzard's security boundary")
         assert(not combat, "Settings must not open during combat")
         openedCategory, settingsOpens = id, settingsOpens + 1
-        registeredCategory.panel:Show()
+        (id == 124 and logCategory or registeredCategory).panel:Show()
     end,
 }
 hooksecurefunc = function(object, key, callback)
@@ -92,7 +95,14 @@ assert(loadfile("Core.lua"))("VanillaVarnish", vv)
 vv.InitDB()
 vv.QuestTracker = addon
 vv.RegisterOptions = function() vv.rootCategory = vv.rootCategory or {} end
-Settings.RegisterCanvasLayoutSubcategory = function(_, panel, name) return Settings.RegisterCanvasLayoutCategory(panel, name) end
+Settings.RegisterCanvasLayoutSubcategory = function(_, panel, name)
+    if name == "Quest log" then
+        assert(not logCategory, "quest log settings only register once")
+        logCategory = { panel = panel, name = name, GetID = function() return 124 end }
+        return logCategory
+    end
+    return Settings.RegisterCanvasLayoutCategory(panel, name)
+end
 local coreEvents = MockFrames[#MockFrames]
 assert(loadfile("Modules/QuestTracker/Model.lua"))("VanillaVarnish", vv)
 equal(addon.ReadMetadata()[5].zone, "Elwynn Forest", "metadata uses log category")

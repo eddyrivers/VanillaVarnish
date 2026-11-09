@@ -62,15 +62,21 @@ assert(loadfile("Modules/QuestTracker/QuestLog.lua"))("VanillaVarnish", vv)
 local events = MockFrames[#MockFrames]
 events.callback(events, "PLAYER_LOGIN")
 check(not addon.db.compactLog and title.Text.size == 16, "compact quest log defaults off")
+check(addon.questLogOptionsCategory.name == "Quest log"
+    and addon.optionControls.compactLog:GetParent() == addon.questLogOptionsPanel
+    and addon.optionControls.compactLog:GetParent() ~= addon.optionsPanel,
+    "quest log compact view has its own settings page")
+SlashCmdList.VANILLAVARNISH("questlog")
+check(addon.questLogOptionsPanel:IsShown(), "questlog slash command opens the dedicated page")
 local root = {}
 function root:CreateCheckbox(label, selected, callback) self.label, self.selected, self.callback = label, selected, callback end
 menuModifiers.MENU_QUEST_MAP_FRAME_SETTINGS(nil, root)
 check(root.label == "Compact quest log" and not root.selected(), "native quest log settings contains compact checkbox")
 root.callback()
 check(addon.db.compactLog and addon.optionControls.compactLog:GetChecked(), "native menu synchronizes saved choice and addon settings")
-check(title.Text.size == 12 and objective.Text.size == 9 and header.Text.size == 12,
-    "native title and objective heights are measured at 75% font size")
-check(header:GetHeight() == 16.5 and list.Contents:GetHeight() < normalHeight, "compact log headers and quest rows fit more entries")
+check(title.Text.size == 14.5 and objective.Text.size == 10.5 and header.Text.size == 14.5,
+    "native titles and objectives use a gentle 1.5-point reduction")
+check(header:GetHeight() == 22 * 0.9 and list.Contents:GetHeight() < normalHeight, "compact log headers and quest rows fit more entries")
 check(title:GetScript("OnClick") == nativeClick and list:GetWidth() == 304, "native clicks and quest log width are preserved")
 check(not addon.db.compact, "log compact choice is independent of tracker compact choice")
 local compactHeight = list.Contents:GetHeight()
@@ -81,7 +87,7 @@ check(title.Text.size == 16, "released log titles restore native fonts")
 QuestLogQuests_Update()
 combat = true
 root.callback()
-check(not addon.db.compactLog and title.Text.size == 12, "compact log change waits during combat")
+check(not addon.db.compactLog and title.Text.size == 14.5, "compact log change waits during combat")
 combat = false; events.callback(events, "PLAYER_REGEN_ENABLED")
 check(title.Text.size == 16 and header:GetHeight() == 22 and list.Contents:GetHeight() == normalHeight,
     "combat end restores fonts, header heights, and native scroll extent")
@@ -89,7 +95,11 @@ addon.SetOption("compactLog", true)
 vv.SetModuleEnabled("questTracker", false)
 check(title.Text.size == 16 and addon.db.compactLog, "module off restores log while preserving preference")
 vv.SetModuleEnabled("questTracker", true)
-check(title.Text.size == 12, "module re-enable restores compact log")
+check(title.Text.size == 14.5, "module re-enable restores compact log")
 addon.ResetOptions()
+check(title.Text.size == 14.5 and addon.db.compactLog, "tracker defaults preserve separate quest log preferences")
+addon.SetOption("compact", true)
+addon.ResetQuestLogOptions()
 check(title.Text.size == 16 and not root.selected(), "restore defaults synchronizes native quest log menu")
+check(addon.db.compact, "quest log defaults preserve tracker preferences")
 print("PASS: " .. checks .. " compact quest log native menu, measured heights, pooling, combat, and restoration checks")

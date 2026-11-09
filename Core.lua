@@ -116,6 +116,7 @@ function VV.OpenOptions(page)
     VV.RegisterOptions()
     if page == "nameplates" then VV.Nameplates.OpenOptions(); return end
     if page == "questTracker" then VV.QuestTracker.OpenOptions(); return end
+    if page == "questLog" then VV.QuestTracker.OpenQuestLogOptions(); return end
     if page == "tooltips" then VV.Tooltips.OpenOptions(); return end
     VV.OpenSettingsCategory(page == "party" and VV.partyCategory
         or page == "profiles" and VV.profilesCategory or VV.rootCategory)
@@ -138,6 +139,7 @@ SlashCmdList.VANILLAVARNISH = function(message)
     if command == "" or command == "options" or command == "settings" then VV.OpenOptions(); return end
     if command == "status" then Status(); return end
     if command == "profiles" or command == "presets" then VV.OpenOptions("profiles"); return end
+    if command == "questlog" then VV.OpenOptions("questLog"); return end
     if key then
         local mode = rest:lower()
         if mode == "on" or mode == "off" or mode == "toggle" then
@@ -150,7 +152,7 @@ SlashCmdList.VANILLAVARNISH = function(message)
         end
         return
     end
-    VV.Print("/vv opens settings. /vv nameplates, /vv tracker, /vv party, /vv tooltips open module pages.")
+    VV.Print("/vv opens settings. /vv nameplates, /vv tracker, /vv questlog, /vv party, /vv tooltips open settings pages.")
     VV.Print("/vv <module> on | off | toggle controls the whole module and preserves its feature settings.")
     VV.Print("/vv status shows module status. Use /vv <module> help for feature commands.")
 end

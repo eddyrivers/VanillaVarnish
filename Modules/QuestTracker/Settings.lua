@@ -1,22 +1,24 @@
 local _, VV = ...
 local addon = VV.QuestTracker
-local panel, category
+local panel, category, logPanel, logCategory
 local controls = {}
 
-local function Label(text, x, y, font)
-    local label = panel:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
-    label:SetPoint("TOPLEFT", panel, "TOPLEFT", x, y)
-    label:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -16, y)
+local function Label(text, x, y, font, parent)
+    parent = parent or panel
+    local label = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
+    label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+    label:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -16, y)
     label:SetJustifyH("LEFT")
     label:SetText(text)
     return label
 end
 
-local function Check(key, text, y, tip)
-    local check = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
+local function Check(key, text, y, tip, parent)
+    parent = parent or panel
+    local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
     check:SetSize(24, 24)
-    check:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, y)
-    Label(text, 44, y - 5)
+    check:SetPoint("TOPLEFT", parent, "TOPLEFT", 16, y)
+    Label(text, 44, y - 5, nil, parent)
     check:SetScript("OnClick", function(self) addon.SetOption(key, self:GetChecked()) end)
     check:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -28,10 +30,11 @@ local function Check(key, text, y, tip)
     controls[key] = check
 end
 
-local function Button(text, x, y, callback)
-    local button = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+local function Button(text, x, y, callback, parent)
+    parent = parent or panel
+    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     button:SetSize(144, 24)
-    button:SetPoint("TOPLEFT", panel, "TOPLEFT", x, y)
+    button:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
     button:SetText(text)
     button:SetScript("OnClick", callback)
     return button
@@ -74,16 +77,31 @@ function addon.RegisterOptions()
     Check("scrolling", "Scroll overflowing objectives", -322,
         "Use the mouse wheel or scrollbar to reach all tracked quests in the existing tracker. Keeps Blizzard's quest rows and item buttons.")
     Check("compact", "Compact view", -362,
-        "Use quest text at 75% of its usual size, smaller zone headings, and tighter row spacing to fit more quests. Off by default.")
-    Check("compactLog", "Compact quest log", -402,
-        "Use smaller titles, objectives, and zone headings in the quest log list. Separate from tracker Compact view and off by default. Also available in the quest log's settings menu.")
-    Button("Restore defaults", 16, -458, addon.ResetOptions)
+        "Reduce quest text by 1.5 points, with slightly smaller zone buttons and tighter row spacing. Off by default.")
+    Button("Restore defaults", 16, -418, addon.ResetOptions)
     VV.RegisterOptions()
     category = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, panel, "Quest tracker")
     Settings.RegisterAddOnCategory(category)
     panel:SetScript("OnShow", addon.RefreshOptions)
     addon.optionsPanel, addon.optionsCategory, addon.optionControls = panel, category, controls
+    logPanel = CreateFrame("Frame", nil, UIParent)
+    logPanel:Hide()
+    Label("Quest log", 16, -16, "GameFontNormalLarge", logPanel)
+    Label("Fit more quests in the quest log list while keeping quest details at their usual size.",
+        16, -44, "GameFontHighlightSmall", logPanel)
+    Check("compactLog", "Compact view", -86,
+        "Reduce quest log titles, objectives, and zone headings by 1.5 points. Off by default and independent of tracker Compact view.", logPanel)
+    Button("Restore defaults", 16, -146, addon.ResetQuestLogOptions, logPanel)
+    logCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, logPanel, "Quest log")
+    Settings.RegisterAddOnCategory(logCategory)
+    logPanel:SetScript("OnShow", addon.RefreshOptions)
+    addon.questLogOptionsPanel, addon.questLogOptionsCategory = logPanel, logCategory
     addon.RefreshOptions()
+end
+
+function addon.OpenQuestLogOptions()
+    addon.RegisterOptions()
+    VV.OpenSettingsCategory(logCategory)
 end
 
 function addon.OpenOptions()

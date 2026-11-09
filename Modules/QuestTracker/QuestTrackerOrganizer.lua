@@ -2,7 +2,7 @@ local _, VV = ...
 local addon = VV.QuestTracker
 local tracker, db
 local displayEnabled, displaySort, displayScrolling, displayCompact
-local COMPACT_SCALE = 0.75
+local COMPACT_SCALE, COMPACT_FONT_REDUCTION = 0.9, 1.5
 local eventFrame = CreateFrame("Frame")
 local queued = false
 local snapshots, titles = {}, {}
@@ -32,7 +32,7 @@ local function SizeFont(region, smaller, compact)
         originalFonts[region] = font
     end
     local size = smaller and math.max(6, font[2] - 2) or font[2]
-    if compact then size = math.max(6, size * COMPACT_SCALE) end
+    if compact then size = math.max(6, size - COMPACT_FONT_REDUCTION) end
     region:SetFont(font[1], size, font[3])
 end
 
@@ -172,7 +172,7 @@ local function Heading(index, group, sample)
     heading:SetWidth(tracker.ContentsFrame:GetWidth() - tracker.blockOffsetX)
     heading.Text:SetWidth(heading:GetWidth())
     local font = sample and originalFonts[sample.HeaderText]
-    if font then heading.Text:SetFont(font[1], displayCompact and math.max(6, font[2] * COMPACT_SCALE) or font[2], font[3]) end
+    if font then heading.Text:SetFont(font[1], displayCompact and math.max(6, font[2] - COMPACT_FONT_REDUCTION) or font[2], font[3]) end
     heading.Text:SetText(group.zone .. " (" .. #group.quests .. ")")
     local marker = sample and sample.poiButton
     local width, height = 20, 20
@@ -433,10 +433,13 @@ function addon.ResetOptions()
     db.enabled, db.completedSort, db.collapsed = true, defaults and defaults.completedSort or "off", {}
     db.scrolling = true
     db.compact = false
-    db.compactLog = false
     addon.RefreshOptions()
     if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
     Refresh()
+end
+
+function addon.ResetQuestLogOptions()
+    addon.SetOption("compactLog", false)
 end
 
 addon.Print = Print

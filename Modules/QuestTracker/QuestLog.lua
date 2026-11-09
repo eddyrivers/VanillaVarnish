@@ -1,6 +1,6 @@
 local _, VV = ...
 local addon = VV.QuestTracker
-local SCALE = 0.75
+local SCALE, FONT_REDUCTION = 0.9, 1.5
 local fonts = setmetatable({}, { __mode = "k" })
 local headers = setmetatable({}, { __mode = "k" })
 local hookedPools = setmetatable({}, { __mode = "k" })
@@ -15,7 +15,7 @@ local function SizeFont(region, enabled)
         font = { path, size, flags }
         fonts[region] = font
     end
-    region:SetFont(font[1], enabled and math.max(6, font[2] * SCALE) or font[2], font[3])
+    region:SetFont(font[1], enabled and math.max(6, font[2] - FONT_REDUCTION) or font[2], font[3])
 end
 
 local function Style(frame, isHeader, enabled)
