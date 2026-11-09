@@ -2,9 +2,9 @@
 
 ## 1.0.34.28
 
-- bugfix: Refresh tracked quests after accepting or turning in quests so the list can recover without reloading.
-- bugfix: Keep the game's tracker resize handler intact to prevent aura-access errors during group changes, leveling, and other tracker resizes.
-- Type `/reload` once after updating to clear any existing tracker errors.
+- bugfix: Keep watched quests in view after accepting or turning in quests. If the tracker goes blank, it can now refresh without a reload.
+- bugfix: Prevent tracker-related Lua errors when someone joins your group, you level up, or the tracker changes size.
+- After updating, type `/reload` once to load the fixes and clear any errors left over from the previous version.
 
 ## 1.0.34.27
 
