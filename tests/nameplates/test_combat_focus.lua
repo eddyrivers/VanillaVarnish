@@ -58,13 +58,14 @@ SlashCmdList.VANILLAVARNISH("nameplates focus")
 assert(ns.featurePanels.focusEnabled:IsShown())
 local controls = ns.featureControls
 controls.focusToggle.button:SetChecked(true)
+Mock.rangeResult = true
 controls.focusToggle.button.scripts.OnClick(controls.focusToggle.button)
 Check(first, 0.9, 0.5, "Securely held enemies shrink and use focus opacity")
-Check(second, 1, 1, "Lost threat takes priority over range fading")
-Check(idle, 1, 0.5, "Idle enemies still use range fading")
+Check(second, 1, 1, "Lost threat stays prominent within range")
+Check(idle, 1, 1, "Idle enemies within range retain normal opacity")
 Check(friendly, 1, 1, "Friendly plates keep their normal appearance")
-Check(player, 1, 0.5, "Enemy players still use range fading")
-Check(dead, 1, 0.5, "Dead enemies still use range fading")
+Check(player, 1, 1, "Enemy players within range retain normal opacity")
+Check(dead, 1, 1, "Dead enemies within range retain normal opacity")
 
 Mock.plates.target, Mock.units.target = Mock.plates[one], true
 Mock.Event("PLAYER_TARGET_CHANGED")
@@ -112,6 +113,7 @@ first:SetScale(1.5)
 Check(first, 0.9, 0.3, "Native writes update the baseline while focus is active")
 assert(not ns.SetFocusOption("focusScale", 0) and not ns.SetFocusOption("focusOpacity", 2))
 assert(vv.SaveProfile("Combat design"))
+Mock.rangeResult = false
 SlashCmdList.VANILLAVARNISH("nameplates focus off")
 Check(first, 1.5, 0.32, "Disabling focus restores native scale and range fading")
 assert(vv.ProfileModified() and vv.LoadProfile("Combat design") and not vv.ProfileModified())

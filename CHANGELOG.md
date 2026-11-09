@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.27
+
+- bugfix: Fade out-of-range nameplates even with Combat focus enabled, including your selected target and casting enemies. Already fainter background plates keep their lower opacity.
+
 ## 1.0.34.26
 
 - bugfix: Match quest circles to the zone +/− button size in normal and compact tracker views. Keep the circles aligned and consistently sized as quests change or become ready to turn in.

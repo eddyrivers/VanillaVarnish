@@ -94,6 +94,9 @@ print(f"PASS: {threat.globals().NST_THREAT_CHECKS} threat and tag color checks f
 focus = nameplates(full=True)
 focus.execute((ROOT / "tests/nameplates/test_combat_focus.lua").read_text())
 print("PASS: combat focus roles, casts, threat, range precedence, native restoration, pooling, and settings")
+range_focus = nameplates()
+range_focus.execute((ROOT / "tests/test_nameplate_range_focus.lua").read_text())
+print("PASS: Moonfire range fading with target, cast, and background combat focus in both modes")
 if args.blizzard_source:
     native = nameplates(native=args.blizzard_source)
     native.execute((ROOT / "tests/nameplates/test_native_preview.lua").read_text())

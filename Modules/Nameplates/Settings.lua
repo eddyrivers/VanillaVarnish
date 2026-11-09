@@ -92,7 +92,7 @@ function ns.RegisterFeatureOptions()
     focus:Hide()
     Heading(focus, "Combat focus", "Keep your target and casting enemies prominent. Tank mode also prioritizes enemies you may lose or aren't holding.")
     FeatureCheck(focus, "focusToggle", "Enable combat focus", -100, "focusEnabled",
-        "Combat focus takes priority over range fading on the nameplates it adjusts.")
+        "Out-of-range fading still applies to targets and casting enemies. Already fainter background plates keep their lower opacity.")
     local focusOptions = CreateFrame("Frame", nil, focus)
     focusOptions:SetPoint("TOPLEFT", focus, "TOPLEFT", 16, -144)
     focusOptions:SetPoint("TOPRIGHT", focus, "TOPRIGHT", -16, -144)

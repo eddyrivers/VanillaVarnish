@@ -280,7 +280,10 @@ end
 
 local function ApplyAlpha(state)
     if type(state.baseAlpha) ~= "number" then return end
-    local desired = state.focusAlpha or state.baseAlpha * (state.faded and db.rangeOpacity or 1)
+    local desired = state.focusAlpha or state.baseAlpha
+    -- Focus can promote a target or cast, but must not cancel range fading
+    -- or brighten a background plate that is already fainter.
+    if state.faded then desired = math.min(desired, state.baseAlpha * db.rangeOpacity) end
     local current = SafeCall(state.frame.GetAlpha, state.frame)
     if type(current) == "number" and current ~= desired then
         state.settingAlpha = true
@@ -454,7 +457,7 @@ local function UpdateAppearance(state, target)
     if SafeCall(state.frame.IsForbidden, state.frame) ~= false then return end
     local alpha, scale = FocusAppearance(state, target)
     state.focusAlpha = alpha
-    state.faded = alpha == nil and IsOutOfRange(state.unit)
+    state.faded = IsOutOfRange(state.unit)
     SetFocusScale(state, scale)
     ApplyAlpha(state)
 end
