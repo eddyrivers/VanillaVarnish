@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.34.28
+
+- bugfix: Refresh tracked quests after accepting or turning in quests so the list can recover without reloading.
+- bugfix: Keep the game's tracker resize handler intact to prevent aura-access errors during group changes, leveling, and other tracker resizes.
+- Type `/reload` once after updating to clear any existing tracker errors.
+
 ## 1.0.34.27
 
 - bugfix: Fade out-of-range nameplates even with Combat focus enabled, including your selected target and casting enemies. Already fainter background plates keep their lower opacity.

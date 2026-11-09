@@ -25,8 +25,16 @@ container:SetSize(300, 150)
 container.topModulePadding, container.bottomModulePadding = 38, 10
 for _, module in ipairs(container.modules) do module:SetParent(container) end
 local dirty, sizes = 0, 0
-local function nativeSizeChanged() sizes = sizes + 1 end
+local function nativeSizeChanged()
+    sizes = sizes + 1
+    container:MarkDirty()
+end
 container:SetScript("OnSizeChanged", nativeSizeChanged)
+local nativeSetScript = container.SetScript
+function container:SetScript(event, callback)
+    assert(event ~= "OnSizeChanged", "never reassign the native resize handler: this taints shared tracker updates")
+    nativeSetScript(self, event, callback)
+end
 function container:IsCollapsed() return collapsed end
 function container:ShouldShowHeader() return true end
 function container:GetAvailableHeight() return self:GetHeight() - self.topModulePadding end
@@ -35,16 +43,25 @@ function container:UpdateTopPadding() self.topModulePadding = nativePadding end
 function container:UpdateHeaderPosition()
     self.Header:SetPoint("TOPLEFT", self, "TOPLEFT", 0, headerOffset)
 end
-function container:MarkDirty() dirty = dirty + 1 end
+local nativeDirtyUpdate
+local function dirtyCallback()
+    nativeDirtyUpdate(container, true)
+    container.dirty = nil
+end
+function container:MarkDirty()
+    dirty = dirty + 1
+    if not self.dirty then C_Timer.After(0, dirtyCallback) end
+    self.dirty = true
+end
 local fail, managedHeight, skipHeaderFinish
 function container:Update()
     if not self:ShouldShowHeader() then return end
-    if fail then error("simulated interrupted native layout") end
+    if fail then fail = false; error("simulated interrupted native layout") end
     local available = self:GetAvailableHeight()
     self:UpdateTopPadding()
     if addon.Scrolling and addon.Scrolling.IsActive() then
         check(self:GetHeight() < 100000 and self:GetScript("OnSizeChanged") == nativeSizeChanged,
-            "real geometry and native size handler are restored before constructing native blocks")
+            "real geometry is restored and the native size handler stays intact before constructing native blocks")
     end
     native:Update(available)
     native:ClearAllPoints()
@@ -59,7 +76,7 @@ function container:Update()
 end
 -- DirtiableMixin captures this function in a closure before addon posthooks
 -- are installed. Dirty updates call that saved function, not container.Update.
-local nativeDirtyUpdate = container.Update
+nativeDirtyUpdate = container.Update
 container:Update(); RunMockTimers()
 check(count() < C_QuestLog.GetNumQuestWatches(), "small native tracker omits watched quests before scrolling")
 local oldNativeUpdate = native.Update
@@ -75,8 +92,12 @@ check(result == "native result" and extra == 17, "container return values are pr
 check(count() == C_QuestLog.GetNumQuestWatches(), "native renderer builds every tracked quest despite a small viewport")
 check(native.Update == oldNativeUpdate and native.EnumQuestWatchData == oldEnum, "native renderer and watch enumerator are not replaced")
 check(container:GetHeight() == 150 and container:GetWidth() == 300, "visible tracker keeps its native dimensions")
-check(container:GetScript("OnSizeChanged") == nativeSizeChanged, "exact native size script is restored")
-check(sizes == 0, "temporary layout sizing does not create dirty-update loops")
+check(container:GetScript("OnSizeChanged") == nativeSizeChanged, "exact native size script stays installed")
+check(sizes > 0, "native size handler receives layout size notifications without reassignment")
+RunMockTimers(); RunMockTimers()
+local settledSizes = sizes
+RunMockTimers(); RunMockTimers()
+check(sizes == settledSizes and not container.dirty, "native dirty runner settles without size-update loops")
 check(container.Header:GetParent() == headerParent and headerParent == container, "native tracker header stays outside the scroller")
 local viewport
 for _, frame in ipairs(MockFrames) do
@@ -138,7 +159,10 @@ check(item:GetScript("OnClick") == click and find(1).HeaderButton:GetScript("OnC
 check(native.contentsHeight == contentsHeight, "scrolling does not rewrite native contents bookkeeping")
 container:Update(); RunMockTimers()
 check(viewport:GetVerticalScroll() == viewport:GetVerticalScrollRange(), "progress rebuild retains scroll position")
-check(sizes == 0, "successive native layouts remain free of size-event loops")
+RunMockTimers(); RunMockTimers()
+settledSizes = sizes
+RunMockTimers(); RunMockTimers()
+check(sizes == settledSizes and not container.dirty, "successive native layouts remain free of size-update loops")
 viewport.scripts.OnMouseWheel(viewport, 10000)
 check(viewport:GetVerticalScroll() == 0, "wheel clamps at the top")
 addon.SetAllZonesCollapsed(true); RunMockTimers()
@@ -168,7 +192,9 @@ check(count() == C_QuestLog.GetNumQuestWatches(), "all quests also remain access
 addon.SetOption("enabled", true); RunMockTimers()
 
 -- A real resize or managed-position height update must survive the layout.
+local sizesBeforeResize = sizes
 container:SetHeight(600)
+check(sizes == sizesBeforeResize + 1, "real resize still reaches the untouched native size handler")
 container:Update(); RunMockTimers()
 check(viewport:GetVerticalScrollRange() == 0 and not viewport.ScrollBar:IsShown(), "scrollbar disappears when all objectives fit")
 nativePadding = 96
@@ -187,7 +213,6 @@ for _, compact in ipairs({false, true}) do
 end
 nativePadding = 38
 addon.SetOption("compact", false); container:Update(); RunMockTimers()
-check(sizes == 1, "real resize still reaches the native size handler")
 managedHeight = 200
 container:Update(); RunMockTimers()
 check(container:GetHeight() == 200 and viewport:GetHeight() == 152, "managed height changes during layout are retained")

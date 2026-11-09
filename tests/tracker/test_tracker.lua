@@ -550,13 +550,14 @@ menu.buttons[2].callback()
 equal(#removed, 0, "zone menu rechecks combat")
 combat = false
 table.remove(watches) -- return to the initial watched set
+local beforeToggleDirty = dirty
 VV_TEST_NS.QuestTracker.HandleSlash("group off"); RunMockTimers()
 equal(native:GetHeight(), nativeHeight, "off restores native frame height")
 equal(blocks[1].HeaderText:GetText(), "Low", "off restores native title")
 equal(blocks[1].HeaderText.size, 14, "off restores native title font")
 equal(heads[1]:IsShown(), false, "off removes headings")
 equal(blocks[1]:IsShown(), true, "off restores native visibility")
-equal(dirty, 1, "off requests native refresh securely")
+equal(dirty, beforeToggleDirty + 1, "off requests native refresh securely")
 native:AdjustSlideAnchor(-30)
 equal(top(native.firstBlock), -40, "grouping off preserves native slide positioning")
 VV_TEST_NS.QuestTracker.HandleSlash("group on")
@@ -573,7 +574,7 @@ combat = false
 coreEvents.callback(coreEvents, "PLAYER_REGEN_ENABLED"); events.callback(events, "PLAYER_REGEN_ENABLED"); RunMockTimers()
 equal(blocks[4].HeaderText.size, 14, "combat off restores font after combat")
 equal(heads[1]:IsShown(), false, "combat off removes headings after combat")
-equal(dirty, 3, "deferred off requests native refresh securely")
+equal(dirty, beforeToggleDirty + 3, "deferred off requests native refresh securely")
 -- A freed/reused native block must not receive an old title on the next refresh.
 VV_TEST_NS.QuestTracker.HandleSlash("group on")
 native.availableHeight = 2000

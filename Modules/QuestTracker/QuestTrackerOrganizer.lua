@@ -7,6 +7,7 @@ local COMPACT_SCALE, COMPACT_FONT_REDUCTION = 0.9, 1.5
 local MARKER_CIRCLE_FILL = 24 / 32
 local eventFrame = CreateFrame("Frame")
 local queued = false
+local nativeRefreshPending, nativeRefreshQueued = false, false
 local snapshots, titles = {}, {}
 local originalFonts = setmetatable({}, { __mode = "k" })
 local hookedBlocks = setmetatable({}, { __mode = "k" })
@@ -20,6 +21,22 @@ local function QueueLayout()
     if not tracker or queued then return end
     queued = true
     C_Timer.After(0, function() if queued then ApplyLayout() end end)
+end
+
+local function QueueNativeRefresh()
+    if not tracker or not VV.IsModuleEnabled("questTracker") then return end
+    nativeRefreshPending = true
+    if nativeRefreshQueued then return end
+    nativeRefreshQueued = true
+    C_Timer.After(0, function()
+        nativeRefreshQueued = false
+        if not VV.IsModuleEnabled("questTracker") then nativeRefreshPending = false; return end
+        if InCombatLockdown() then return end
+        nativeRefreshPending = false
+        -- Let quest/watch events settle before asking Blizzard to rebuild.
+        -- A relayout of existing frames cannot recover a missing quest row.
+        securecallfunction(tracker.MarkDirty, tracker)
+    end)
 end
 
 local function Print(message)
@@ -513,8 +530,12 @@ end
 
 addon.Print = Print
 
-for _, event in ipairs({ "PLAYER_LOGIN", "ADDON_LOADED", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED",
-    "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE", "QUEST_WATCH_LIST_CHANGED" }) do eventFrame:RegisterEvent(event) end
+local questRefreshEvents = {
+    PLAYER_ENTERING_WORLD = true, QUEST_ACCEPTED = true, QUEST_REMOVED = true, QUEST_TURNED_IN = true,
+    QUEST_LOG_UPDATE = true, QUEST_WATCH_UPDATE = true, QUEST_WATCH_LIST_CHANGED = true,
+}
+for event in pairs(questRefreshEvents) do eventFrame:RegisterEvent(event) end
+for _, event in ipairs({ "PLAYER_LOGIN", "ADDON_LOADED", "PLAYER_REGEN_ENABLED" }) do eventFrame:RegisterEvent(event) end
 eventFrame:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then Initialize() end
     if not db then return end
@@ -522,6 +543,7 @@ eventFrame:SetScript("OnEvent", function(_, event)
         if event == "PLAYER_LOGIN" then Print("Waiting for the native quest tracker. /vv tracker status shows diagnostics.") end
         return
     end
+    if questRefreshEvents[event] or (event == "PLAYER_REGEN_ENABLED" and nativeRefreshPending) then QueueNativeRefresh() end
     Refresh()
 end)
 

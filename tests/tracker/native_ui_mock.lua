@@ -63,7 +63,10 @@ CreateFrame = function(kind, name, parent, template)
     function frame:SetHideIfUnscrollable(enabled) self.hideIfUnscrollable = enabled end
     function frame:GetEffectiveScale() return 1 end
     function frame:GetRight() return 1900 end
-    function frame:RegisterEvent() end
+    function frame:RegisterEvent(event)
+        self.events = self.events or {}
+        self.events[event] = true
+    end
     function frame:HookScript(event, callback)
         local original = self.scripts[event]
         self.scripts[event] = function(...)

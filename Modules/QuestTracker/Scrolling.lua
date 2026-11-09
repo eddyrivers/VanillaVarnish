@@ -7,7 +7,7 @@ addon.Scrolling = scroll
 -- Blizzard still builds and owns every block, line, and quest item button.
 local LAYOUT_HEIGHT, LEFT_MARGIN = 100000, 30
 local container, viewport, canvas
-local active, layingOut, pendingHeight, sizeScript
+local active, layingOut, pendingHeight
 local parents = setmetatable({}, { __mode = "k" })
 local Finish
 
@@ -41,11 +41,10 @@ local function RestoreHeight()
     if not pendingHeight then return end
     local height = pendingHeight
     pendingHeight = nil
-    -- Synthetic layout sizing must not enqueue another native dirty update.
-    -- Preserve the exact native script, including any other addons' hooks.
+    -- Keep the native size script installed. Reassigning it from addon code
+    -- taints later managed resizes and the shared objective-tracker update.
+    -- DirtiableMixin coalesces size notifications during its pending update.
     container:SetHeight(height)
-    container:SetScript("OnSizeChanged", sizeScript)
-    sizeScript = nil
 end
 
 local function Detach()
@@ -122,8 +121,6 @@ local function Begin()
     active = true
     layingOut = true
     pendingHeight = container:GetHeight()
-    sizeScript = container:GetScript("OnSizeChanged")
-    container:SetScript("OnSizeChanged", nil)
     container:SetHeight(LAYOUT_HEIGHT)
     -- Also finish if a captured native update bypasses the outer posthook,
     -- or an interrupted update never reaches its final header-position call.
@@ -186,7 +183,7 @@ function scroll.Install(frame)
     container = frame
     hooksecurefunc(container, "ShouldShowHeader", Begin)
     -- The native container has already read GetAvailableHeight into a local
-    -- before this call. Restore its physical height and handler immediately,
+    -- before this call. Restore its physical height immediately,
     -- before block construction, animations, or managed-frame positioning.
     hooksecurefunc(container, "UpdateTopPadding", RestoreHeight)
     -- DirtiableMixin saves a closure over Update during native OnLoad, before

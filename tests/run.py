@@ -110,6 +110,7 @@ if args.blizzard_source:
 
 tracker = runtime()
 tracker.execute((ROOT / "tests/tracker/test_tracker.lua").read_text())
+tracker.execute((ROOT / "tests/tracker/test_refresh.lua").read_text())
 tracker.execute((ROOT / "tests/tracker/test_compact.lua").read_text())
 tracker.execute((ROOT / "tests/tracker/test_buttons.lua").read_text())
 if args.quest_source:
