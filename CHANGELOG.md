@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34.25
+
+- bugfix: Keep the space above Quests small after reloading and automatic tracker updates, in both normal and compact views. No need to toggle quest log settings to close the gap.
+
 ## 1.0.34.24
 
 - bugfix: Keep Quests close below All Objectives in compact and normal views, including after tracker updates.

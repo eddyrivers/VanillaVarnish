@@ -125,12 +125,9 @@ local function Begin()
     sizeScript = container:GetScript("OnSizeChanged")
     container:SetScript("OnSizeChanged", nil)
     container:SetHeight(LAYOUT_HEIGHT)
-    -- A failed/aborted native update must not leave the layout allowance on
-    -- the Edit Mode frame or its native size handler disconnected.
-    C_Timer.After(0, function()
-        RestoreHeight()
-        layingOut = false
-    end)
+    -- Also finish if a captured native update bypasses the outer posthook,
+    -- or an interrupted update never reaches its final header-position call.
+    C_Timer.After(0, function() Finish() end)
 end
 
 local function LayoutCanvas()
@@ -192,6 +189,12 @@ function scroll.Install(frame)
     -- before this call. Restore its physical height and handler immediately,
     -- before block construction, animations, or managed-frame positioning.
     hooksecurefunc(container, "UpdateTopPadding", RestoreHeight)
+    -- DirtiableMixin saves a closure over Update during native OnLoad, before
+    -- our posthooks exist. That closure bypasses the outer Update posthook,
+    -- but still dispatches this final method after positioning every module.
+    if type(container.UpdateHeaderPosition) == "function" then
+        hooksecurefunc(container, "UpdateHeaderPosition", Finish)
+    end
     hooksecurefunc(container, "Update", Finish)
 end
 

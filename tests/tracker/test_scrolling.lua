@@ -32,8 +32,11 @@ function container:ShouldShowHeader() return true end
 function container:GetAvailableHeight() return self:GetHeight() - self.topModulePadding end
 local nativePadding, headerOffset = 38, 0
 function container:UpdateTopPadding() self.topModulePadding = nativePadding end
+function container:UpdateHeaderPosition()
+    self.Header:SetPoint("TOPLEFT", self, "TOPLEFT", 0, headerOffset)
+end
 function container:MarkDirty() dirty = dirty + 1 end
-local fail, managedHeight
+local fail, managedHeight, skipHeaderFinish
 function container:Update()
     if not self:ShouldShowHeader() then return end
     if fail then error("simulated interrupted native layout") end
@@ -44,13 +47,19 @@ function container:Update()
             "real geometry and native size handler are restored before constructing native blocks")
     end
     native:Update(available)
+    native:ClearAllPoints()
+    native:SetPoint("TOP", native:GetParent(), "TOP", 0, -self.topModulePadding)
+    native:SetPoint("LEFT", self, "LEFT", 0, 0)
     -- Match the native container: the following module anchors to this frame,
     -- while its space accounting reads native contentsHeight.
     self.modules[2]:SetPoint("TOP", native, "BOTTOM", 0, -self.moduleSpacing)
     if managedHeight then self:SetHeight(managedHeight) end
-    self.Header:SetPoint("TOPLEFT", self, "TOPLEFT", 0, headerOffset)
+    if not skipHeaderFinish then self:UpdateHeaderPosition() end
     return "native result", 17
 end
+-- DirtiableMixin captures this function in a closure before addon posthooks
+-- are installed. Dirty updates call that saved function, not container.Update.
+local nativeDirtyUpdate = container.Update
 container:Update(); RunMockTimers()
 check(count() < C_QuestLog.GetNumQuestWatches(), "small native tracker omits watched quests before scrolling")
 local oldNativeUpdate = native.Update
@@ -96,8 +105,25 @@ check(topInContainer(container.Header) - container.Header:GetHeight() - topInCon
     and viewport:GetHeight() == 90, "viewport follows header moves made at the end of native layout")
 headerOffset, nativePadding = 0, 38
 addon.SetOption("compact", false); container:Update(); RunMockTimers()
+skipHeaderFinish = true
+nativeDirtyUpdate(container)
+RunMockTimers()
+check(topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6
+    and container:GetScript("OnSizeChanged") == nativeSizeChanged,
+    "next-frame recovery finishes saved updates even when the final native header call is skipped")
+skipHeaderFinish = false
 check(topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6,
     "normal view keeps the same small header gap after compact is disabled")
+for _, compact in ipairs({false, true}) do
+    addon.SetOption("compact", compact); RunMockTimers()
+    nativeDirtyUpdate(container)
+    check(topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6,
+        "saved native dirty-update closure finishes layout before drawing, compact=" .. tostring(compact))
+    RunMockTimers()
+    check(topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6,
+        "saved native dirty-update closure retains the small header gap on the next frame")
+end
+addon.SetOption("compact", false); container:Update(); RunMockTimers()
 check(viewport:GetVerticalScrollRange() > 0 and viewport.ScrollBar:IsShown(), "overflow has a native scrollbar")
 check(native:GetParent() == viewport.child, "existing native module is inside the scroll canvas")
 check(select(2, container.NineSlice:GetPoint(1)) == viewport, "overflow background ends at the visible tracker edge")
@@ -151,6 +177,14 @@ container:Update(); RunMockTimers(); container:Update(); RunMockTimers()
 check(viewport:GetVerticalScrollRange() == 0 and not viewport.ScrollBar:IsShown()
     and topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6,
     "compact list without overflow keeps quests immediately below the header across native updates")
+for _, compact in ipairs({false, true}) do
+    addon.SetOption("compact", compact); RunMockTimers()
+    nativeDirtyUpdate(container); nativeDirtyUpdate(container)
+    check(viewport:GetVerticalScrollRange() == 0
+        and topInContainer(container.Header) - container.Header:GetHeight() - topInContainer(native) == 6,
+        "saved dirty updates keep the header gap small without overflow, compact=" .. tostring(compact))
+    RunMockTimers()
+end
 nativePadding = 38
 addon.SetOption("compact", false); container:Update(); RunMockTimers()
 check(sizes == 1, "real resize still reaches the native size handler")
