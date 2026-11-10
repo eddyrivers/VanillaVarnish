@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.34.29
+
+- bugfix: Prevent upward-growing party frames from interfering with Edit Mode when opening, saving, or closing a layout.
+- After updating, type `/reload` once to clear any errors left over from the previous version.
+
 ## 1.0.34.28
 
 - bugfix: Keep watched quests in view after accepting or turning in quests. If the tracker goes blank, it can now refresh without a reload.

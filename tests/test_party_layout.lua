@@ -321,4 +321,56 @@ end
 check(reloadParty(), "Reloading with rounded offsets and a different roster keeps the saved bottom position")
 vv.db.partyGrowthAnchor = {key = ("TOPLEFT:UIParent:TOPLEFT:%.4f:%.4f"):format(editX, editY), height = savedHeight}
 check(reloadParty(), "An existing saved bottom position survives migration across Edit Mode rounding")
+
+-- Edit Mode wraps the ordinary anchor methods with shared snap/dirty-state
+-- writes. Cosmetic growth must use its C-backed base methods instead.
+local party = PartyFrame
+party.SetPointBase, party.ClearAllPointsBase = party.SetPoint, party.ClearAllPoints
+local snapTarget = {snappedFrames={[party]=true}}
+party.snappedToFrame = snapTarget
+local anchorWrites = 0
+function party:SetPoint(...)
+    self:SetPointBase(...)
+    anchorWrites = anchorWrites + 1
+    EditModeManagerFrame.editModeSystemAnchorDirty = true
+    self.snappedToFrame = snapTarget
+    snapTarget.snappedFrames[self] = true
+end
+function party:ClearAllPoints()
+    self:ClearAllPointsBase()
+    anchorWrites = anchorWrites + 1
+    snapTarget.snappedFrames[self] = nil
+    self.snappedToFrame = nil
+end
+local function cleanEditState(label)
+    check(anchorWrites == 0 and EditModeManagerFrame.editModeSystemAnchorDirty == nil
+        and party.snappedToFrame == snapTarget and snapTarget.snappedFrames[party], label)
+end
+vv.Party.SetOption("growUp", false)
+check(party.point[1] == "TOPLEFT", "Downward growth restores the saved native anchor")
+cleanEditState("Restoring the anchor preserves native Edit Mode snap and dirty state")
+vv.Party.SetOption("growUp", true)
+check(party.point[1] == "BOTTOMLEFT", "Upward growth still applies its visual anchor")
+cleanEditState("Upward growth does not write shared Edit Mode state")
+vv.SetModuleEnabled("party", false)
+check(party.point[1] == "TOPLEFT", "Disabling party tweaks restores its native anchor")
+cleanEditState("Disabling party tweaks leaves native Edit Mode bookkeeping untouched")
+vv.SetModuleEnabled("party", true)
+cleanEditState("Re-enabling party tweaks leaves native Edit Mode bookkeeping untouched")
+
+-- Native dragging/saving continues to use the wrappers. Once it settles,
+-- exit and periodic addon refreshes must not re-dirty shared native state.
+editing = true
+party:ClearAllPoints()
+party:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 140, -220)
+check(anchorWrites == 2 and EditModeManagerFrame.editModeSystemAnchorDirty,
+    "Native Edit Mode movement retains its original anchor methods")
+Mock.EditModeEvent("EditMode.SavedLayouts")
+editing = false
+anchorWrites, EditModeManagerFrame.editModeSystemAnchorDirty = 0, nil
+Mock.EditModeEvent("EditMode.Exit")
+Mock.Event("EDIT_MODE_LAYOUTS_UPDATED")
+Mock.Tick(2)
+check(party.point[1] == "BOTTOMLEFT", "Leaving Edit Mode restores upward growth at the new position")
+cleanEditState("Edit Mode exit, layout events, and polling preserve native snap and dirty state")
 NST_PARTY_LAYOUT_CHECKS = checks

@@ -651,8 +651,15 @@ local function samePoints(a, b)
 end
 
 local function setPoints(frame, value)
-    frame:ClearAllPoints()
-    for _, point in ipairs(value) do frame:SetPoint(unpack(point, 1, 5)) end
+    -- Edit Mode wraps these methods to update shared snap tables and its
+    -- anchor-dirty flag. Cosmetic growth must not taint that native state:
+    -- later Edit Mode callbacks also rebuild trackers that read secret auras.
+    -- Its base methods change only the physical anchor, leaving the saved
+    -- position and native snapping relationship under Blizzard's ownership.
+    local clear = frame.ClearAllPointsBase or frame.ClearAllPoints
+    local set = frame.SetPointBase or frame.SetPoint
+    clear(frame)
+    for _, point in ipairs(value) do set(frame, unpack(point, 1, 5)) end
 end
 
 local function growthAnchorHeight(party, anchor, height)
