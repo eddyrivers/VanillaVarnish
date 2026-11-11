@@ -227,6 +227,29 @@ editing = false; callbacks["EditMode.Exit"]()
 container:Update(); RunMockTimers()
 check(addon.Scrolling.IsActive() and count() == C_QuestLog.GetNumQuestWatches(), "scrolling and every watched quest return after Edit Mode")
 check(container:GetHeight() == 170, "Edit Mode's new height survives")
+
+-- Edit Mode can broadcast a native update while auras are restricted outside
+-- combat. Its scenario tracker must run without an addon-driven resize.
+local restricted = true
+C_Secrets = {ShouldAurasBeSecret = function() return restricted end}
+local beforeRestrictionSizes, beforeRestrictionDirty = sizes, dirty
+container:Update(); RunMockTimers()
+addon.Scrolling.Refresh()
+check(sizes == beforeRestrictionSizes and dirty == beforeRestrictionDirty,
+    "Restricted native layout and addon refresh leave shared height and dirty state alone")
+check(native:GetParent() == container and not addon.Scrolling.IsActive(),
+    "Restricted layout uses native parenting and height")
+for _, frame in ipairs(MockFrames) do
+    if frame.events and frame.events.ADDON_RESTRICTION_STATE_CHANGED then
+        frame.callback(frame, "ADDON_RESTRICTION_STATE_CHANGED")
+    end
+end
+restricted = false
+RunMockTimers(); RunMockTimers(); RunMockTimers()
+check(addon.Scrolling.IsActive() and count() == C_QuestLog.GetNumQuestWatches(),
+    "Scrolling resumes when restrictions lift outside combat")
+C_Secrets = nil
+
 collapsed = true; container:Update(); RunMockTimers()
 check(not viewport:IsShown() and not addon.Scrolling.IsActive(), "native tracker collapse hides the scroller")
 collapsed = false; container:Update(); RunMockTimers()

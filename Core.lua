@@ -29,6 +29,10 @@ function VV.IsModuleEnabled(key)
     return VV.moduleLabels[key] ~= nil and VV.db and VV.db.modules[key] == true and not VV.conflicts[key]
 end
 
+function VV.AurasRestricted()
+    return C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()
+end
+
 function VV.InitDB()
     if type(VanillaVarnishDB) ~= "table" then VanillaVarnishDB = {} end
     VV.db = VanillaVarnishDB

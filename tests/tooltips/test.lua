@@ -350,6 +350,36 @@ if GameTooltipDataMixin then
     vv.SetModuleEnabled("tooltips", true)
 end
 
+-- Native quest title rows use the same level and dungeon label as the tracker.
+Enum.TooltipDataLineType.QuestTitle = 17
+Enum.TooltipDataLineType.QuestObjective = 18
+DUNGEON = "Dungeon"
+C_QuestLog = {GetQuestDifficultyLevel = function(id)
+    if id == 1486 then return 17 end
+    if id == 900 then return 21 end
+end}
+local questData = {lines = {
+    {lineIndex=2, type=17, questID=1486},
+    {lineIndex=3, type=18},
+    {lineIndex=4, type=17, questID=900},
+    {lineIndex=5, type=17},
+}}
+tip.primaryData = questData
+Mock.Lines(tip, {"Verdan", "|cffaaaaaa[13D] Deviate Hides|r", "[13D] 7/20 Deviate Hide", "[19+] An Elite Quest", "[17D] Another Quest"})
+addon.SetOption("unitColors", false)
+Mock.colorCallback(tip, questData)
+assert(Mock.Text(2) == "|cffaaaaaa[17] Deviate Hides (Dungeon)|r", "Quest difficulty and tag match the native tracker")
+assert(Mock.Text(3) == "[13D] 7/20 Deviate Hide", "Only native quest titles are edited")
+assert(Mock.Text(4) == "[21+] An Elite Quest", "Elite marker survives the level correction")
+assert(Mock.Text(5) == "[17] Another Quest (Dungeon)", "Party-only quests retain their displayed numeric level")
+Mock.colorCallback(tip, questData)
+assert(Mock.Text(2) == "|cffaaaaaa[17] Deviate Hides (Dungeon)|r", "Tooltip refresh keeps exactly one dungeon label")
+vv.SetModuleEnabled("tooltips", false)
+assert(Mock.Text(2) == "|cffaaaaaa[13D] Deviate Hides|r", "Disabling tooltips restores the native quest title")
+tip.primaryData = nil
+vv.SetModuleEnabled("tooltips", true)
+addon.SetOption("unitColors", true)
+
 -- A loaded standalone addon blocks VV's tooltip effects without importing its
 -- settings. Controls and VV preferences stay available for the next reload.
 C_AddOns = {IsAddOnLoaded=function(name) return name == "ForeverMouseTooltip" end}

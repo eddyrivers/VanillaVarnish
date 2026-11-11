@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.34.30
+
+- bugfix: Match quest levels in creature tooltips to the tracker. Dungeon quests now show the Dungeon label separately from the level.
+- bugfix: Avoid tracker refreshes that can trigger aura errors while the game restricts aura access. Quest tracker scrolling resumes automatically when the restriction lifts.
+
 ## 1.0.34.29
 
 - bugfix: Prevent upward-growing party frames from interfering with Edit Mode when opening, saving, or closing a layout.

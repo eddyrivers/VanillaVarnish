@@ -23,6 +23,13 @@ local function QueueLayout()
     C_Timer.After(0, function() if queued then ApplyLayout() end end)
 end
 
+local function RequestNativeRefresh()
+    -- The quest module schedules a shared tracker update, which also reads
+    -- player auras through ScenarioObjectiveTracker.
+    nativeRefreshPending = VV.AurasRestricted() == true
+    if not nativeRefreshPending then securecallfunction(tracker.MarkDirty, tracker) end
+end
+
 local function QueueNativeRefresh()
     if not tracker or not VV.IsModuleEnabled("questTracker") then return end
     nativeRefreshPending = true
@@ -32,10 +39,9 @@ local function QueueNativeRefresh()
         nativeRefreshQueued = false
         if not VV.IsModuleEnabled("questTracker") then nativeRefreshPending = false; return end
         if InCombatLockdown() then return end
-        nativeRefreshPending = false
         -- Let quest/watch events settle before asking Blizzard to rebuild.
         -- A relayout of existing frames cannot recover a missing quest row.
-        securecallfunction(tracker.MarkDirty, tracker)
+        RequestNativeRefresh()
     end)
 end
 
@@ -412,9 +418,7 @@ Refresh = function(immediate)
         displayEnabled = enabled
         displayCompact = compact
         for region in pairs(originalFonts) do SizeFont(region, displayEnabled, displayCompact) end
-        -- Do not write shared dirty flags from addon execution. The native
-        -- callable handles its own state through Blizzard's security boundary.
-        securecallfunction(tracker.MarkDirty, tracker)
+        RequestNativeRefresh()
     end
     -- Native post-hooks finish before the game can draw this frame. Apply here
     -- so restoring/rebuilding native blocks never leaves an ungrouped frame on
@@ -535,7 +539,9 @@ local questRefreshEvents = {
     QUEST_LOG_UPDATE = true, QUEST_WATCH_UPDATE = true, QUEST_WATCH_LIST_CHANGED = true,
 }
 for event in pairs(questRefreshEvents) do eventFrame:RegisterEvent(event) end
-for _, event in ipairs({ "PLAYER_LOGIN", "ADDON_LOADED", "PLAYER_REGEN_ENABLED" }) do eventFrame:RegisterEvent(event) end
+for _, event in ipairs({ "PLAYER_LOGIN", "ADDON_LOADED", "PLAYER_REGEN_ENABLED", "ADDON_RESTRICTION_STATE_CHANGED" }) do
+    eventFrame:RegisterEvent(event)
+end
 eventFrame:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then Initialize() end
     if not db then return end
@@ -543,7 +549,8 @@ eventFrame:SetScript("OnEvent", function(_, event)
         if event == "PLAYER_LOGIN" then Print("Waiting for the native quest tracker. /vv tracker status shows diagnostics.") end
         return
     end
-    if questRefreshEvents[event] or (event == "PLAYER_REGEN_ENABLED" and nativeRefreshPending) then QueueNativeRefresh() end
+    if questRefreshEvents[event] or (nativeRefreshPending
+        and (event == "PLAYER_REGEN_ENABLED" or event == "ADDON_RESTRICTION_STATE_CHANGED")) then QueueNativeRefresh() end
     Refresh()
 end)
 

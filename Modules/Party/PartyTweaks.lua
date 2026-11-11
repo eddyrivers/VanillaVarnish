@@ -522,7 +522,7 @@ local function updateBuffs(state)
             if copied then list = values; state.buffSource = "list" end
         end
     end
-    if not list and C_UnitAuras.GetAuraDataByIndex then
+    if not list and C_UnitAuras.GetAuraDataByIndex and not VV.AurasRestricted() then
         list, indexed = {}, true
         state.buffSource = "index"
         for index = 1, AURA_SCAN_LIMIT do

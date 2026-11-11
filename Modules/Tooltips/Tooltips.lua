@@ -94,7 +94,7 @@ local function FinishAnchor(tooltip)
     ApplyAnchor(tooltip)
 end
 
-local function RestoreColors()
+local function RestoreLines()
     for line, record in pairs(changedLines) do
         if Read(line.GetText, line) == record.colored then
             pcall(line.SetText, line, record.original)
@@ -209,22 +209,50 @@ local function Tint(text, phrase, code)
     return text:sub(1, first - 1) .. code .. phrase .. "|r" .. text:sub(last + 1)
 end
 
-local function LevelLines(tooltip, data)
-    local indices = {}
-    local levelType = Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.UnitLevel
+local function UnitLineDetails(tooltip, data)
+    local levels, quests = {}, {}
+    local lineTypes = Enum and Enum.TooltipDataLineType
     data = Known(data) or Read(tooltip.GetPrimaryTooltipData, tooltip)
-    if not levelType or type(data) ~= "table" then return indices end
+    if not lineTypes or type(data) ~= "table" then return levels, quests end
     local lines = Read(function() return data.lines end)
-    if type(lines) ~= "table" then return indices end
+    if type(lines) ~= "table" then return levels, quests end
     pcall(function()
         for _, line in ipairs(lines) do
-            if type(Known(line)) == "table" and Known(line.type) == levelType then
-                local index = Known(line.lineIndex)
-                if type(index) == "number" then indices[index] = true end
+            if type(Known(line)) == "table" then
+                local index, kind = Known(line.lineIndex), Known(line.type)
+                if type(index) == "number" and kind then
+                    if kind == lineTypes.UnitLevel then levels[index] = true end
+                    if kind == lineTypes.QuestTitle then quests[index] = line end
+                end
             end
         end
     end)
-    return indices
+    return levels, quests
+end
+
+local function FormatQuestLevel(text, line)
+    local prefix, title = text:match("^(%s*|c%x%x%x%x%x%x%x%x)(.*)$")
+    if not prefix then prefix, title = text:match("^(%s*)(.*)$") end
+    local shownLevel, marker, rest = title:match("^%[(%d+)([D+]?)%](.*)$")
+    if not shownLevel then return text end
+
+    local questID = Read(function() return line.questID end)
+    local level, tag
+    if type(questID) == "number" and questID > 0 then
+        level = Read(C_QuestLog and C_QuestLog.GetQuestDifficultyLevel, questID)
+        if marker == "D" then tag = Read(QuestUtilsOverrides and QuestUtilsOverrides.GetQuestTagText, questID) end
+    end
+    if type(level) ~= "number" or level <= 0 then level = shownLevel end
+    if marker == "D" then
+        if type(tag) ~= "string" and type(DUNGEON) == "string" then tag = "(" .. DUNGEON .. ")" end
+        if type(tag) == "string" and tag ~= "" then
+            local body, reset = rest:match("^(.*)(|r)$")
+            body, reset = body or rest, reset or ""
+            if body:sub(-#tag) ~= tag then rest = body .. " " .. tag .. reset end
+            marker = ""
+        end
+    end
+    return prefix .. "[" .. level .. marker .. "]" .. rest
 end
 
 local function TintLevelNumber(text, level, code)
@@ -237,12 +265,11 @@ local function TintLevelNumber(text, level, code)
     return text:sub(1, first - 1) .. code .. text:sub(first, last) .. "|r" .. text:sub(last + 1)
 end
 
-local function ColorUnit(tooltip, data)
-    if not Enabled() or not addon.db.unitColors or not hooked[tooltip] or not Allowed(tooltip) then return end
-    local unit = DisplayedUnit(tooltip, data)
-    if not unit then return end
+local function StyleUnitTooltip(tooltip, data)
+    if not Enabled() or not hooked[tooltip] or not Allowed(tooltip) then return end
+    local unit = addon.db.unitColors and DisplayedUnit(tooltip, data)
     local className, classCode, name, fullName, race
-    if Read(UnitIsPlayer, unit) == true and UnitClass then
+    if unit and Read(UnitIsPlayer, unit) == true and UnitClass then
         local ok, localized, token = pcall(UnitClass, unit)
         localized, token = Known(localized), Known(token)
         if ok and type(localized) == "string" and type(token) == "string" then
@@ -263,11 +290,11 @@ local function ColorUnit(tooltip, data)
             end
         end
     end
-    local level = Read(UnitLevel, unit)
+    local level = unit and Read(UnitLevel, unit)
     local levelText = type(level) == "number" and level > 0 and LevelText(level) or nil
-    local hostile = Read(UnitCanAttack, "player", unit) == true or Read(UnitIsEnemy, "player", unit) == true
+    local hostile = unit and (Read(UnitCanAttack, "player", unit) == true or Read(UnitIsEnemy, "player", unit) == true)
     local levelCode = hostile and levelText and Difficulty(unit, level) or nil
-    local levelLines = LevelLines(tooltip, data)
+    local levelLines, questLines = UnitLineDetails(tooltip, data)
     local count, tooltipName = Read(tooltip.NumLines, tooltip), Read(tooltip.GetName, tooltip)
     if type(count) ~= "number" or type(tooltipName) ~= "string" then return end
     for index = 1, count do
@@ -277,7 +304,9 @@ local function ColorUnit(tooltip, data)
             local record = changedLines[line]
             if record and text == record.colored then text = record.original end
             local colored = text
-            if index == 1 and name then
+            if questLines[index] then
+                colored = FormatQuestLevel(text, questLines[index])
+            elseif index == 1 and name then
                 colored = Tint(text, text:find(fullName, 1, true) and fullName or name, classCode)
             elseif index > 1 then
                 colored = Tint(colored, levelText, levelCode)
@@ -378,7 +407,7 @@ end
 
 function addon.RefreshModule()
     if not addon.db then addon.InitDB() end
-    RestoreColors()
+    RestoreLines()
     InstallHooks()
     for tooltip in pairs(hooked) do
         if Allowed(tooltip) and Read(tooltip.IsShown, tooltip) == true then
@@ -389,7 +418,7 @@ function addon.RefreshModule()
                     changingAnchor = false
                     if not ok and geterrorhandler then geterrorhandler()(err) end
                 else ApplyAnchor(tooltip) end
-                ColorUnit(tooltip)
+                StyleUnitTooltip(tooltip)
             elseif moved[tooltip] then
                 -- Let the next native hover rebuild its original anchor/content.
                 tooltip:Hide()
@@ -444,7 +473,7 @@ driver:SetScript("OnEvent", function(_, event, name)
     elseif event == "PLAYER_LOGIN" then
         addon.RefreshModule()
         if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Unit then
-            TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, ColorUnit)
+            TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, StyleUnitTooltip)
         end
         addon.RegisterOptions()
     elseif event == "UPDATE_MOUSEOVER_UNIT" and addon.db then

@@ -77,3 +77,10 @@ Mock.Event("UNIT_AURA", "party1")
 messages = {}
 VV_TEST_NS.Party.HandleSlash("status")
 assert(table.concat(messages, "\n"):find("party1: aura read refused; source: index", 1, true))
+
+local indexReads = 0
+Mock.combat = false
+C_Secrets = {ShouldAurasBeSecret = function() return true end}
+C_UnitAuras.GetAuraDataByIndex = function() indexReads = indexReads + 1 end
+Mock.Event("UNIT_AURA", "party1")
+assert(indexReads == 0, "Skip the indexed aura fallback when the client reports restricted auras outside combat")

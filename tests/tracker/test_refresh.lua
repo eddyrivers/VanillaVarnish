@@ -47,6 +47,16 @@ check(requests == before, "native refresh request waits during combat")
 InCombatLockdown = originalCombat
 events.callback(events, "PLAYER_REGEN_ENABLED"); RunMockTimers(); RunMockTimers()
 check(requests == before + 1, "pending quest refresh runs after combat")
+local restricted = true
+C_Secrets = {ShouldAurasBeSecret = function() return restricted end}
+before = requests
+emptyThenChange("QUEST_ACCEPTED"); RunMockTimers()
+check(requests == before, "quest refresh waits for aura access even outside combat")
+events.callback(events, "ADDON_RESTRICTION_STATE_CHANGED")
+restricted = false
+RunMockTimers(); RunMockTimers()
+check(requests == before + 1 and count() == originalCount(), "quest refresh resumes after aura restrictions lift")
+C_Secrets = nil
 vv.SetModuleEnabled("questTracker", false); RunMockTimers(); RunMockTimers()
 before = requests
 events.callback(events, "QUEST_LOG_UPDATE"); RunMockTimers(); RunMockTimers()

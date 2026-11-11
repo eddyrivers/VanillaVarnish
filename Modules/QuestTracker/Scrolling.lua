@@ -111,13 +111,11 @@ end
 local function Begin()
     if pendingHeight then return end
     if not CanChange() then return end
-    if not Wanted() or container:IsCollapsed() then Detach(); return end
+    -- Resizing this frame invokes Blizzard's OnSizeChanged and dirties the
+    -- shared tracker. Its scenario module needs to read auras during layout.
+    if not Wanted() or container:IsCollapsed() or VV.AurasRestricted() then Detach(); return end
     EnsureFrames()
     SizeViewport()
-    for _, module in ipairs(container.modules) do
-        if not parents[module] then parents[module] = module:GetParent() end
-        module:SetParent(canvas)
-    end
     active = true
     layingOut = true
     pendingHeight = container:GetHeight()
@@ -134,12 +132,20 @@ local function LayoutCanvas()
     local previous, total = nil, 0
     for _, module in ipairs(container.modules) do
         if module:GetContentsHeight() > 0 then
+            -- Move displayed modules only after Blizzard has built them.
+            if not parents[module] then
+                parents[module] = module:GetParent()
+                module:SetParent(canvas)
+            end
             module:ClearAllPoints()
             module:SetPoint("TOP", previous or canvas, previous and "BOTTOM" or "TOP", 0,
                 previous and -container.moduleSpacing or 0)
             module:SetPoint("LEFT", canvas, "LEFT", LEFT_MARGIN + (module.leftMargin or 0), 0)
             total = total + module:GetHeight() + (previous and container.moduleSpacing or 0)
             previous = module
+        elseif parents[module] then
+            module:SetParent(parents[module])
+            parents[module] = nil
         end
     end
     canvas:SetHeight(math.max(1, total))
@@ -201,9 +207,10 @@ end
 
 function scroll.Refresh()
     if not container or layingOut or not CanChange() then return end
-    if not Wanted() then Detach() end
+    local restricted = VV.AurasRestricted()
+    if not Wanted() or restricted then Detach() end
     -- Native code owns all dirty flags and the next full layout.
-    securecallfunction(container.MarkDirty, container)
+    if not restricted then securecallfunction(container.MarkDirty, container) end
 end
 
 function scroll.UpdateRange()
@@ -216,7 +223,12 @@ end
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_REGEN_ENABLED")
 events:RegisterEvent("EDIT_MODE_LAYOUTS_UPDATED")
-events:SetScript("OnEvent", function() scroll.Refresh() end)
+events:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
+events:SetScript("OnEvent", function(_, event)
+    -- The predicate reflects the new state after the restriction event ends.
+    if event == "ADDON_RESTRICTION_STATE_CHANGED" then C_Timer.After(0, scroll.Refresh)
+    else scroll.Refresh() end
+end)
 if EventRegistry then
     EventRegistry:RegisterCallback("EditMode.Enter", function() scroll.Refresh() end, scroll)
     EventRegistry:RegisterCallback("EditMode.Exit", function() scroll.Refresh() end, scroll)
