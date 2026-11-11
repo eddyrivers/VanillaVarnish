@@ -4,7 +4,7 @@ Mock.Event("PLAYER_LOGIN")
 assert(vv.Nameplates ~= vv.QuestTracker and vv.Party ~= vv.Nameplates)
 assert(vv.db.nameplates == vv.Nameplates.tweaksDB and vv.db.questTracker == vv.QuestTracker.db)
 assert(vv.Nameplates.db == vv.db.nameplates.swingTimers)
-assert(#Mock.categories == #vv.moduleOrder + 8 and Mock.categories[1].name == "VanillaVarnish")
+assert(#Mock.categories == #vv.moduleOrder + 9 and Mock.categories[1].name == "VanillaVarnish")
 assert(vv.QuestTracker.questLogOptionsCategory.name == "Quest log"
     and vv.QuestTracker.questLogOptionsCategory.parent == vv.rootCategory)
 assert(vv.rootCategory.shouldSortAlphabetically)

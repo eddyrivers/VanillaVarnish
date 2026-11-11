@@ -6,12 +6,13 @@ local fields = {
     questTracker = {"enabled", "completedSort", "scrolling", "compact", "compactLog"},
     party = {"buffs", "classColors", "rangeFade", "spacing", "growUp", "rolePin"},
     tooltips = {"followMouse", "offsetX", "offsetY", "unitColors", "pauseInCombat"},
+    groupBrowser = {"compressed", "sort"},
 }
 
 local function validSettings(settings)
     if type(settings) ~= "table" or type(settings.modules) ~= "table" then return false end
     for section in pairs(fields) do
-        if type(settings[section]) ~= "table" then return false end
+        if type(settings[section]) ~= "table" and (section ~= "groupBrowser" or settings[section] ~= nil) then return false end
     end
     local plates = settings.nameplates
     for _, key in ipairs({"swingTimers", "comboPoints"}) do
@@ -74,7 +75,8 @@ local function snapshot(source)
     for _, key in ipairs(VV.moduleOrder) do settings.modules[key] = source.modules[key] end
     for section, keys in pairs(fields) do
         settings[section] = {}
-        for _, key in ipairs(keys) do settings[section][key] = VV.Copy(source[section][key]) end
+        local values = source[section] or {}
+        for _, key in ipairs(keys) do settings[section][key] = VV.Copy(values[key]) end
     end
     return settings
 end
@@ -98,6 +100,8 @@ function VV.ProfileModified()
     if saved.questTracker.scrolling == nil then saved.questTracker.scrolling = true end
     if saved.questTracker.compact == nil then saved.questTracker.compact = false end
     if saved.questTracker.compactLog == nil then saved.questTracker.compactLog = false end
+    if saved.groupBrowser.compressed == nil then saved.groupBrowser.compressed = false end
+    if saved.groupBrowser.sort == nil then saved.groupBrowser.sort = "default" end
     if saved.nameplates.groupQuestMarkers == nil then saved.nameplates.groupQuestMarkers = false end
     VV.Nameplates.NormalizeFocusSettings(saved.nameplates)
     -- Profiles saved before row layouts implicitly use the stacked layout.
@@ -149,7 +153,7 @@ local function apply(settings, name, preset)
     if not validSettings(settings) then return false, "That profile has invalid settings." end
     local collapsed = VV.db.questTracker.collapsed
     for _, key in ipairs(VV.moduleOrder) do VV.db.modules[key] = settings.modules[key] end
-    for section in pairs(fields) do replace(VV.db[section], settings[section]) end
+    for section in pairs(fields) do replace(VV.db[section], settings[section] or {}) end
     -- Quest folds describe this character's current quests, not a shared design.
     VV.db.questTracker.collapsed = collapsed
     VV.db.profileName = not preset and name or nil
@@ -163,6 +167,7 @@ local function apply(settings, name, preset)
     ns.styleVersion = (ns.styleVersion or 0) + 1
     VV.Tooltips.InitDB()
     for _, key in ipairs(VV.moduleOrder) do VV.RefreshModule(key) end
+    if VV.GroupBrowser then VV.GroupBrowser.Refresh() end
     if ns.RefreshComboOptions then ns.RefreshComboOptions() end
     if ns.RefreshFeatureOptions then ns.RefreshFeatureOptions() end
     if VV.RefreshOptions then VV.RefreshOptions() end

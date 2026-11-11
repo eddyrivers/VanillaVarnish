@@ -3,6 +3,7 @@ local _, VV = ...
 -- Built-in designs are separate from the account's editable profile library.
 local presets = {
     ["Default"] = {
+        ["groupBrowser"] = {compressed=false, sort="default"},
         ["modules"] = {
             ["nameplates"] = true,
             ["party"] = true,

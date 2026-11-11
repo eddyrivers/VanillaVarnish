@@ -194,5 +194,28 @@ function VV.RegisterOptions()
     Settings.RegisterAddOnCategory(VV.partyCategory)
     party:SetScript("OnShow", VV.RefreshOptions)
     VV.partyPanel, VV.optionControls = party, controls
+
+    local browser = CreateFrame("Frame", nil, UIParent)
+    browser:Hide()
+    Heading(browser, "Group Browser", "Fit more listings in the Looking For Group window.")
+    Check(browser, "groupBrowser.compressed", "Compressed view", -90,
+        function() return VV.db.groupBrowser.compressed end,
+        function(value) VV.GroupBrowser.SetOption("compressed", value) end,
+        "Use shorter rows with smaller text. Playstyle and current zone appear below the listing when available.")
+    UI.Label(browser, "Sort players by", 16, -140)
+    local sort = CreateFrame("DropdownButton", nil, browser, "WowStyle1DropdownTemplate")
+    sort:SetPoint("TOPLEFT", browser, "TOPLEFT", 152, -134)
+    sort:SetWidth(190)
+    sort:SetupMenu(function(_, menu)
+        for _, choice in ipairs({{"default", "Default order"}, {"level", "Level (highest first)"}, {"class", "Class (A–Z)"}}) do
+            local value = choice[1]
+            menu:CreateRadio(choice[2], function() return VV.db.groupBrowser.sort == value end,
+                function() VV.GroupBrowser.SetOption("sort", value) end)
+        end
+    end)
+    controls["groupBrowser.sort"] = {dropdown=sort, Refresh=function() sort:GenerateMenu() end}
+    VV.groupBrowserCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, browser, "Group Browser")
+    Settings.RegisterAddOnCategory(VV.groupBrowserCategory)
+    browser:SetScript("OnShow", VV.RefreshOptions)
     VV.RefreshOptions()
 end

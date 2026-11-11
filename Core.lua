@@ -60,6 +60,9 @@ function VV.InitDB()
     end
     if type(db.party) ~= "table" then db.party = defaults and defaults.party or {} end
     if type(db.tooltips) ~= "table" then db.tooltips = defaults and defaults.tooltips or {} end
+    if type(db.groupBrowser) ~= "table" then db.groupBrowser = {} end
+    if type(db.groupBrowser.compressed) ~= "boolean" then db.groupBrowser.compressed = false end
+    if db.groupBrowser.sort ~= "level" and db.groupBrowser.sort ~= "class" then db.groupBrowser.sort = "default" end
     if type(db.questTracker.enabled) ~= "boolean" then db.questTracker.enabled = true end
     if type(db.questTracker.scrolling) ~= "boolean" then db.questTracker.scrolling = true end
     if type(db.questTracker.compact) ~= "boolean" then db.questTracker.compact = false end
@@ -123,7 +126,8 @@ function VV.OpenOptions(page)
     if page == "questLog" then VV.QuestTracker.OpenQuestLogOptions(); return end
     if page == "tooltips" then VV.Tooltips.OpenOptions(); return end
     VV.OpenSettingsCategory(page == "party" and VV.partyCategory
-        or page == "profiles" and VV.profilesCategory or VV.rootCategory)
+        or page == "profiles" and VV.profilesCategory
+        or page == "groupBrowser" and VV.groupBrowserCategory or VV.rootCategory)
 end
 
 local function Status()
@@ -144,6 +148,7 @@ SlashCmdList.VANILLAVARNISH = function(message)
     if command == "status" then Status(); return end
     if command == "profiles" or command == "presets" then VV.OpenOptions("profiles"); return end
     if command == "questlog" then VV.OpenOptions("questLog"); return end
+    if command == "groupbrowser" or command == "lfg" then VV.OpenOptions("groupBrowser"); return end
     if key then
         local mode = rest:lower()
         if mode == "on" or mode == "off" or mode == "toggle" then
@@ -156,7 +161,7 @@ SlashCmdList.VANILLAVARNISH = function(message)
         end
         return
     end
-    VV.Print("/vv opens settings. /vv nameplates, /vv tracker, /vv questlog, /vv party, /vv tooltips open settings pages.")
+    VV.Print("/vv opens settings. /vv nameplates, /vv tracker, /vv questlog, /vv party, /vv tooltips, /vv groupbrowser open settings pages.")
     VV.Print("/vv <module> on | off | toggle controls the whole module and preserves its feature settings.")
     VV.Print("/vv status shows module status. Use /vv <module> help for feature commands.")
 end

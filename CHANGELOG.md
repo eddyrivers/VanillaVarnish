@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.35
+
+- Add **Group Browser** settings (`/vv groupbrowser`). Turn on **Compressed view** to fit more listings in the Looking For Group window. The shorter rows show level, class, activity, and roles up top, with playstyle and current zone below when available.
+- Sort solo players by level or class, or keep Blizzard's default order. Group listings keep their usual order.
+
 ## 1.0.34.30
 
 - bugfix: Match quest levels in creature tooltips to the tracker. Dungeon quests now show the Dungeon label separately from the level.

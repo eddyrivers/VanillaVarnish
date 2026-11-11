@@ -177,4 +177,13 @@ check(vv.LoadProfile("Short tracker") and vv.db.questTracker.scrolling and not v
     "Profiles saved before scrolling use its default without appearing modified")
 check(not vv.db.questTracker.compact and not vv.db.questTracker.compactLog,
     "Older profiles leave tracker and quest log compact views off")
+vv.GroupBrowser.SetOption("compressed", true)
+vv.GroupBrowser.SetOption("sort", "class")
+check(vv.SaveProfile("Group Browser") and vv.LoadPreset("Default"), "Group Browser preferences save with a profile")
+check(not vv.db.groupBrowser.compressed and vv.db.groupBrowser.sort == "default", "Default preset uses the usual browser layout and order")
+check(vv.LoadProfile("Group Browser") and vv.db.groupBrowser.compressed and vv.db.groupBrowser.sort == "class"
+    and not vv.ProfileModified(), "Loading a profile restores both browser preferences")
+vv.profileStore["Group Browser"].settings.groupBrowser = nil
+check(vv.LoadProfile("Group Browser") and not vv.db.groupBrowser.compressed and vv.db.groupBrowser.sort == "default"
+    and not vv.ProfileModified(), "Older profiles can load without a Group Browser section")
 VV_PROFILE_CHECKS = checks

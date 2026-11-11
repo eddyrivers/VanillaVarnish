@@ -262,6 +262,10 @@ combined = nameplates(full=True)
 combined.execute((ROOT / "tests/test_integration.lua").read_text())
 print("PASS: combined TOC load, namespace isolation, shared menu, master switches, and persistence")
 
+browser = nameplates(full=True)
+browser.execute((ROOT / "tests/test_group_browser.lua").read_text(encoding="utf-8"))
+print("PASS: Group Browser settings, visible row capacity, native actions, recycling, and player-only sorting")
+
 profiles = nameplates(full=True)
 profiles.execute((ROOT / "tests/test_profiles.lua").read_text())
 print(f"PASS: {profiles.globals().VV_PROFILE_CHECKS} account profiles, cross-character loading, isolation, controls, and combat checks")
@@ -349,6 +353,6 @@ end
 Mock.Event("PLAYER_LOGIN")
 assert(VV_TEST_NS.Nameplates.tweaksDB == VV_TEST_NS.db.nameplates)
 assert(VV_TEST_NS.Nameplates.db == VV_TEST_NS.db.nameplates.swingTimers)
-assert(#Mock.categories == #VV_TEST_NS.moduleOrder + 8)
+assert(#Mock.categories == #VV_TEST_NS.moduleOrder + 9)
 ''')
 print("PASS: modules disabled at startup can be enabled later; initialization is independent of event dispatch order")
