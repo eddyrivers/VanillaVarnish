@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.35.3
+
+- bugfix: Keep tanks ahead of healers when a party member dies far away or zones back into a dungeon. If the game resets the layout during combat, role order returns when combat ends.
+
 ## 1.0.35.2
 
 - See more groups and players at a glance. Type `/vv groupbrowser` and turn on **Compressed view** for shorter rows with level, class, activity, roles, playstyle, and zone where available.

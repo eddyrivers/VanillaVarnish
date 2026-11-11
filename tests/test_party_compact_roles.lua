@@ -187,9 +187,16 @@ order({"player", "party2", "party1"})
 -- Role lookups can disagree or become unavailable while a remote member zones.
 -- Use the native enum first and remember roles by identity, not by frame/slot.
 local guids = {player="healer", party1="damage", party2="tank"}
+local names = {player="Healer", party1="Tank", party2="Tank"}
+local realms = {party1="OtherRealm"}
+function GetNumSubgroupMembers() return 2 end
 function UnitGUID(unit)
     check(not Mock.combat, "Identity reads also wait until combat ends")
     return guids[unit]
+end
+function UnitFullName(unit)
+    check(not Mock.combat, "Name reads also wait until combat ends")
+    return names[unit], realms[unit]
 end
 local enumRoles = {player=2, party1=3, party2=1}
 Enum.LFGRole.Damage = 3
@@ -220,6 +227,32 @@ UnitGroupRolesAssignedEnum = enumReader
 enumRoles.party2, roles.party2 = {secret=true}, {secret=true}
 Mock.Tick(1)
 order({"party2", "player", "party1"})
+
+-- Death and dungeon re-entry can refresh the native layout while roster IDs
+-- and role data are still loading. The readable name identifies the tank.
+Mock.combat = true
+guids.party2, enumRoles.party2, roles.party2 = nil, 0, "NONE"
+Mock.Event("GROUP_ROSTER_UPDATE")
+refreshNative()
+order({"player", "party2", "party1"})
+Mock.combat = false
+Mock.Event("PLAYER_REGEN_ENABLED")
+order({"party2", "player", "party1"})
+guids.party2 = {secret=true}
+refreshNative()
+Mock.Event("GROUP_ROSTER_UPDATE")
+order({"party2", "player", "party1"})
+
+-- A brief gap in both identities should not evict the role before the GUID
+-- comes back. During that gap an unknown name cannot identify the tank.
+UNKNOWNOBJECT = "Unknown Entity"
+names.party2 = UNKNOWNOBJECT
+Mock.Event("GROUP_ROSTER_UPDATE")
+order({"player", "party2", "party1"})
+guids.party2, names.party2 = "tank", "Tank"
+Mock.Tick(1)
+order({"party2", "player", "party1"})
+
 enumRoles.party2, roles.party2 = 3, "TANK"
 Mock.Event("PLAYER_ROLES_ASSIGNED")
 order({"player", "party2", "party1"})
@@ -227,6 +260,8 @@ enumRoles.party2, roles.party2 = 1, "TANK"
 Mock.Event("ROLE_CHANGED_INFORM")
 -- Party slots can swap without losing the remembered role of either identity.
 guids.party1, guids.party2 = guids.party2, guids.party1
+names.party1, names.party2 = names.party2, names.party1
+realms.party1, realms.party2 = realms.party2, realms.party1
 enumRoles.party1, roles.party1, enumRoles.party2, roles.party2 = 0, "NONE", 0, "NONE"
 Mock.Event("GROUP_ROSTER_UPDATE")
 order({"party1", "player", "party2"})
@@ -241,6 +276,7 @@ order({"player", "party2", "party1"})
 enumRoles.party1, roles.party1 = 1, "TANK"
 Mock.Event("PLAYER_ROLES_ASSIGNED")
 guids.party1, enumRoles.party1, roles.party1 = {secret=true}, 0, "NONE"
+names.party1 = {secret=true}
 Mock.Tick(1)
 order({"player", "party2", "party1"})
 guids.party1 = nil

@@ -706,14 +706,36 @@ local function memberGUID(unit)
     end
 end
 
+local function memberFullName(unit)
+    local getName = UnitFullName or UnitName
+    if not getName then return end
+    local ok, name, realm = pcall(getName, unit)
+    if not ok or secret(name) or secret(realm) or type(name) ~= "string" or name == "" or name == UNKNOWNOBJECT
+        or (realm ~= nil and type(realm) ~= "string") then return end
+    return name .. "-" .. (realm or "")
+end
+
 local function pruneAssignedRoles()
     if not rosterRolesPending or InCombatLockdown() then return end
-    rosterRolesPending = false
-    local current = {}
+    local current, identified = {}, 0
     for index = 0, 4 do
         local guid = memberGUID(index == 0 and "player" or "party" .. index)
-        if guid then current[guid] = assignedRoles[guid] end
+        if guid and not current[guid] then
+            current[guid] = assignedRoles[guid] or {}
+            identified = identified + 1
+        end
     end
+    -- A roster event can arrive while an existing member is still loading.
+    -- Only a complete roster can tell us which identities actually left.
+    local getCount = GetNumSubgroupMembers or GetNumGroupMembers
+    if getCount then
+        local ok, count = attempt(getCount)
+        count = ok and readable(count)
+        if type(count) ~= "number" then return end
+        local expected = GetNumSubgroupMembers and count + 1 or math.max(1, count)
+        if identified ~= expected then return end
+    end
+    rosterRolesPending = false
     assignedRoles = current
 end
 
@@ -734,17 +756,28 @@ local function memberRole(unit)
         value = ok and readable(value)
         if value == "TANK" or value == "HEALER" or value == "DAMAGER" then role = value end
     end
-    -- Zoning can temporarily hide a role. Remember only verified identities,
-    -- never a frame or party slot that may now belong to somebody else.
-    local guid = memberGUID(unit)
-    if guid and role then assignedRoles[guid] = role end
-    return role or guid and assignedRoles[guid] or nil
+    -- Zoning can temporarily hide both role and GUID. Use the full name only
+    -- if it was previously seen with a GUID and identifies a single member.
+    local guid, name = memberGUID(unit), memberFullName(unit)
+    local record = guid and assignedRoles[guid]
+    if guid and (role or name) then
+        record = record or {}
+        record.role, record.name = role or record.role, name or record.name
+        assignedRoles[guid] = record
+    elseif not guid and not role and name then
+        for _, known in pairs(assignedRoles) do
+            if known.name == name then
+                if record then return end
+                record = known
+            end
+        end
+    end
+    return role or record and record.role
 end
 
 local function arrangeCompactParty(party, nativeLayout)
     party = party or _G.CompactPartyFrame
     if not party then return end
-    pruneAssignedRoles()
     if nativeLayout and compactLayouts[party] then compactLayouts[party].native = nil end
     if InCombatLockdown() or partyIsDragging(_G.PartyFrame)
         or not party.memberUnitFrames or type(party.updateLayoutFunc) ~= "function" then return end
@@ -807,7 +840,6 @@ end
 
 local function arrangeParty(party, nativeLayout)
     if InCombatLockdown() or not party.GetNumPoints or partyIsDragging(party) then return end
-    pruneAssignedRoles()
     local layout = partyLayouts[party]
     if not layout then return end
     if party.IsInitialized and not party:IsInitialized() then return end
@@ -1059,6 +1091,7 @@ local function refresh()
     -- Resizing the moving frame or relaying out its children can shift the
     -- point Blizzard is dragging, even with Edit Mode snapping disabled.
     if partyIsDragging(_G.PartyFrame) then return end
+    pruneAssignedRoles()
     local layoutChanged = false
     for _, state in pairs(states) do state.active = false end
     visitMembers(function(member, compact)
