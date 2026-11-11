@@ -29,10 +29,17 @@ local people = {
     [13] = {secret=true},
     [40] = {level=25, className="Warrior", classFilename="WARRIOR", areaName="Westfall"},
 }
+local roles = {
+    [10] = {LEADER_ROLE_DAMAGER=true},
+    [11] = {LEADER_ROLE_TANK=true, LEADER_ROLE_HEALER=true, LEADER_ROLE_DAMAGER=true},
+    [12] = {LEADER_ROLE_HEALER=true, LEADER_ROLE_DAMAGER=true},
+    [13] = {secret=true},
+}
 RAID_CLASS_COLORS = {HUNTER={}, WARRIOR={}, DRUID={}}
 C_LFGList = {
     GetSearchResultInfo = function(id) return {generalPlaystyle=id == 10 and 2 or 1, numMembers=id >= 40 and 4 or 1} end,
     GetSearchResultLeaderInfo = function(id) return people[id] end,
+    GetSearchResultMemberCounts = function(id) return roles[id] end,
 }
 function GetGeneralPlaystyleString(value) return value == 2 and "Competitive" or "Relaxed" end
 LFGVanillaBrowseDividerType = {CategorySolo=1, CategoryGroup=2}
@@ -147,8 +154,16 @@ header.CategoryLabel:SetFont("Native.ttf", 15, "")
 header.ExpandIcon, header.CollapseIcon, header.ResultBG = header:CreateTexture(), header:CreateTexture(), header:CreateTexture()
 Show(header, players)
 local available = 535 - 112 - 40 - view.calculator(1, selfListing) - 2 * header:GetHeight()
-assert(math.floor(available / solo:GetHeight()) >= 10 and solo:GetHeight() == 28 and header:GetHeight() == 20)
-assert(solo.Name.fontSize == 11 and solo.Name:GetWidth() == 137 and solo.ActivityName:GetText() == "Stormwind Stockades")
+assert(math.floor(available / solo:GetHeight()) >= 10 and solo:GetHeight() == 30 and header:GetHeight() == 20)
+assert(solo.Name.fontSize == 11 and solo.Name:GetWidth() == 135 and solo.ActivityName:GetText() == "Stormwind Stockades")
+for _, row in ipairs({solo, group}) do
+    local nameTop = select(5, row.Name:GetPoint())
+    local notes = row.labels[6]
+    local notesTop = select(5, notes:GetPoint())
+    assert(-nameTop - 2 == 2 and row:GetHeight() + notesTop - notes:GetHeight() == 2,
+        "Both lines sit two units inside the native background")
+    assert(nameTop - row.Name:GetHeight() == notesTop, "Text bounds meet without overlapping")
+end
 assert(solo.labels[5]:GetText() == 24 and solo.artwork[5].atlas == "groupfinder-icon-class-hunter")
 assert(group.labels[5]:GetText() == 25 and group.artwork[5].atlas == "groupfinder-icon-class-warrior")
 assert(solo.labels[6]:GetText():find("Competitive|r   Current zone: Stormwind City", 1, true))
@@ -173,13 +188,18 @@ assert(provider.nodes[1] == selfListing and provider.nodes[2] == groups and grou
 players.nodes[1], players.nodes[2] = players.nodes[2], players.nodes[1]
 LFGBrowseFrame:UpdateResults()
 assert(PlayerOrder() == "12,10,11,13", "Sorting applies again when Blizzard updates the results")
+sortMenu[4].callback()
+assert(PlayerOrder() == "11,12,10,13" and dropdown.selectionText == "Role (tank, healer, DPS)",
+    "Role sorting prefers the highest listed role and puts unknown roles last")
+assert(scrollBox.selected == firstPlayer and provider.nodes[1] == selfListing and groups.nodes[1] == group1,
+    "Role sorting keeps the selection, own listing, and group order")
 sortMenu[1].callback()
-assert(PlayerOrder() == "10,11,12,13" and provider.invalidations == 4)
+assert(PlayerOrder() == "10,11,12,13" and provider.invalidations == 5)
 
 local levelLabel, secondaryLabel = solo.labels[5], solo.labels[6]
 people[10] = people[11]
 LFGBrowseSearchEntry_Update(solo)
-assert(levelLabel:GetText() == 29 and not secondaryLabel:GetText():find("Current zone", 1, true) and solo.Name:GetWidth() == 137)
+assert(levelLabel:GetText() == 29 and not secondaryLabel:GetText():find("Current zone", 1, true) and solo.Name:GetWidth() == 135)
 callbacks.release(solo)
 assert(not levelLabel:IsShown() and not secondaryLabel:IsShown() and solo.Name.fontSize == 15 and solo.Level:GetAlpha() == 1)
 Show(solo, players.nodes[4])

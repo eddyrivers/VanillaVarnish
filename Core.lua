@@ -62,7 +62,8 @@ function VV.InitDB()
     if type(db.tooltips) ~= "table" then db.tooltips = defaults and defaults.tooltips or {} end
     if type(db.groupBrowser) ~= "table" then db.groupBrowser = {} end
     if type(db.groupBrowser.compressed) ~= "boolean" then db.groupBrowser.compressed = false end
-    if db.groupBrowser.sort ~= "level" and db.groupBrowser.sort ~= "class" then db.groupBrowser.sort = "default" end
+    local browserSort = db.groupBrowser.sort
+    if browserSort ~= "level" and browserSort ~= "class" and browserSort ~= "role" then db.groupBrowser.sort = "default" end
     if type(db.questTracker.enabled) ~= "boolean" then db.questTracker.enabled = true end
     if type(db.questTracker.scrolling) ~= "boolean" then db.questTracker.scrolling = true end
     if type(db.questTracker.compact) ~= "boolean" then db.questTracker.compact = false end

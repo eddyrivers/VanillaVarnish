@@ -18,7 +18,7 @@ Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. Active settings 
 | Quest tracker | Zone grouping, collapsible headings, completion sorting, scrolling, and optional compact tracker and quest log views |
 | Party frames | Up to 16 buffs in two rows, larger player buffs and dispellable debuffs, class-colored health bars, and friendly-spell range fading |
 | Tooltips | Mouse following, configurable offsets, class/difficulty colors, immediate hover dismissal, and optional combat pause |
-| Group Browser | Two-line listing rows and optional player sorting by level or class |
+| Group Browser | Two-line listing rows and optional player sorting by level, class, or role |
 
 **Nameplates:** choose damage and friendly range spells; unreadable range results keep normal opacity. Quest loot icons include a compact bundled pfQuest Vanilla baseline, so Questie and QuestieDB are optional. Native quest objectives still control progress and completion; native tooltips identify kill and other objectives. An installed drop database can fill quests absent from the baseline. No website-derived Forever overrides are included; changed or new Forever quests may need further coverage. Enable **Include your group's quest objectives** under **Nameplates > Quest icons** to include unfinished loot and kill needs from current party or raid members, even for quests you do not have. Group progress must be supplied by the game's mob tooltip. Swing timers and combo points share a live preview. Positive X moves right; positive Y moves down. Threat colors turn fighting enemies blue when you hold aggro as a tank, or when you avoid aggro as a damage dealer or healer. Enemies tagged by another group keep gray health bars even when your group gains aggro or the Threat colors option is off.
 
@@ -36,7 +36,7 @@ Click a zone heading to collapse or expand it, including in combat. Collapsing a
 
 **Tooltips:** item comparisons stay beside the main tooltip. Defaults are X `34`, Y `-6`; positive Y moves up. Combat pause uses the position saved in Edit Mode. Clicked chat links keep their usual placement.
 
-**Group Browser:** open `/vv groupbrowser` and check **Compressed view**. Each listing puts the character or leader name, level, class, activity, and roles or group makeup on the first line. The second line shows playstyle and the current zone when WoW provides them. Clicks and the full hover details work as usual. **Sort players by** offers default order, highest level first, and class A–Z. It sorts inside the Players sections and works with either layout. Both preferences save with profiles.
+**Group Browser:** open `/vv groupbrowser` and check **Compressed view**. Each listing puts the character or leader name, level, class, activity, and roles or group makeup on the first line. The second line shows playstyle and the current zone when WoW provides them. Clicks and the full hover details work as usual. **Sort players by** offers default order, highest level first, class A–Z, and role with tanks first, then healers, then DPS. It sorts inside the Players sections and works with either layout. Both preferences save with profiles.
 
 ## Commands
 

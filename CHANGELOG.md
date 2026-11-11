@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.35.1
+
+- bugfix: Give text a little room inside compressed Group Browser rows.
+- Sort solo players by role to put tanks and healers ahead of DPS.
+
 ## 1.0.35
 
 - Add **Group Browser** settings (`/vv groupbrowser`). Turn on **Compressed view** to fit more listings in the Looking For Group window. The shorter rows show level, class, activity, and roles up top, with playstyle and current zone below when available.

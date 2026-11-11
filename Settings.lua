@@ -207,7 +207,8 @@ function VV.RegisterOptions()
     sort:SetPoint("TOPLEFT", browser, "TOPLEFT", 152, -134)
     sort:SetWidth(190)
     sort:SetupMenu(function(_, menu)
-        for _, choice in ipairs({{"default", "Default order"}, {"level", "Level (highest first)"}, {"class", "Class (A–Z)"}}) do
+        for _, choice in ipairs({{"default", "Default order"}, {"level", "Level (highest first)"},
+            {"class", "Class (A–Z)"}, {"role", "Role (tank, healer, DPS)"}}) do
             local value = choice[1]
             menu:CreateRadio(choice[2], function() return VV.db.groupBrowser.sort == value end,
                 function() VV.GroupBrowser.SetOption("sort", value) end)

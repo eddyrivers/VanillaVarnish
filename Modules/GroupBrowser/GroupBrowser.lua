@@ -2,7 +2,9 @@ local _, VV = ...
 local addon = {}
 VV.GroupBrowser = addon
 
-local RESULT_HEIGHT, HEADER_HEIGHT = 28, 20
+local RESULT_HEIGHT, HEADER_HEIGHT = 30, 20
+-- The native result background starts two units below the frame's top.
+local TOP_LINE_Y, SECOND_LINE_Y = -4, -17
 local DISPLAY_SCALE = 0.60
 local LFG_ADDON = "Blizzard_GroupFinder_VanillaStyle"
 local scrollBox, view, originalExtentCalculator, compressed
@@ -95,16 +97,16 @@ end
 local function DetailRegions(row)
     if details[row] then return details[row] end
     local level = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    level:SetPoint("TOPLEFT", row, "TOPLEFT", 148, -2)
+    level:SetPoint("TOPLEFT", row, "TOPLEFT", 148, TOP_LINE_Y)
     level:SetSize(18, 13)
     level:SetTextColor(0.78, 0.78, 0.78)
     local class = row:CreateTexture(nil, "ARTWORK")
-    class:SetPoint("TOPLEFT", row, "TOPLEFT", 168, -1)
+    class:SetPoint("TOPLEFT", row, "TOPLEFT", 168, TOP_LINE_Y + 1)
     class:SetSize(14, 14)
     local secondary = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    secondary:SetPoint("TOPLEFT", row, "TOPLEFT", 20, -15)
-    secondary:SetPoint("TOPRIGHT", row, "TOPRIGHT", -124, -15)
-    secondary:SetHeight(12)
+    secondary:SetPoint("TOPLEFT", row, "TOPLEFT", 22, SECOND_LINE_Y)
+    secondary:SetPoint("TOPRIGHT", row, "TOPRIGHT", -124, SECOND_LINE_Y)
+    secondary:SetHeight(11)
     secondary:SetJustifyH("LEFT")
     secondary:SetWordWrap(false)
     secondary:SetTextColor(0.72, 0.72, 0.72)
@@ -137,21 +139,21 @@ local function LayoutResult(row, resultID)
     detail.secondary:SetAlpha(delisted and 0.55 or 1)
     detail.level:SetAlpha(delisted and 0.55 or 1)
 
-    local nameStart, nameEnd = row.PartyIcon:IsShown() and 20 or 8, 145
-    Place(row, row.PartyIcon, "TOPLEFT", "TOPLEFT", 6, -2)
+    local nameStart, nameEnd = row.PartyIcon:IsShown() and 22 or 10, 145
+    Place(row, row.PartyIcon, "TOPLEFT", "TOPLEFT", 8, TOP_LINE_Y)
     row.PartyIcon:SetSize(12, 12)
     for _, icon in ipairs({row.NewPlayerFriendlyIcon, row.DiscordIcon}) do
         if icon:IsShown() then
             nameEnd = nameEnd - 13
-            Place(row, icon, "TOPLEFT", "TOPLEFT", nameEnd, -2)
+            Place(row, icon, "TOPLEFT", "TOPLEFT", nameEnd, TOP_LINE_Y)
             icon:SetSize(12, 12)
         end
     end
-    Place(row, row.Name, "TOPLEFT", "TOPLEFT", nameStart, -2)
+    Place(row, row.Name, "TOPLEFT", "TOPLEFT", nameStart, TOP_LINE_Y)
     ResizeText(row, row.Name, 11)
     row.Name:SetWidth(nameEnd - nameStart)
-    Place(row, row.ActivityName, "TOPLEFT", "TOPLEFT", 188, -2)
-    row.ActivityName:SetPoint("TOPRIGHT", row, "TOPRIGHT", -124, -2)
+    Place(row, row.ActivityName, "TOPLEFT", "TOPLEFT", 188, TOP_LINE_Y)
+    row.ActivityName:SetPoint("TOPRIGHT", row, "TOPRIGHT", -124, TOP_LINE_Y)
     ResizeText(row, row.ActivityName, 11)
     row.ActivityName:SetWidth(0)
     HideArtwork(row, row.Level)
@@ -163,7 +165,7 @@ local function LayoutResult(row, resultID)
     local original = Remember(row, display)
     original.scale = original.scale or display:GetScale()
     display:SetScale(DISPLAY_SCALE)
-    Place(row, display, "RIGHT", "TOPRIGHT", -6 / DISPLAY_SCALE, -8 / DISPLAY_SCALE)
+    Place(row, display, "RIGHT", "TOPRIGHT", -6 / DISPLAY_SCALE, (TOP_LINE_Y - 7) / DISPLAY_SCALE)
     if display.Solo then HideArtwork(row, display.Solo.RolesText) end
 end
 
@@ -182,6 +184,14 @@ local function LayoutRow(row, node)
     end
 end
 
+local function RolePriority(resultID)
+    local roles = resultID and Read(C_LFGList.GetSearchResultMemberCounts, resultID)
+    if Field(roles, "LEADER_ROLE_TANK") == true then return 1 end
+    if Field(roles, "LEADER_ROLE_HEALER") == true then return 2 end
+    if Field(roles, "LEADER_ROLE_DAMAGER") == true then return 3 end
+    return 4
+end
+
 local function SortPlayers(mode)
     local provider = scrollBox:GetDataProvider()
     local divider = LFGVanillaBrowseDividerType
@@ -192,10 +202,12 @@ local function SortPlayers(mode)
             local nodes, keys = category:GetNodes(), {}
             for index, node in ipairs(nodes) do
                 local data = node:GetData()
-                local info = mode ~= "default" and Leader(Field(data, "resultID"), true)
+                local resultID = Field(data, "resultID")
+                local info = (mode == "level" or mode == "class") and Leader(resultID, true)
                 local level, class = Field(info, "level"), Field(info, "className")
                 keys[node] = {index=Field(data, "index") or index, level=type(level) == "number" and level or -1,
-                    class=type(class) == "string" and class ~= "" and class:lower() or nil}
+                    class=type(class) == "string" and class ~= "" and class:lower() or nil,
+                    role=mode == "role" and RolePriority(resultID) or nil}
             end
             local function Earlier(a, b)
                 local left, right = keys[a], keys[b]
@@ -203,6 +215,7 @@ local function SortPlayers(mode)
                 if mode == "class" and left.class ~= right.class then
                     return left.class ~= nil and (right.class == nil or left.class < right.class)
                 end
+                if mode == "role" and left.role ~= right.role then return left.role < right.role end
                 return left.index < right.index
             end
             for index = 2, #nodes do
@@ -270,7 +283,7 @@ end
 function addon.SetOption(key, value)
     if key == "compressed" then
         if type(value) ~= "boolean" then return false end
-    elseif key ~= "sort" or (value ~= "default" and value ~= "level" and value ~= "class") then return false end
+    elseif key ~= "sort" or (value ~= "default" and value ~= "level" and value ~= "class" and value ~= "role") then return false end
     VV.db.groupBrowser[key] = value
     addon.Refresh()
     if VV.RefreshOptions then VV.RefreshOptions() end
