@@ -2,10 +2,10 @@
 
 ## 1.0.35.2
 
-- Center the role icons vertically, add a little more vertical padding, and shorten the zone label in compressed rows.
-- bugfix: Sort solo players by the roles shown on their listings and update the order as listings change.
-- bugfix: Match the hover highlight to the Groups and Players headings in compressed view.
-- Right-click the **Players** heading to change the sort order from the browser.
+- See more groups and players at a glance. Type `/vv groupbrowser` and turn on **Compressed view** for shorter rows with level, class, activity, roles, playstyle, and zone where available.
+- Right-click **Players** to sort by level, class, or role. Role puts tanks first, then healers, then DPS.
+- bugfix: Make quest levels in creature tooltips match the tracker and show dungeon labels separately.
+- bugfix: Reduce Edit Mode errors when using upward-growing party frames or quest tracker scrolling. Scrolling resumes when the game's restrictions lift.
 
 ## 1.0.35.1
 

@@ -251,8 +251,9 @@ local function SortPlayers(mode)
             end
             for index = 2, #nodes do
                 if Earlier(nodes[index], nodes[index-1]) then
-                    category:SetSortComparator(Earlier, false, false)
-                    category:SetSortComparator(nil, false, true)
+                    -- Sort the existing nodes in place. TreeNode:Sort would notify the
+                    -- ScrollBox before the provider has cleared its flattened cache.
+                    table.sort(nodes, Earlier)
                     changed = true
                     break
                 end

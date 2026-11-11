@@ -59,7 +59,7 @@ local function Node(data, nodes)
     function node:GetData() return self.data end
     function node:GetNodes() return self.nodes end
     function node:SetSortComparator(compare, _, skipSort)
-        if not skipSort then table.sort(self.nodes, compare) end
+        assert(skipSort, "Native OnSort refreshes the view before the flattened cache is cleared")
     end
     return node
 end
@@ -72,7 +72,11 @@ local groups = Node({dividerType=2}, {group1, group2})
 local selfListing = Node({resultID=50, index=1})
 local provider = {nodes={selfListing, groups, players}, invalidations=0}
 function provider:GetChildrenNodes() return self.nodes end
-function provider:Invalidate() self.invalidations = self.invalidations + 1 end
+function provider:Invalidate()
+    self.invalidations = self.invalidations + 1
+    self.visiblePlayers = {}
+    for index, player in ipairs(players:GetNodes()) do self.visiblePlayers[index] = player end
+end
 local view = {}
 function view:GetTemplateExtentFromElementData(node)
     local data = node:GetData()
@@ -224,6 +228,8 @@ assert(contextTitle == "Sort players by" and #context == #sortMenu and context[3
 context[4].callback()
 assert(PlayerOrder() == "11,12,10,13" and dropdown.selectionText == "Role (tank, healer, DPS)",
     "Role sorting works from the header without the native enum or aggregate role counts")
+assert(provider.visiblePlayers[1] == players.nodes[1] and provider.visiblePlayers[3] == firstPlayer,
+    "The refreshed view receives the final order with the same row identities")
 assert(scrollBox.selected == firstPlayer and provider.nodes[1] == selfListing and groups.nodes[1] == group1,
     "Role sorting keeps the selection, own listing, and group order")
 roles[10].lfgRoles.healer = true
