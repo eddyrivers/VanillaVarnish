@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.35.2
+
+- Center the role icons vertically, add a little more vertical padding, and shorten the zone label in compressed rows.
+- bugfix: Sort solo players by the roles shown on their listings and update the order as listings change.
+- bugfix: Match the hover highlight to the Groups and Players headings in compressed view.
+- Right-click the **Players** heading to change the sort order from the browser.
+
 ## 1.0.35.1
 
 - bugfix: Give text a little room inside compressed Group Browser rows.

@@ -2,13 +2,14 @@ local _, VV = ...
 local addon = {}
 VV.GroupBrowser = addon
 
-local RESULT_HEIGHT, HEADER_HEIGHT = 30, 20
+local RESULT_HEIGHT, HEADER_HEIGHT = 34, 20
 -- The native result background starts two units below the frame's top.
-local TOP_LINE_Y, SECOND_LINE_Y = -4, -17
+local TOP_LINE_Y, SECOND_LINE_Y = -6, -19
 local DISPLAY_SCALE = 0.60
 local LFG_ADDON = "Blizzard_GroupFinder_VanillaStyle"
-local scrollBox, view, originalExtentCalculator, compressed
+local scrollBox, view, originalExtentCalculator, compressed, roleSortQueued
 local layouts, details = {}, setmetatable({}, {__mode="k"})
+local hookedHeaders = setmetatable({}, {__mode="k"})
 
 local function Read(fn, ...)
     if type(fn) ~= "function" then return end
@@ -29,6 +30,12 @@ end
 
 local function CompactExtent(_, node)
     return node:GetData().dividerType and HEADER_HEIGHT or RESULT_HEIGHT
+end
+
+local function IsPlayersCategory(node)
+    -- Forever's tree uses 1 for Players even when the Lua enum is private.
+    local divider = LFGVanillaBrowseDividerType
+    return node and node:GetData().dividerType == (divider and divider.CategorySolo or 1)
 end
 
 local function RegionState(row, region)
@@ -133,7 +140,7 @@ local function LayoutResult(row, resultID)
 
     local notes = {}
     if type(style) == "string" and style ~= "" then notes[#notes+1] = "|cff94cc87" .. style .. "|r" end
-    if type(area) == "string" and area ~= "" then notes[#notes+1] = "Current zone: " .. area end
+    if type(area) == "string" and area ~= "" then notes[#notes+1] = "Zone: " .. area end
     detail.secondary:SetText(table.concat(notes, "   "))
     detail.secondary:SetShown(#notes > 0)
     detail.secondary:SetAlpha(delisted and 0.55 or 1)
@@ -165,7 +172,7 @@ local function LayoutResult(row, resultID)
     local original = Remember(row, display)
     original.scale = original.scale or display:GetScale()
     display:SetScale(DISPLAY_SCALE)
-    Place(row, display, "RIGHT", "TOPRIGHT", -6 / DISPLAY_SCALE, (TOP_LINE_Y - 7) / DISPLAY_SCALE)
+    Place(row, display, "RIGHT", "RIGHT", -6 / DISPLAY_SCALE, -1 / DISPLAY_SCALE)
     if display.Solo then HideArtwork(row, display.Solo.RolesText) end
 end
 
@@ -179,26 +186,50 @@ local function LayoutRow(row, node)
         Place(row, row.CollapseIcon, "RIGHT", "RIGHT", -12, 0)
         Place(row, row.ResultBG, "TOPLEFT", "TOPLEFT", 3, -1)
         row.ResultBG:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -3, 0)
+        Remember(row, row.Highlight)
+        row.Highlight:ClearAllPoints()
+        row.Highlight:SetPoint("TOPLEFT", row.ResultBG, "TOPLEFT")
+        row.Highlight:SetPoint("BOTTOMRIGHT", row.ResultBG, "BOTTOMRIGHT")
     elseif row.Name and row:IsShown() then
         LayoutResult(row, Field(data, "resultID"))
     end
 end
 
+local function PrepareRow(row, node)
+    if IsPlayersCategory(node) and not hookedHeaders[row] and MenuUtil and MenuUtil.CreateContextMenu then
+        hookedHeaders[row] = true
+        -- The native button handles left-click collapse. Pooled headers can later represent Groups.
+        row:HookScript("OnMouseUp", function(self, button)
+            if button == "RightButton" and self:IsMouseOver() and self.GetElementData
+                and IsPlayersCategory(self:GetElementData()) then
+                MenuUtil.CreateContextMenu(self, function(_, menu)
+                    menu:CreateTitle("Sort players by")
+                    VV.AddGroupBrowserSortOptions(menu)
+                end)
+            end
+        end)
+    end
+    LayoutRow(row, node)
+end
+
 local function RolePriority(resultID)
-    local roles = resultID and Read(C_LFGList.GetSearchResultMemberCounts, resultID)
-    if Field(roles, "LEADER_ROLE_TANK") == true then return 1 end
-    if Field(roles, "LEADER_ROLE_HEALER") == true then return 2 end
-    if Field(roles, "LEADER_ROLE_DAMAGER") == true then return 3 end
+    -- Use the same solo listing data Blizzard uses for the visible role icons.
+    if not resultID then return 4 end
+    local player = Read(C_LFGList.GetSearchResultPlayerInfo, resultID, 1)
+    local roles = Field(player, "lfgRoles")
+        or Field(Read(C_LFGList.GetSearchResultLeaderInfo, resultID), "lfgRoles")
+    if Field(roles, "tank") == true then return 1 end
+    if Field(roles, "healer") == true then return 2 end
+    if Field(roles, "dps") == true then return 3 end
     return 4
 end
 
 local function SortPlayers(mode)
     local provider = scrollBox:GetDataProvider()
-    local divider = LFGVanillaBrowseDividerType
-    if not provider or not divider or not provider.GetChildrenNodes then return end
+    if not provider or not provider.GetChildrenNodes then return end
     local changed
     for _, category in ipairs(provider:GetChildrenNodes()) do
-        if category:GetData().dividerType == divider.CategorySolo then
+        if IsPlayersCategory(category) then
             local nodes, keys = category:GetNodes(), {}
             for index, node in ipairs(nodes) do
                 local data = node:GetData()
@@ -240,7 +271,7 @@ local function Install()
     if not list or not list.SetElementExtentCalculator or not ScrollBoxListMixin or not C_LFGList then return end
     scrollBox, view, compressed = box, list, false
     originalExtentCalculator = view:GetElementExtentCalculator()
-    scrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnInitializedFrame, function(_, row, node) LayoutRow(row, node) end, addon)
+    scrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnInitializedFrame, function(_, row, node) PrepareRow(row, node) end, addon)
     scrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnReleasedFrame, function(_, row) RestoreRow(row) end, addon)
     if type(LFGBrowseSearchEntry_Update) == "function" then
         hooksecurefunc("LFGBrowseSearchEntry_Update", function(row)
@@ -252,6 +283,7 @@ local function Install()
         local mode = VV.db.groupBrowser.sort
         if mode ~= "default" then SortPlayers(mode) end
     end)
+    scrollBox:ForEachFrame(PrepareRow)
     return true
 end
 
@@ -293,6 +325,16 @@ end
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("ADDON_LOADED")
+events:RegisterEvent("LFG_LIST_SEARCH_RESULT_UPDATED")
 events:SetScript("OnEvent", function(_, event, name)
-    if event == "PLAYER_LOGIN" or name == LFG_ADDON then addon.Refresh() end
+    if event == "PLAYER_LOGIN" or (event == "ADDON_LOADED" and name == LFG_ADDON) then
+        addon.Refresh()
+    elseif event == "LFG_LIST_SEARCH_RESULT_UPDATED" and scrollBox and VV.db.groupBrowser.sort == "role" and not roleSortQueued then
+        -- Let Blizzard finish updating the result before moving its row.
+        roleSortQueued = true
+        C_Timer.After(0, function()
+            roleSortQueued = false
+            if VV.db.groupBrowser.sort == "role" then SortPlayers("role") end
+        end)
+    end
 end)

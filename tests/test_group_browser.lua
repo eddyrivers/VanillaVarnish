@@ -30,20 +30,29 @@ local people = {
     [40] = {level=25, className="Warrior", classFilename="WARRIOR", areaName="Westfall"},
 }
 local roles = {
-    [10] = {LEADER_ROLE_DAMAGER=true},
-    [11] = {LEADER_ROLE_TANK=true, LEADER_ROLE_HEALER=true, LEADER_ROLE_DAMAGER=true},
-    [12] = {LEADER_ROLE_HEALER=true, LEADER_ROLE_DAMAGER=true},
+    [10] = {lfgRoles={dps=true}},
+    [11] = {lfgRoles={tank=true, healer=true, dps=true}},
+    [12] = {lfgRoles={healer=true, dps=true}},
     [13] = {secret=true},
 }
 RAID_CLASS_COLORS = {HUNTER={}, WARRIOR={}, DRUID={}}
 C_LFGList = {
     GetSearchResultInfo = function(id) return {generalPlaystyle=id == 10 and 2 or 1, numMembers=id >= 40 and 4 or 1} end,
     GetSearchResultLeaderInfo = function(id) return people[id] end,
-    GetSearchResultMemberCounts = function(id) return roles[id] end,
+    GetSearchResultPlayerInfo = function(id, index) assert(index == 1); return roles[id] end,
+    GetSearchResultMemberCounts = function() return {} end,
 }
 function GetGeneralPlaystyleString(value) return value == 2 and "Competitive" or "Relaxed" end
-LFGVanillaBrowseDividerType = {CategorySolo=1, CategoryGroup=2}
 ScrollBoxListMixin = {Event={OnInitializedFrame="initialize", OnReleasedFrame="release"}}
+local timers = {}
+C_Timer.After = function(_, callback) timers[#timers+1] = callback end
+local context, contextTitle
+MenuUtil = {CreateContextMenu=function(owner, generator)
+    context = Mock.Menu({menuGenerator=function(_, root)
+        function root:CreateTitle(title) contextTitle = title end
+        generator(owner, root)
+    end})
+end}
 
 local function Node(data, nodes)
     local node = {data=data, nodes=nodes}
@@ -152,21 +161,40 @@ local header = Mock.New(UIParent)
 header.CategoryLabel = header:CreateFontString()
 header.CategoryLabel:SetFont("Native.ttf", 15, "")
 header.ExpandIcon, header.CollapseIcon, header.ResultBG = header:CreateTexture(), header:CreateTexture(), header:CreateTexture()
+header.Highlight = header:CreateTexture()
+header.Highlight:SetPoint("TOPLEFT", header, "TOPLEFT", 3, -7)
+header.Highlight:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", -3, -1)
+function header:HookScript(event, callback)
+    assert(event == "OnMouseUp" and not self.scripts[event], "Hook pooled headers only once")
+    self.scripts[event] = callback
+end
+function header:GetElementData() return rows[self] end
+function header:IsMouseOver() return true end
+local function NativeCollapse(self) self.collapsed = not self.collapsed end
+header:SetScript("OnClick", NativeCollapse)
 Show(header, players)
-local available = 535 - 112 - 40 - view.calculator(1, selfListing) - 2 * header:GetHeight()
-assert(math.floor(available / solo:GetHeight()) >= 10 and solo:GetHeight() == 30 and header:GetHeight() == 20)
+assert(select(2, header.Highlight:GetPoint(1)) == header.ResultBG
+    and select(2, header.Highlight:GetPoint(2)) == header.ResultBG, "Players hover fills the compressed heading")
+local viewportHeight = 535 - 112 - 40
+assert(math.floor((viewportHeight - header:GetHeight()) / solo:GetHeight()) >= 10
+    and solo:GetHeight() == 34 and header:GetHeight() == 20)
 assert(solo.Name.fontSize == 11 and solo.Name:GetWidth() == 135 and solo.ActivityName:GetText() == "Stormwind Stockades")
 for _, row in ipairs({solo, group}) do
-    local nameTop = select(5, row.Name:GetPoint())
+    local _, _, _, nameLeft, nameTop = row.Name:GetPoint()
     local notes = row.labels[6]
-    local notesTop = select(5, notes:GetPoint())
-    assert(-nameTop - 2 == 2 and row:GetHeight() + notesTop - notes:GetHeight() == 2,
-        "Both lines sit two units inside the native background")
+    local _, _, _, notesLeft, notesTop = notes:GetPoint()
+    assert(-nameTop - 2 == 4 and row:GetHeight() + notesTop - notes:GetHeight() == 4,
+        "Both lines sit four units inside the native background")
     assert(nameTop - row.Name:GetHeight() == notesTop, "Text bounds meet without overlapping")
+    assert(nameLeft == (row == solo and 10 or 22) and notesLeft == 22, "Horizontal text spacing stays fixed")
+    local point, parent, relativePoint, x, y = row.DataDisplay:GetPoint()
+    local scale = row.DataDisplay:GetScale()
+    assert(point == "RIGHT" and parent == row and relativePoint == "RIGHT"
+        and x * scale == -6 and y * scale == -1, "Role icons are centered within the background at the same horizontal position")
 end
 assert(solo.labels[5]:GetText() == 24 and solo.artwork[5].atlas == "groupfinder-icon-class-hunter")
 assert(group.labels[5]:GetText() == 25 and group.artwork[5].atlas == "groupfinder-icon-class-warrior")
-assert(solo.labels[6]:GetText():find("Competitive|r   Current zone: Stormwind City", 1, true))
+assert(solo.labels[6]:GetText():find("Competitive|r   Zone: Stormwind City", 1, true))
 assert(group.DataDisplay:GetScale() == 0.6 and solo.DataDisplay.Solo.RolesText:GetAlpha() == 0)
 solo.scripts.OnClick(solo, "LeftButton")
 solo.scripts.OnClick(solo, "RightButton")
@@ -188,27 +216,53 @@ assert(provider.nodes[1] == selfListing and provider.nodes[2] == groups and grou
 players.nodes[1], players.nodes[2] = players.nodes[2], players.nodes[1]
 LFGBrowseFrame:UpdateResults()
 assert(PlayerOrder() == "12,10,11,13", "Sorting applies again when Blizzard updates the results")
-sortMenu[4].callback()
+header.scripts.OnMouseUp(header, "LeftButton")
+header.scripts.OnClick(header)
+assert(not context and header.collapsed and header.scripts.OnClick == NativeCollapse, "Left click still collapses Players")
+header.scripts.OnMouseUp(header, "RightButton")
+assert(contextTitle == "Sort players by" and #context == #sortMenu and context[3].selected())
+context[4].callback()
 assert(PlayerOrder() == "11,12,10,13" and dropdown.selectionText == "Role (tank, healer, DPS)",
-    "Role sorting prefers the highest listed role and puts unknown roles last")
+    "Role sorting works from the header without the native enum or aggregate role counts")
 assert(scrollBox.selected == firstPlayer and provider.nodes[1] == selfListing and groups.nodes[1] == group1,
     "Role sorting keeps the selection, own listing, and group order")
+roles[10].lfgRoles.healer = true
+roles[12].lfgRoles.healer = false
+Mock.Event("LFG_LIST_SEARCH_RESULT_UPDATED", 10)
+Mock.Event("LFG_LIST_SEARCH_RESULT_UPDATED", 12)
+assert(#timers == 1 and PlayerOrder() == "11,12,10,13", "Let native row updates finish before sorting")
+table.remove(timers, 1)()
+assert(PlayerOrder() == "11,10,12,13", "Changes to listed roles re-sort existing results")
 sortMenu[1].callback()
-assert(PlayerOrder() == "10,11,12,13" and provider.invalidations == 5)
+assert(PlayerOrder() == "10,11,12,13" and provider.invalidations == 6)
+
+callbacks.release(header)
+Show(header, groups)
+assert(select(2, header.Highlight:GetPoint(1)) == header.ResultBG
+    and select(2, header.Highlight:GetPoint(2)) == header.ResultBG, "Groups hover fills the compressed heading")
+context = nil
+header.scripts.OnMouseUp(header, "RightButton")
+assert(not context, "A reused Groups heading does not show the Players sort menu")
+callbacks.release(header)
+Show(header, players)
 
 local levelLabel, secondaryLabel = solo.labels[5], solo.labels[6]
 people[10] = people[11]
 LFGBrowseSearchEntry_Update(solo)
-assert(levelLabel:GetText() == 29 and not secondaryLabel:GetText():find("Current zone", 1, true) and solo.Name:GetWidth() == 135)
+assert(levelLabel:GetText() == 29 and not secondaryLabel:GetText():find("Zone:", 1, true) and solo.Name:GetWidth() == 135)
 callbacks.release(solo)
 assert(not levelLabel:IsShown() and not secondaryLabel:IsShown() and solo.Name.fontSize == 15 and solo.Level:GetAlpha() == 1)
 Show(solo, players.nodes[4])
-assert(not levelLabel:IsShown() and not solo.artwork[5]:IsShown() and not secondaryLabel:GetText():find("Current zone", 1, true))
+assert(not levelLabel:IsShown() and not solo.artwork[5]:IsShown() and not secondaryLabel:GetText():find("Zone:", 1, true))
 assert(solo.labels[5] == levelLabel, "Recycled native buttons reuse their compact artwork")
 
 checkbox:SetChecked(false)
 checkbox.scripts.OnClick(checkbox)
 assert(not view.calculator and solo:GetHeight() == 72 and header:GetHeight() == 36)
+assert(select(2, header.Highlight:GetPoint(1)) == header and select(5, header.Highlight:GetPoint(1)) == -7
+    and select(5, header.Highlight:GetPoint(2)) == -1, "The usual layout restores the original hover inset")
 assert(solo.Name.fontSize == 15 and solo.Name:GetWidth() == 220 and group.DataDisplay:GetScale() == 1)
 assert(solo.scripts.OnClick == nativeClick and solo.scripts.OnEnter == nativeHover
     and group.DataDisplay.DelistButton.scripts.OnClick == nativeDelist)
+header.scripts.OnMouseUp(header, "RightButton")
+assert(context and context[1].selected(), "The header menu also works in the usual layout")

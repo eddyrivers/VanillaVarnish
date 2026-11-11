@@ -36,7 +36,7 @@ Click a zone heading to collapse or expand it, including in combat. Collapsing a
 
 **Tooltips:** item comparisons stay beside the main tooltip. Defaults are X `34`, Y `-6`; positive Y moves up. Combat pause uses the position saved in Edit Mode. Clicked chat links keep their usual placement.
 
-**Group Browser:** open `/vv groupbrowser` and check **Compressed view**. Each listing puts the character or leader name, level, class, activity, and roles or group makeup on the first line. The second line shows playstyle and the current zone when WoW provides them. Clicks and the full hover details work as usual. **Sort players by** offers default order, highest level first, class A–Z, and role with tanks first, then healers, then DPS. It sorts inside the Players sections and works with either layout. Both preferences save with profiles.
+**Group Browser:** open `/vv groupbrowser` and check **Compressed view**. Each listing puts the character or leader name, level, class, and activity on the first line, with roles or group makeup alongside. The second line shows playstyle and the current zone when WoW provides them. Right-click the **Players** heading or use **Sort players by** in settings to choose default order, highest level first, class A–Z, or role with tanks first, then healers, then DPS. Sorting works in either layout. Both preferences save with profiles.
 
 ## Commands
 

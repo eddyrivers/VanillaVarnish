@@ -1,6 +1,15 @@
 local _, VV = ...
 local controls = {}
 
+function VV.AddGroupBrowserSortOptions(menu)
+    for _, choice in ipairs({{"default", "Default order"}, {"level", "Level (highest first)"},
+        {"class", "Class (A–Z)"}, {"role", "Role (tank, healer, DPS)"}}) do
+        local value = choice[1]
+        menu:CreateRadio(choice[2], function() return VV.db.groupBrowser.sort == value end,
+            function() VV.GroupBrowser.SetOption("sort", value) end)
+    end
+end
+
 function VV.RefreshProfileStatus()
     local profile = VV.profileControls
     if not profile or not VV.db then return end
@@ -206,14 +215,7 @@ function VV.RegisterOptions()
     local sort = CreateFrame("DropdownButton", nil, browser, "WowStyle1DropdownTemplate")
     sort:SetPoint("TOPLEFT", browser, "TOPLEFT", 152, -134)
     sort:SetWidth(190)
-    sort:SetupMenu(function(_, menu)
-        for _, choice in ipairs({{"default", "Default order"}, {"level", "Level (highest first)"},
-            {"class", "Class (A–Z)"}, {"role", "Role (tank, healer, DPS)"}}) do
-            local value = choice[1]
-            menu:CreateRadio(choice[2], function() return VV.db.groupBrowser.sort == value end,
-                function() VV.GroupBrowser.SetOption("sort", value) end)
-        end
-    end)
+    sort:SetupMenu(function(_, menu) VV.AddGroupBrowserSortOptions(menu) end)
     controls["groupBrowser.sort"] = {dropdown=sort, Refresh=function() sort:GenerateMenu() end}
     VV.groupBrowserCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, browser, "Group Browser")
     Settings.RegisterAddOnCategory(VV.groupBrowserCategory)
