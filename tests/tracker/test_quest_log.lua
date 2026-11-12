@@ -68,10 +68,19 @@ check(addon.questLogOptionsCategory.name == "Quest log"
     "quest log compact view has its own settings page")
 SlashCmdList.VANILLAVARNISH("questlog")
 check(addon.questLogOptionsPanel:IsShown(), "questlog slash command opens the dedicated page")
-local root = {}
+local root = { buttons = {} }
 function root:CreateCheckbox(label, selected, callback) self.label, self.selected, self.callback = label, selected, callback end
+function root:CreateButton(label, callback) self.buttons[label] = callback end
 menuModifiers.MENU_QUEST_MAP_FRAME_SETTINGS(nil, root)
 check(root.label == "Compact quest log" and not root.selected(), "native quest log settings contains compact checkbox")
+local expandIndex, collapseIndex
+ExpandQuestHeader = function(index) expandIndex = index end
+CollapseQuestHeader = function(index) collapseIndex = index end
+root.buttons["Expand all zones"]()
+check(expandIndex == 0 and collapseIndex == nil, "expand button opens all native quest log headers")
+root.buttons["Collapse all zones"]()
+check(collapseIndex == 0, "collapse button closes all native quest log headers")
+ExpandQuestHeader, CollapseQuestHeader = nil, nil
 root.callback()
 check(addon.db.compactLog and addon.optionControls.compactLog:GetChecked(), "native menu synchronizes saved choice and addon settings")
 check(title.Text.size == 14.5 and objective.Text.size == 10.5 and header.Text.size == 14.5,

@@ -54,6 +54,8 @@ local function Install()
         Menu.ModifyMenu("MENU_QUEST_MAP_FRAME_SETTINGS", function(_, root)
             root:CreateCheckbox("Compact quest log", function() return addon.db and addon.db.compactLog end,
                 function() addon.SetOption("compactLog", not addon.db.compactLog) end)
+            root:CreateButton("Expand all zones", function() ExpandQuestHeader(0) end)
+            root:CreateButton("Collapse all zones", function() CollapseQuestHeader(0) end)
         end)
     end
     return list
