@@ -550,6 +550,12 @@ menu.buttons[2].callback()
 equal(#removed, 0, "zone menu rechecks combat")
 combat = false
 table.remove(watches) -- return to the initial watched set
+menu.buttons[4].callback(); RunMockTimers()
+equal(blocks[1]:IsShown(), false, "tracker zone menu collapses the first zone")
+equal(blocks[4]:IsShown(), false, "tracker zone menu collapses the other zone")
+menu.buttons[3].callback(); RunMockTimers()
+equal(blocks[1]:IsShown(), true, "tracker zone menu expands the first zone")
+equal(blocks[4]:IsShown(), true, "tracker zone menu expands the other zone")
 local beforeToggleDirty = dirty
 VV_TEST_NS.QuestTracker.HandleSlash("group off"); RunMockTimers()
 equal(native:GetHeight(), nativeHeight, "off restores native frame height")

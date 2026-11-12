@@ -213,6 +213,8 @@ local function OpenZoneMenu(button, zone)
         root:CreateTitle(zone)
         root:CreateButton("Track all zone quests", function() SetZoneTracking(zone, true) end):SetEnabled(not InCombatLockdown())
         root:CreateButton("Untrack all zone quests", function() SetZoneTracking(zone, false) end):SetEnabled(not InCombatLockdown())
+        root:CreateButton("Expand all zones", function() addon.SetAllZonesCollapsed(false) end)
+        root:CreateButton("Collapse all zones", function() addon.SetAllZonesCollapsed(true) end)
     end)
 end
 

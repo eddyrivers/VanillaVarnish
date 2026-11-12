@@ -73,13 +73,17 @@ function root:CreateCheckbox(label, selected, callback) self.label, self.selecte
 function root:CreateButton(label, callback) self.buttons[label] = callback end
 menuModifiers.MENU_QUEST_MAP_FRAME_SETTINGS(nil, root)
 check(root.label == "Compact quest log" and not root.selected(), "native quest log settings contains compact checkbox")
-local expandIndex, collapseIndex
-ExpandQuestHeader = function(index) expandIndex = index end
-CollapseQuestHeader = function(index) collapseIndex = index end
-root.buttons["Expand all zones"]()
-check(expandIndex == 0 and collapseIndex == nil, "expand button opens all native quest log headers")
-root.buttons["Collapse all zones"]()
-check(collapseIndex == 0, "collapse button closes all native quest log headers")
+local zoneMenu = { buttons = {}, CreateButton = root.CreateButton }
+menuModifiers.MENU_QUEST_MAP_FRAME(header, zoneMenu)
+for _, menu in ipairs({ root, zoneMenu }) do
+    local expandIndex, collapseIndex
+    ExpandQuestHeader = function(index) expandIndex = index end
+    CollapseQuestHeader = function(index) collapseIndex = index end
+    menu.buttons["Expand all zones"]()
+    check(expandIndex == 0 and collapseIndex == nil, "expand button opens all native quest log headers")
+    menu.buttons["Collapse all zones"]()
+    check(collapseIndex == 0, "collapse button closes all native quest log headers")
+end
 ExpandQuestHeader, CollapseQuestHeader = nil, nil
 root.callback()
 check(addon.db.compactLog and addon.optionControls.compactLog:GetChecked(), "native menu synchronizes saved choice and addon settings")

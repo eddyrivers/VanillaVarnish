@@ -30,6 +30,11 @@ local function Style(frame, isHeader, enabled)
     end
 end
 
+local function AddZoneActions(_, root)
+    root:CreateButton("Expand all zones", function() ExpandQuestHeader(0) end)
+    root:CreateButton("Collapse all zones", function() CollapseQuestHeader(0) end)
+end
+
 local function Install()
     local list = QuestScrollFrame
     if not list or not list.Contents then return end
@@ -51,12 +56,12 @@ local function Install()
     end
     if not menuInstalled and Menu and Menu.ModifyMenu then
         menuInstalled = true
-        Menu.ModifyMenu("MENU_QUEST_MAP_FRAME_SETTINGS", function(_, root)
+        Menu.ModifyMenu("MENU_QUEST_MAP_FRAME_SETTINGS", function(owner, root)
             root:CreateCheckbox("Compact quest log", function() return addon.db and addon.db.compactLog end,
                 function() addon.SetOption("compactLog", not addon.db.compactLog) end)
-            root:CreateButton("Expand all zones", function() ExpandQuestHeader(0) end)
-            root:CreateButton("Collapse all zones", function() CollapseQuestHeader(0) end)
+            AddZoneActions(owner, root)
         end)
+        Menu.ModifyMenu("MENU_QUEST_MAP_FRAME", AddZoneActions)
     end
     return list
 end
