@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.35.4
+
+- Expand or collapse all zones in the Quest Log from the gear menu or by right-clicking any zone heading.
+- Right-click a zone heading in the Quest Tracker to expand or collapse all tracked zones at once.
+
 ## 1.0.35.3
 
 - bugfix: Keep tanks ahead of healers when a party member dies far away or zones back into a dungeon. If the game resets the layout during combat, role order returns when combat ends.
