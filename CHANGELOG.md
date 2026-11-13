@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.35.5
+
+- bugfix: Avoid an extra quest tracker refresh when leveling up triggers an Edit Mode layout update.
+
 ## 1.0.35.4
 
 - Expand or collapse all zones in the Quest Log from the gear menu or by right-clicking any zone heading.

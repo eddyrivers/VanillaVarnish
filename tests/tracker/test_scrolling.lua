@@ -230,6 +230,18 @@ check(container:GetHeight() == 170, "Edit Mode's new height survives")
 
 -- Edit Mode can broadcast a native update while auras are restricted outside
 -- combat. Its scenario tracker must run without an addon-driven resize.
+local function FireTrackerEvent(event)
+    for _, frame in ipairs(MockFrames) do
+        if frame.events and frame.events[event] then frame.callback(frame, event) end
+    end
+end
+local beforeLayoutEventDirty = dirty
+FireTrackerEvent("EDIT_MODE_LAYOUTS_UPDATED")
+check(dirty == beforeLayoutEventDirty, "layout notifications leave the native Edit Mode tracker update in charge")
+container:Update(); RunMockTimers()
+check(addon.Scrolling.IsActive() and count() == C_QuestLog.GetNumQuestWatches(),
+    "the native Edit Mode update retains scrolling and every watched quest")
+
 local restricted = true
 C_Secrets = {ShouldAurasBeSecret = function() return restricted end}
 local beforeRestrictionSizes, beforeRestrictionDirty = sizes, dirty
@@ -239,11 +251,7 @@ check(sizes == beforeRestrictionSizes and dirty == beforeRestrictionDirty,
     "Restricted native layout and addon refresh leave shared height and dirty state alone")
 check(native:GetParent() == container and not addon.Scrolling.IsActive(),
     "Restricted layout uses native parenting and height")
-for _, frame in ipairs(MockFrames) do
-    if frame.events and frame.events.ADDON_RESTRICTION_STATE_CHANGED then
-        frame.callback(frame, "ADDON_RESTRICTION_STATE_CHANGED")
-    end
-end
+FireTrackerEvent("ADDON_RESTRICTION_STATE_CHANGED")
 restricted = false
 RunMockTimers(); RunMockTimers(); RunMockTimers()
 check(addon.Scrolling.IsActive() and count() == C_QuestLog.GetNumQuestWatches(),

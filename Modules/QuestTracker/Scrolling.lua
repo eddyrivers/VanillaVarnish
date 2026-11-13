@@ -222,8 +222,10 @@ end
 
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_REGEN_ENABLED")
-events:RegisterEvent("EDIT_MODE_LAYOUTS_UPDATED")
 events:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
+-- Edit Mode already updates the tracker from its anchor-changed callback.
+-- The layout hooks handle that pass. An addon-driven MarkDirty on the same
+-- event can taint shared tracker state used by the native aura-reading pass.
 events:SetScript("OnEvent", function(_, event)
     -- The predicate reflects the new state after the restriction event ends.
     if event == "ADDON_RESTRICTION_STATE_CHANGED" then C_Timer.After(0, scroll.Refresh)
