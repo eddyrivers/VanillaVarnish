@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.35.6
+
+- Nameplate combo points play the personal resource display's spin when they fill.
+
 ## 1.0.35.5
 
 - bugfix: Avoid an extra quest tracker refresh when leveling up triggers an Edit Mode layout update.

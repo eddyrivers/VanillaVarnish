@@ -36,6 +36,16 @@ points = 3
 Mock.Event("UNIT_POWER_UPDATE", "player", "COMBO_POINTS")
 Check(row:IsShown() and row.dots[3].icon:IsShown() and row.dots[4].inactive:IsShown()
     and not row.dots[4].icon:IsShown(), "Earned points fill red while remaining circles stay empty")
+for index, dot in ipairs(row.dots) do
+    Check(dot.slash:IsShown() == (index <= 3) and dot.slashAnim:IsPlaying() == (index <= 3),
+        "Only newly filled points play the slash, including multi-point gains")
+end
+local slashAnim = row.dots[1].slashAnim
+Mock.Event("UNIT_POWER_FREQUENT", "player", "COMBO_POINTS")
+Mock.Tick(0.11)
+Check(slashAnim.plays == 1 and row.dots[1].slash:IsShown(), "Refreshes keep the animation playing once")
+slashAnim.scripts.OnFinished(slashAnim)
+Check(not row.dots[1].slash:IsShown(), "The slash disappears when its animation ends")
 local anchor = target.UnitFrame.HealthBarsContainer.healthBar
 local cast = target.UnitFrame.CastBarsContainer.castBar
 Check(row:GetFrameLevel() > cast:GetFrameLevel(), "Combo row draws above native cast artwork")
@@ -53,10 +63,17 @@ points = 5
 Mock.Event("COMBO_TARGET_CHANGED")
 Check(row.dots[5].icon:IsShown() and not row.dots[5].inactive:IsShown()
     and row.dots[3].points[1][4] == x, "Point positions stay fixed as points fill")
+Check(row.dots[5].slash:IsShown() and slashAnim.plays == 1, "Additional gains animate only the new points")
+points = 3
+Mock.Event("UNIT_POWER_UPDATE", "player", "COMBO_POINTS")
+Check(not row.dots[5].slash:IsShown() and not row.dots[5].slashAnim:IsPlaying(),
+    "Spending a point cancels its in-progress slash")
 points = 1
 Mock.Event("PLAYER_TARGET_CHANGED")
 Check(row.dots[2]:IsShown() and row.dots[2].inactive:IsShown() and not row.dots[2].icon:IsShown(),
     "Target changes return spent slots to empty circles")
+Check(not row.dots[1].slash:IsShown() and not slashAnim:IsPlaying(),
+    "Changing targets clears active slashes even if the row is reused")
 points = 0
 Mock.Event("UNIT_POWER_UPDATE", "player", "COMBO_POINTS")
 Check(row:IsShown() and row.dots[1].inactive:IsShown() and not row.dots[1].icon:IsShown(),

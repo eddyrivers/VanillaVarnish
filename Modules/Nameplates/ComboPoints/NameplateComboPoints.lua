@@ -8,6 +8,17 @@ local driver = CreateFrame("Frame")
 local rows = setmetatable({}, { __mode = "k" })
 local current, elapsed = nil, 0
 
+local function ClearCurrent()
+    if not current then return end
+    for _, dot in ipairs(current.dots) do
+        dot.slashAnim:Stop()
+        dot.slash:Hide()
+    end
+    current:Hide()
+    current.count = nil
+    current = nil
+end
+
 local function Read(func, ...)
     if not func then return end
     local ok, value = pcall(func, ...)
@@ -76,6 +87,18 @@ function combo.CreateRow(parent)
             dot.layers[#dot.layers + 1] = texture
             dot[spec[4]] = texture
         end
+        -- Play the personal resource display's red slash flipbook on fill.
+        dot.slash = dot:CreateTexture(nil, "OVERLAY")
+        dot.slash:SetAtlas("uf-roguecp-slash-red")
+        dot.slash:SetPoint("CENTER")
+        dot.slash:Hide()
+        dot.slashAnim = dot.slash:CreateAnimationGroup()
+        local flipbook = dot.slashAnim:CreateAnimation("FlipBook")
+        flipbook:SetFlipBookRows(3)
+        flipbook:SetFlipBookColumns(6)
+        flipbook:SetFlipBookFrames(17)
+        flipbook:SetDuration(0.57)
+        dot.slashAnim:SetScript("OnFinished", function() dot.slash:Hide() end)
         row.dots[index] = dot
     end
     row:Hide()
@@ -99,6 +122,7 @@ function combo.LayoutRow(row, anchor, count, castBar)
     for index, dot in ipairs(row.dots) do
         dot:SetFrameLevel(level + 1)
         dot:SetSize(db.size, db.size)
+        dot.slash:SetSize(43 * db.size / 20, 43 * db.size / 20)
         dot:ClearAllPoints()
         dot:SetPoint("LEFT", row, "LEFT", (index - 1) * (db.size + db.gap), 0)
         for _, texture in ipairs(dot.layers) do
@@ -126,8 +150,7 @@ function combo.CastBar(frame)
     return container and container.castBar or frame and frame.castBar
 end
 
-function combo.Refresh()
-    if current then current:Hide(); current = nil end
+local function GetTargetPlate()
     if not combo.db or not VV.IsModuleEnabled("nameplates") or not ns.tweaksDB.comboPointsEnabled then return end
     if not UsesComboPoints() then return end
     -- Forever points belong to the hard target. Never attach its count to a
@@ -141,10 +164,31 @@ function combo.Refresh()
     if frame and Read(frame.IsForbidden, frame) ~= false then return end
     local anchor = combo.HealthAnchor(frame, plate)
     if Read(anchor.IsForbidden, anchor) ~= false or Read(anchor.IsShown, anchor) ~= true then return end
+    return plate, anchor, count, combo.CastBar(frame)
+end
+
+function combo.Refresh()
+    local plate, anchor, count, castBar = GetTargetPlate()
+    if not plate then ClearCurrent(); return end
     local row = rows[plate]
     if not row then row = combo.CreateRow(plate); rows[plate] = row end
-    row.unitToken = Read(plate.GetUnit, plate)
-    combo.LayoutRow(row, anchor, count, combo.CastBar(frame))
+    local unitToken = Read(plate.GetUnit, plate)
+    if current ~= row or row.unitToken ~= unitToken then ClearCurrent() end
+    row.unitToken = unitToken
+    combo.LayoutRow(row, anchor, count, castBar)
+    if row.count then
+        for index = row.count + 1, count do
+            local dot = row.dots[index]
+            dot.slash:Show()
+            dot.slashAnim:Play()
+        end
+        for index = count + 1, row.count do
+            local dot = row.dots[index]
+            dot.slashAnim:Stop()
+            dot.slash:Hide()
+        end
+    end
+    row.count = count
     current = row
 end
 
@@ -156,10 +200,10 @@ driver:SetScript("OnEvent", function(_, event, unit)
         driver:UnregisterEvent("ADDON_LOADED")
     elseif event == "NAME_PLATE_UNIT_REMOVED" then
         local removed = ns.Known(unit)
-        for _, row in pairs(rows) do
-            if removed and row.unitToken == removed then row:Hide() end
-        end
+        if removed and current and current.unitToken == removed then ClearCurrent() end
         return
+    elseif event == "PLAYER_TARGET_CHANGED" or event == "PLAYER_ENTERING_WORLD" then
+        ClearCurrent()
     elseif event == "UNIT_POWER_UPDATE" or event == "UNIT_POWER_FREQUENT" or event == "UNIT_DISPLAYPOWER" then
         unit = ns.Known(unit)
         if unit and unit ~= "player" then return end

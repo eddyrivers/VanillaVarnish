@@ -23,8 +23,11 @@ function Object:SetOrder(value) self.order = value end
 function Object:SetFromAlpha(value) self.fromAlpha = value end
 function Object:SetToAlpha(value) self.toAlpha = value end
 function Object:SetDuration(value) self.duration = value end
+function Object:SetFlipBookRows(value) self.flipBookRows = value end
+function Object:SetFlipBookColumns(value) self.flipBookColumns = value end
+function Object:SetFlipBookFrames(value) self.flipBookFrames = value end
 function Object:IsPlaying() return self.playing or false end
-function Object:Play() self.playing = true end
+function Object:Play() self.playing = true; self.plays = (self.plays or 0) + 1 end
 function Object:Stop() self.playing = false end
 function Object:CreateFontString(_, _, template)
     local object = New(self)
