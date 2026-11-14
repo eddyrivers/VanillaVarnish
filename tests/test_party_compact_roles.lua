@@ -12,12 +12,17 @@ local function anchors(frame)
     function frame:GetNumPoints() return #self.anchors end
     function frame:GetPoint(index) return unpack(self.anchors[index]) end
     function frame:ClearAllPoints()
-        assert(not Mock.combat or Mock.nativeLayout, "Addon cleared protected anchors in combat")
+        assert(not Mock.combat or Mock.nativeLayout or Mock.secureLayout, "Addon cleared protected anchors in combat")
         writes = writes + 1
         self.anchors = {}
     end
     function frame:SetPoint(...)
-        assert(not Mock.combat or Mock.nativeLayout, "Addon moved protected anchors in combat")
+        assert(not Mock.combat or Mock.nativeLayout or Mock.secureLayout, "Addon moved protected anchors in combat")
+        if select(2, ...) == "$parent" then
+            local point, _, edge, x, y = ...
+            self.anchors[#self.anchors+1] = {point, self.parent, edge, x, y}
+            return
+        end
         writes = writes + 1
         self.anchors[#self.anchors+1] = {...}
     end
@@ -31,6 +36,9 @@ local originals = {}
 for index, unit in ipairs(nativeUnits) do
     local member = anchors(Mock.Member(unit))
     member.parent = compact
+    function member:GetParent() return self.parent end
+    function member:IsProtected() return true, true end
+    function member:GetAttribute(key) if key == "unit" then return self.unit end end
     compact.memberUnitFrames[index], originals[index] = member, member
 end
 Mock.active = {}
@@ -73,6 +81,38 @@ local function refreshNative()
     Mock.nativeLayout = true
     compact:RefreshMembers()
     Mock.nativeLayout = false
+end
+local watcher, header
+local createFrame = CreateFrame
+function CreateFrame(kind, name, parent, template)
+    local frame = createFrame(kind, name, parent, template)
+    if template == "SecureHandlerStateTemplate" then watcher = frame end
+    if template == "SecureGroupHeaderTemplate" then header = frame end
+    frame.attributes, frame.refs = {}, {}
+    function frame:SetAttribute(key, value)
+        self.attributes[key] = value
+        if key:sub(1, 9) == "frameref-" then self.refs[key:sub(10)] = value end
+    end
+    function frame:GetAttribute(key) return self.attributes[key] end
+    function frame:GetFrameRef(key) return self.refs[key] end
+    function frame:SetWidth(width) self.width = width end
+    return frame
+end
+function SecureHandlerSetFrameRef(frame, key, ref) frame.refs[key] = ref end
+function RegisterStateDriver() end
+local function runSnippet(body, frame, variables)
+    variables.self = frame
+    variables.newtable = function() return {} end
+    setfenv(assert(loadstring(body)), setmetatable(variables, {__index = _G}))()
+end
+local function secureRosterRefresh()
+    local child = CreateFrame("Button")
+    runSnippet(header:GetAttribute("initialConfigFunction"), child, {control=header})
+    runSnippet(child:GetAttribute("refreshUnitChange"), child, {})
+    check(watcher:GetAttribute("state-vvparty") == "pending", "Secure roster refresh schedules a post-layout pass")
+    Mock.secureLayout = true
+    runSnippet(watcher:GetAttribute("_onstate-vvparty"), watcher, {newstate="combat"})
+    Mock.secureLayout = false
 end
 refreshNative()
 EditModeManagerFrame = {UseRaidStylePartyFrames=function() return Mock.raidStyle end}
@@ -133,10 +173,23 @@ vv.Party.SetOption("rolePin", "bottom")
 Mock.Event("PLAYER_ROLES_ASSIGNED"); Mock.Tick(1)
 order({"party2", "player", "party4", "party1", "party3"})
 check(writes == beforeCombat and roleReads == reads, "Combat defers all addon role reads and protected layout changes")
--- A secure native refresh may reset anchors in combat. The addon must neither
--- intervene nor mistake those fresh native positions for an old pinned layout.
+-- Level-ups can cause a native roster refresh even with the same members.
 refreshNative()
 order(nativeUnits)
+secureRosterRefresh()
+check(position(compact.memberUnitFrames[3]) < position(compact.memberUnitFrames[1]),
+    "A secure roster refresh puts the tank back first during combat")
+local restoredWrites = writes
+secureRosterRefresh()
+check(writes == restoredWrites and roleReads == reads, "An intact combat layout needs no writes or role reads")
+compact.memberUnitFrames[5]:Hide()
+refreshNative()
+local changedRosterWrites = writes
+secureRosterRefresh()
+check(writes == changedRosterWrites, "A changed roster keeps its native combat layout")
+compact.memberUnitFrames[5]:Show()
+refreshNative()
+secureRosterRefresh()
 Mock.combat = false
 Mock.Event("PLAYER_REGEN_ENABLED")
 order({"party1", "party2", "party3", "player", "party4"})

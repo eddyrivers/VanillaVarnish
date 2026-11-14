@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.35.7
+
+- bugfix: Keep tanks and healers pinned in raid-style party frames when a level-up refreshes the party during combat.
+
 ## 1.0.35.6
 
 - Nameplate combo points play the personal resource display's spin when they fill.

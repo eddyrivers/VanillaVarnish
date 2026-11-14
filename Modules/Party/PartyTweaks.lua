@@ -775,11 +775,108 @@ local function memberRole(unit)
     return role or record and record.role
 end
 
+local function saveCombatRoleLayout(layout, party, desired)
+    layout.combatAnchors = nil
+    local watcher = layout.combatWatcher
+    if not desired then
+        if watcher and watcher:GetAttribute("members") then watcher:SetAttribute("members", nil) end
+        return
+    end
+    if not SecureHandlerSetFrameRef or not RegisterStateDriver then return end
+
+    -- Cache the member anchors while they are readable. Blizzard's secure
+    -- group header signals roster refreshes, and the state driver runs the
+    -- restore after the native event handlers have finished their layout.
+    if not watcher then
+        watcher = CreateFrame("Frame", nil, UIParent, "SecureHandlerStateTemplate")
+        watcher:SetAttribute("_onstate-vvparty", [[
+            if newstate ~= "combat" then return end
+            local count = self:GetAttribute("members")
+            if not count then return end
+            local frames = newtable()
+            local changed = false
+            for index = 1, count do
+                local frame = self:GetFrameRef("member" .. index)
+                local key = "slot" .. index
+                local unit = self:GetAttribute(key .. "unit")
+                if frame:IsVisible() ~= (unit ~= nil) or (unit and frame:GetAttribute("unit") ~= unit) then return end
+                frames[index] = frame
+                local point, relative, edge, x, y = frame:GetPoint(1)
+                if not point then return end
+                if point ~= self:GetAttribute(key .. "point")
+                    or relative ~= (self:GetFrameRef(key .. "relative") or frame:GetParent())
+                    or edge ~= self:GetAttribute(key .. "edge")
+                    or x ~= self:GetAttribute(key .. "x") or y ~= self:GetAttribute(key .. "y") then
+                    changed = true
+                end
+            end
+            if not changed then return end
+            for _, frame in ipairs(frames) do frame:ClearAllPoints() end
+            for index, frame in ipairs(frames) do
+                local key = "slot" .. index
+                frame:SetPoint(self:GetAttribute(key .. "point"),
+                    self:GetFrameRef(key .. "relative") or "$parent", self:GetAttribute(key .. "edge"),
+                    self:GetAttribute(key .. "x"), self:GetAttribute(key .. "y"))
+            end
+            self:SetAttribute("restored", true)
+        ]])
+        local header = CreateFrame("Frame", nil, UIParent, "SecureGroupHeaderTemplate")
+        header:SetAttribute("showParty", true)
+        header:SetAttribute("showPlayer", true)
+        header:SetAttribute("template", "SecureHandlerAttributeTemplate")
+        SecureHandlerSetFrameRef(header, "watcher", watcher)
+        header:SetAttribute("initialConfigFunction", [[
+            self:SetWidth(0)
+            self:SetHeight(0)
+            self:SetAttribute("watcher", control:GetFrameRef("watcher"))
+            self:SetAttribute("refreshUnitChange", [=[
+                self:GetAttribute("watcher"):SetAttribute("state-vvparty", "pending")
+            ]=])
+        ]])
+        header:Show()
+        RegisterStateDriver(watcher, "vvparty", "[group:party,combat] combat; idle")
+        layout.combatWatcher = watcher
+    end
+    watcher:SetAttribute("members", nil)
+    watcher:SetAttribute("restored", nil)
+    local count, anchorsByMember = 0, {}
+    for index, member in ipairs(party.memberUnitFrames) do
+        if not member.IsProtected or not select(2, member:IsProtected()) then return end
+        local key = "slot" .. index
+        SecureHandlerSetFrameRef(watcher, "member" .. index, member)
+        local unit
+        if readable(member:IsShown()) == true then
+            unit = member.GetAttribute and readable(member:GetAttribute("unit"))
+            if type(unit) ~= "string" then return end
+            count = count + 1
+        end
+        local anchors = desired[member]
+        if #anchors ~= 1 then return end
+        local point, relative, edge, x, y = unpack(anchors[1], 1, 5)
+        if secret(point) or secret(relative) or secret(edge) or secret(x) or secret(y) then return end
+        relative = type(relative) == "string" and _G[relative] or relative
+        if relative ~= party and (not relative or not relative.IsProtected or not select(2, relative:IsProtected())) then return end
+        if relative == party then watcher:SetAttribute("frameref-" .. key .. "relative", nil)
+        else SecureHandlerSetFrameRef(watcher, key .. "relative", relative) end
+        watcher:SetAttribute(key .. "unit", unit)
+        watcher:SetAttribute(key .. "point", point)
+        watcher:SetAttribute(key .. "edge", edge)
+        watcher:SetAttribute(key .. "x", x or 0)
+        watcher:SetAttribute(key .. "y", y or 0)
+        anchorsByMember[member] = anchors
+    end
+    watcher:SetAttribute("members", count > 1 and #party.memberUnitFrames or nil)
+    layout.combatAnchors = count > 1 and anchorsByMember or nil
+end
+
 local function arrangeCompactParty(party, nativeLayout)
     party = party or _G.CompactPartyFrame
     if not party then return end
-    if nativeLayout and compactLayouts[party] then compactLayouts[party].native = nil end
-    if InCombatLockdown() or partyIsDragging(_G.PartyFrame)
+    if InCombatLockdown() then
+        if nativeLayout and compactLayouts[party] then compactLayouts[party].combatRefresh = true end
+        return
+    end
+    if partyIsDragging(_G.PartyFrame)
         or not party.memberUnitFrames or type(party.updateLayoutFunc) ~= "function" then return end
     local layout = compactLayouts[party]
     if not layout then
@@ -800,9 +897,20 @@ local function arrangeCompactParty(party, nativeLayout)
     end
     for _, pet in ipairs(party.petUnitFrames or {}) do frames[#frames + 1] = pet end
     if party.borderFrame then frames[#frames + 1] = party.borderFrame end
-    if nativeLayout or not layout.native then
+    local combatRefresh = layout.combatRefresh
+    layout.combatRefresh = nil
+    if nativeLayout or combatRefresh or not layout.native then
+        -- A secure restore may already have moved the members back. Keep
+        -- their original slots while picking up native pet and border points.
+        local previous = layout.native
+        local restored = not nativeLayout and combatRefresh and layout.combatWatcher
+            and layout.combatWatcher:GetAttribute("restored")
         layout.native = {}
-        for _, frame in ipairs(frames) do layout.native[frame] = points(frame) end
+        for _, frame in ipairs(frames) do
+            local current = points(frame)
+            local saved = restored and previous and layout.combatAnchors and layout.combatAnchors[frame]
+            layout.native[frame] = saved and samePoints(current, saved) and previous[frame] or current
+        end
     end
     local mapping = {}
     if enabled then
@@ -834,6 +942,9 @@ local function arrangeCompactParty(party, nativeLayout)
         for _, frame in ipairs(frames) do
             for _, point in ipairs(desired[frame]) do frame:SetPoint(unpack(point, 1, 5)) end
         end
+    end
+    if changed or nativeLayout or combatRefresh or enabled ~= layout.applied then
+        saveCombatRoleLayout(layout, party, enabled and desired or nil)
     end
     layout.applied = enabled
 end
