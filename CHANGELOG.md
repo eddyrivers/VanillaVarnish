@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.35.9
+
+- bugfix: Prevent tooltip positioning errors when hovering over Auctionator shopping list searches.
+
 ## 1.0.35.8
 
 - bugfix: Guard against restricted-aura errors interrupting quest tracker refreshes when leveling up.

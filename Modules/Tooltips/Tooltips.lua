@@ -350,7 +350,8 @@ local function InstallHooks()
                 shownAlpha[self] = Read(self.GetAlpha, self)
                 RememberWorldHover(self)
                 QueueAnchor(self)
-                FinishAnchor(self)
+                -- SetText can show a tooltip before its owner finishes setting
+                -- explicit points. Finish on Show's posthook or OnUpdate.
             end)
             tooltip:HookScript("OnHide", function(self)
                 anchorQueued[self], worldHover[self], shownAlpha[self] = nil, nil, nil

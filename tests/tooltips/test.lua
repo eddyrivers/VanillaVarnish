@@ -22,6 +22,17 @@ assert(tip.anchor == "ANCHOR_CURSOR_RIGHT")
 addon.SetOption("offsetX", -25); addon.SetOption("offsetY", 40)
 assert(tip.offsetX == -25 and tip.offsetY == 40)
 local calls = tip.anchorCalls
+-- Auctionator's SetText can invoke OnShow before it assigns explicit points.
+tip:Hide()
+tip:SetOwner(owner, "ANCHOR_NONE")
+tip:SetText("Shopping search")
+tip.shown = true
+tip.scripts.OnShow(tip)
+assert(tip.anchor == "ANCHOR_NONE", "implicit text show must preserve the owner's anchor family")
+tip:SetPoint("BOTTOMRIGHT", owner, "TOPRIGHT")
+tip:Show()
+assert(tip.anchor == "ANCHOR_CURSOR_RIGHT", "explicit Show finishes Auctionator placement")
+calls = tip.anchorCalls
 Mock.Tick(1); Mock.Tick(1)
 assert(tip.anchorCalls == calls, "Do not interfere with native fades by moving the tooltip every frame")
 tip:SetAnchorType("ANCHOR_LEFT")
