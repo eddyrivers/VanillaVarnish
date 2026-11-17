@@ -16,6 +16,22 @@ local hookedMarkers = setmetatable({}, { __mode = "k" })
 local headings = {}
 local moduleHeight
 local ApplyLayout, Refresh
+local mawBuffGuardInstalled = false
+
+local function GuardMawBuffQuery()
+    if mawBuffGuardInstalled or type(ShouldShowMawBuffs) ~= "function" then return end
+    local _, _, _, interface = GetBuildInfo()
+    if interface ~= 16001 then return end
+    local nativeQuery = ShouldShowMawBuffs
+    -- Forever's scenario tracker queries MAW auras even outside scenarios.
+    -- Edit Mode broadcasts and queued layouts can reach it while tainted.
+    -- A restricted answer cannot be used to display these buffs.
+    ShouldShowMawBuffs = function(...)
+        if VV.AurasRestricted() then return false end
+        return nativeQuery(...)
+    end
+    mawBuffGuardInstalled = true
+end
 
 local function QueueLayout()
     if not tracker or queued then return end
@@ -429,6 +445,7 @@ Refresh = function(immediate)
 end
 
 local function TryInstall()
+    if VV.IsModuleEnabled("questTracker") then GuardMawBuffQuery() end
     if tracker then
         if addon.Scrolling then addon.Scrolling.Install(tracker.parentContainer) end
         return true

@@ -304,7 +304,27 @@ end
 assert(loadfile("Modules/QuestTracker/QuestTrackerOrganizer.lua"))("VanillaVarnish", vv)
 assert(loadfile("Modules/QuestTracker/Settings.lua"))("VanillaVarnish", vv)
 local events = MockFrames[#MockFrames]
+local mawReads, restrictedMaw = 0, false
+C_Secrets = {ShouldAurasBeSecret = function() return restrictedMaw end}
+ShouldShowMawBuffs = function(value)
+    mawReads = mawReads + 1
+    assert(not restrictedMaw, "native MAW query cannot read restricted auras")
+    return value, "native result"
+end
 events.callback(events, "PLAYER_LOGIN")
+local guardedMawQuery = ShouldShowMawBuffs
+local shown, result = ShouldShowMawBuffs(true)
+equal(shown, true, "unrestricted MAW visibility is preserved")
+equal(result, "native result", "native query return values are preserved")
+restrictedMaw = true
+equal(ShouldShowMawBuffs(), false, "restricted scenario layout skips MAW buffs")
+equal(mawReads, 1, "restricted Edit Mode query never calls the aura reader")
+events.callback(events, "ADDON_LOADED", "Blizzard_MawBuffs")
+equal(ShouldShowMawBuffs, guardedMawQuery, "later addon events do not stack query wrappers")
+restrictedMaw = false
+equal(ShouldShowMawBuffs(false), false, "native queries resume when restrictions lift")
+equal(mawReads, 2, "unrestricted query resumes native reads")
+C_Secrets = nil
 equal(vv.db.questTracker.completedSort, "off", "completion sorting defaults off")
 equal(registeredCategory.name, "Quest tracker", "settings category title")
 equal(addon.optionControls.enabled:GetChecked(), true, "grouping checkbox defaults on")

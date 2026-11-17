@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.35.8
+
+- bugfix: Guard against restricted-aura errors interrupting quest tracker refreshes when leveling up.
+
 ## 1.0.35.7
 
 - bugfix: Keep tanks and healers pinned in raid-style party frames when a level-up refreshes the party during combat.
