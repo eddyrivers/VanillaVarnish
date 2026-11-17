@@ -2,6 +2,10 @@
 
 ## 1.0.35.9
 
+- bugfix: Guard against quest tracker errors when leveling up, including with scrolling turned off.
+- bugfix: Avoid an extra quest tracker refresh when leveling up changes the UI layout.
+- bugfix: Keep tanks and healers pinned in raid-style party frames when a level-up refreshes the party during combat.
+- Nameplate combo points now spin when they fill, matching the personal resource display.
 - bugfix: Prevent tooltip positioning errors when hovering over Auctionator shopping list searches.
 
 ## 1.0.35.8
