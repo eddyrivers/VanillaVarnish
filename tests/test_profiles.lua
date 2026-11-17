@@ -138,6 +138,7 @@ local legacyParty = vv.profileStore["Party layout"].settings.party
 legacyParty.spacing, legacyParty.growUp = nil, nil
 legacyParty.rolePin = nil
 vv.profileStore["Party layout"].settings.nameplates.groupQuestMarkers = nil
+vv.profileStore["Party layout"].settings.nameplates.ignoreMinRange = nil
 check(vv.LoadProfile("Party layout") and vv.db.party.spacing == 4 and not vv.db.party.growUp
     and vv.db.party.rolePin == "off" and not ns.tweaksDB.groupQuestMarkers
     and not vv.ProfileModified(), "Older profiles use compact downward defaults without appearing modified")

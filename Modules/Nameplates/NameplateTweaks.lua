@@ -407,15 +407,36 @@ local function SpellInRange(spell, unit)
 end
 ns.SpellInRange = SpellInRange
 
+local function SpellName(value)
+    local identifier = tonumber(value) or value
+    local info = SafeCall(C_Spell and C_Spell.GetSpellInfo, identifier)
+    if info then return info.name, info.spellID, Known(info.maxRange), Known(info.minRange) end
+    if GetSpellInfo then
+        local ok, name, _, _, _, minRange, maxRange, id = pcall(GetSpellInfo, identifier)
+        if ok then return Known(name), Known(id), Known(maxRange), Known(minRange) end
+    end
+end
+
+local function IsTooClose(spell, unit)
+    local _, _, maxRange, minRange = SpellName(spell)
+    if type(minRange) ~= "number" or minRange <= 0 or type(maxRange) ~= "number" then return false end
+    -- A failed spell check plus a confirmed upper bound within its maximum
+    -- range identifies the dead zone. Interaction distances vary by race;
+    -- use their largest nominal distances as bounds.
+    return (maxRange >= 8 and SafeCall(CheckInteractDistance, unit, 3) == true)
+        or (maxRange >= 28 and SafeCall(CheckInteractDistance, unit, 4) == true)
+end
+
 local function IsOutOfRange(unit)
     if not db.rangeEnabled then return false end
-    local spell
     if SafeCall(UnitCanAttack, "player", unit) then
-        spell = db.damage
+        local spell = db.damage
+        return SpellInRange(spell, unit) == false
+            and not (db.ignoreMinRange and IsTooClose(spell, unit))
     elseif SafeCall(UnitCanAssist, "player", unit) then
-        spell = db.friendly
+        return SpellInRange(db.friendly, unit) == false
     end
-    return SpellInRange(spell, unit) == false
+    return false
 end
 
 local function Casting(api, unit)
@@ -495,15 +516,6 @@ RemoveUnit = function(unit)
     active[unit] = nil
 end
 
-local function SpellName(value)
-    local info = SafeCall(C_Spell and C_Spell.GetSpellInfo, tonumber(value) or value)
-    if info then return info.name, info.spellID, info.maxRange end
-    if GetSpellInfo then
-        local name, _, _, _, _, maxRange, id = GetSpellInfo(tonumber(value) or value)
-        return name, id, maxRange
-    end
-end
-
 local function SetSpell(kind, input)
     input = input:match("^%s*(.-)%s*$"):gsub('^"(.*)"$', "%1")
     if input == "" then
@@ -548,7 +560,7 @@ function ns.SetFeature(key, value)
     if key == "focusEnabled" then return ns.SetFocusOption(key, value) end
     if key ~= "rangeEnabled" and key ~= "markers" and key ~= "swingsEnabled"
         and key ~= "comboPointsEnabled" and key ~= "questieFallback" and key ~= "groupQuestMarkers"
-        and key ~= "threatColorsEnabled" then return false end
+        and key ~= "threatColorsEnabled" and key ~= "ignoreMinRange" then return false end
     db[key] = value
     ns.RefreshTweaks()
     if ns.Refresh then ns.Refresh() end
@@ -693,6 +705,7 @@ function ns.InitializeTweaks()
     db = VV.db.nameplates
     if type(db.markers) ~= "boolean" then db.markers = true end
     if type(db.rangeEnabled) ~= "boolean" then db.rangeEnabled = true end
+    if type(db.ignoreMinRange) ~= "boolean" then db.ignoreMinRange = false end
     if type(db.swingsEnabled) ~= "boolean" then db.swingsEnabled = true end
     if type(db.comboPointsEnabled) ~= "boolean" then db.comboPointsEnabled = true end
     if type(db.threatColorsEnabled) ~= "boolean" then db.threatColorsEnabled = true end

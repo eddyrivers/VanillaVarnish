@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.35.10
+
+- Nameplates can now stay bright when enemies are too close for Throw, Auto Shot, and other damage spells with a minimum range.
+
 ## 1.0.35.9
 
 - bugfix: Guard against quest tracker errors when leveling up, including with scrolling turned off.

@@ -74,12 +74,14 @@ function ns.RegisterFeatureOptions()
     range:Hide()
     Heading(range, "Range check", "Fade units beyond your spell's range. Choose how faint their nameplates become.")
     SpellBox(range, "damage", "Damage spell", -90)
-    SpellBox(range, "friendly", "Friendly spell", -134)
+    FeatureCheck(range, "ignoreMinRange", "Keep enemies bright inside minimum range", -124, "ignoreMinRange",
+        "Skip range fading for enemies too close for your damage spell, such as Throw or Auto Shot.")
+    SpellBox(range, "friendly", "Friendly spell", -162)
     UI.Label(range, "Enter a spell name, ID, or link, then click Apply or press Enter.\nThe friendly spell and opacity also control party portrait and buff fading.\nClear a field to stop checking that spell. Unavailable range leaves units unchanged.",
-        16, -188, "GameFontHighlightSmall")
+        16, -216, "GameFontHighlightSmall")
     local opacityHolder = CreateFrame("Frame", nil, range)
-    opacityHolder:SetPoint("TOPLEFT", range, "TOPLEFT", 16, -248)
-    opacityHolder:SetPoint("TOPRIGHT", range, "TOPRIGHT", -16, -248)
+    opacityHolder:SetPoint("TOPLEFT", range, "TOPLEFT", 16, -276)
+    opacityHolder:SetPoint("TOPRIGHT", range, "TOPRIGHT", -16, -276)
     opacityHolder:SetHeight(40)
     controls.rangeOpacity = UI.Slider(opacityHolder, "feature.rangeOpacity", "Out-of-range opacity", 0, 0, 1, 0.01, true,
         function() return ns.tweaksDB.rangeOpacity end, ns.SetRangeOpacity,

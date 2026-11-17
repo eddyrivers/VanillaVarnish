@@ -22,6 +22,7 @@ local presets = {
             ["questieFallback"] = false,
             ["groupQuestMarkers"] = false,
             ["rangeEnabled"] = true,
+            ["ignoreMinRange"] = false,
             ["rangeOpacity"] = 0.5,
             ["swingTimers"] = {
                 ["appearanceVersion"] = 9,
