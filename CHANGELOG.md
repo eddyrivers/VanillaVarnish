@@ -2,7 +2,7 @@
 
 ## 1.0.35.10
 
-- Nameplates can now stay bright when enemies are too close for Throw, Auto Shot, and other damage spells with a minimum range.
+- **Keep close enemies bright.** Enable **Keep enemies bright inside minimum range** under **Nameplates → Range check**, just below **Damage spell**. Enemies that step too close for Throw or Auto Shot can stay bright, while enemies beyond your spell's reach still fade.
 
 ## 1.0.35.9
 
