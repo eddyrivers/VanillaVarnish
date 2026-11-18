@@ -2,7 +2,8 @@
 
 ## 1.0.35.13
 
-- bugfix: Remove the custom quest tracker scrollbar and restore Blizzard's tracker height limit to avoid extra layout updates interfering with quest items.
+- bugfix: Remove custom quest tracker scrolling to help prevent blocked-action popups when using quest items like the Master's Glaive phial.
+- The tracker now fits quests within Blizzard's usual height limit. You can resize it in Edit Mode, and zone grouping and Compact view are still available.
 
 ## 1.0.35.12
 
