@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.35.12
+
+- bugfix: Keep overflow scrolling available when a tracked quest has a usable item.
+
 ## 1.0.35.11
 
 - bugfix: Keep quest tracker items like the Master's Glaive phial usable. Overflow scrolling pauses while a quest with a usable item is tracked.

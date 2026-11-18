@@ -149,23 +149,23 @@ check(viewport:GetVerticalScrollRange() > 0 and viewport.ScrollBar:IsShown(), "o
 check(native:GetParent() == viewport.child, "existing native module is inside the scroll canvas")
 check(select(2, container.NineSlice:GetPoint(1)) == viewport, "overflow background ends at the visible tracker edge")
 check(find(1) and find(5) and find(6), "quests from both zones are accessible")
-local item, click = find(1).ItemButton, find(1).ItemButton:GetScript("OnClick")
 local specialItemInfo, logIndexForQuest = GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID
 C_QuestLog.GetLogIndexForQuestID = function(id) return id end
 GetQuestLogSpecialItemInfo = function(index)
     if index == 6 then return "quest item link" end
 end
-local beforeItemDirty, beforeItemSizes = dirty, sizes
 addon.Scrolling.Refresh()
-check(not addon.Scrolling.IsActive() and native:GetParent() == container,
-    "a watched item pauses scrolling and restores the native parent")
 container:Update(); RunMockTimers()
-check(dirty == beforeItemDirty and sizes == beforeItemSizes,
-    "item watches bypass both addon-requested scrolling rebuilds and the height override")
+check(addon.Scrolling.IsActive() and native:GetParent() == viewport.child,
+    "overflow scrolling stays active while a quest item is watched")
+check(count() == C_QuestLog.GetNumQuestWatches() and find(6):IsShown(),
+    "overflow still renders the final watched quest and its item row")
+viewport.scripts.OnMouseWheel(viewport, -10000)
+check(viewport:GetVerticalScrollRange() > 0 and viewport:GetVerticalScroll() == viewport:GetVerticalScrollRange(),
+    "mouse wheel reaches the bottom while a quest item is watched")
+viewport.scripts.OnMouseWheel(viewport, 10000)
 GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID = specialItemInfo, logIndexForQuest
-container:Update(); RunMockTimers()
-check(addon.Scrolling.IsActive(), "the next native update resumes scrolling after the item watch is gone")
-item, click = find(1).ItemButton, find(1).ItemButton:GetScript("OnClick")
+local item, click = find(1).ItemButton, find(1).ItemButton:GetScript("OnClick")
 local headerClick = find(1).HeaderButton:GetScript("OnClick")
 local contentsHeight = native.contentsHeight
 viewport.scripts.OnMouseWheel(viewport, -10000)
