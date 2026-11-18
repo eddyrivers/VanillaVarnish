@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.35.11
+
+- bugfix: Keep quest tracker items like the Master's Glaive phial usable. Overflow scrolling pauses while a quest with a usable item is tracked.
+
 ## 1.0.35.10
 
 - **Keep close enemies bright.** Enable **Keep enemies bright inside minimum range** under **Nameplates → Range check**, just below **Damage spell**. Enemies that step too close for Throw or Auto Shot can stay bright, while enemies beyond your spell's reach still fade.

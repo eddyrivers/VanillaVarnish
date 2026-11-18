@@ -57,6 +57,13 @@ restricted = false
 RunMockTimers(); RunMockTimers()
 check(requests == before + 1 and count() == originalCount(), "quest refresh resumes after aura restrictions lift")
 C_Secrets = nil
+local specialItemInfo, logIndexForQuest = GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID
+C_QuestLog.GetLogIndexForQuestID = function(id) return id end
+GetQuestLogSpecialItemInfo = function() return "quest item link" end
+before = requests
+events.callback(events, "QUEST_LOG_UPDATE"); RunMockTimers()
+check(requests == before, "Blizzard owns rebuilds while a quest item is watched")
+GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID = specialItemInfo, logIndexForQuest
 vv.SetModuleEnabled("questTracker", false); RunMockTimers(); RunMockTimers()
 before = requests
 events.callback(events, "QUEST_LOG_UPDATE"); RunMockTimers(); RunMockTimers()

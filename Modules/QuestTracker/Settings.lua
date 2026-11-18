@@ -75,7 +75,7 @@ function addon.RegisterOptions()
     Label("Click a zone heading to expand or collapse it, including in combat.\nRight-click to track or untrack the zone outside combat. Move and resize in Edit Mode.",
         16, -266, "GameFontHighlightSmall")
     Check("scrolling", "Scroll overflowing objectives", -322,
-        "Use the mouse wheel or scrollbar to reach all tracked quests in the existing tracker. Keeps Blizzard's quest rows and item buttons.")
+        "Use the mouse wheel or scrollbar to reach overflowing objectives. Scrolling pauses while a quest with a usable item is tracked.")
     Check("compact", "Compact view", -362,
         "Reduce quest text by 1.5 points, with slightly smaller zone buttons and tighter row spacing. Off by default.")
     Button("Restore defaults", 16, -418, addon.ResetOptions)

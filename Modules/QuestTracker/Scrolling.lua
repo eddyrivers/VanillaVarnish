@@ -35,6 +35,9 @@ end
 local function Wanted()
     return addon.db and addon.db.scrolling and VV.IsModuleEnabled("questTracker")
         and not (EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive())
+        -- The overflow height override fires Blizzard's resize handler,
+        -- which can schedule a rebuild of the protected quest item buttons.
+        and not addon.HasWatchedQuestItem()
 end
 
 local function RestoreHeight()
@@ -208,9 +211,13 @@ end
 function scroll.Refresh()
     if not container or layingOut or not CanChange() then return end
     local restricted = VV.AurasRestricted()
-    if not Wanted() or restricted then Detach() end
+    local wanted = Wanted()
+    local wasActive = active
+    if not wanted or restricted then Detach() end
     -- Native code owns all dirty flags and the next full layout.
-    if not restricted then securecallfunction(container.MarkDirty, container) end
+    if not restricted and (wanted or (wasActive and not addon.HasWatchedQuestItem())) then
+        securecallfunction(container.MarkDirty, container)
+    end
 end
 
 function scroll.UpdateRange()

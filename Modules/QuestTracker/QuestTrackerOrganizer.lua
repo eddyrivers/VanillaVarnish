@@ -40,6 +40,9 @@ local function QueueLayout()
 end
 
 local function RequestNativeRefresh()
+    -- The native rebuild writes the quest item button's protected click
+    -- data. Let Blizzard's own events drive that rebuild for item watches.
+    if addon.HasWatchedQuestItem() then nativeRefreshPending = false; return end
     -- The quest module schedules a shared tracker update, which also reads
     -- player auras through ScenarioObjectiveTracker.
     nativeRefreshPending = VV.AurasRestricted() == true
