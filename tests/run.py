@@ -112,6 +112,7 @@ tracker.execute((ROOT / "tests/tracker/test_tracker.lua").read_text())
 tracker.execute((ROOT / "tests/tracker/test_refresh.lua").read_text())
 tracker.execute((ROOT / "tests/tracker/test_compact.lua").read_text())
 tracker.execute((ROOT / "tests/tracker/test_buttons.lua").read_text())
+tracker.execute((ROOT / "tests/tracker/test_watched_quests.lua").read_text())
 tracker.execute((ROOT / "tests/tracker/test_quest_log.lua").read_text())
 
 party = runtime()

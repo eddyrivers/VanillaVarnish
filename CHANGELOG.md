@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36
+
+- Open **Watched quests** with `/vv tracker scroll` to scroll through every tracked quest and its progress in a movable window. Quest item buttons and other quest actions stay in Blizzard's UI.
+
 ## 1.0.35.13
 
 - bugfix: Remove custom quest tracker scrolling to help prevent blocked-action popups when using quest items like the Master's Glaive phial.

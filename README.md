@@ -28,6 +28,8 @@ Both feature previews follow **Settings > Nameplates**, including style, size, h
 
 **Quest tracker:** group tracked quests by zone and expand or collapse each zone. Move or resize the tracker in Edit Mode to change how many quests fit.
 
+Open **Watched quests** from the tracker settings or with `/vv tracker scroll`. The movable window shows every tracked quest, including quests beyond the tracker's height limit, and updates as you make progress. Use Blizzard's tracker or your bags for quest items.
+
 Enable **Compact view** under `/vv tracker` for quest text just 1.5 points smaller, slightly smaller zone buttons, and tighter row spacing. It also works with grouping off. The separate **Quest log** settings page has its own **Compact view** for quest log titles, objectives, and zone headings; open **Settings > AddOns > VanillaVarnish > Quest log**, or type `/vv questlog`. Both options start off, save per character and in profiles, and apply size changes after combat. Quest details keep their usual size. Each page's **Restore defaults** resets only that page.
 
 Click a zone heading to collapse or expand it, including in combat. Collapsing a zone keeps its quests tracked. Protected layout changes wait until combat ends. Right-click outside combat to track or untrack a zone's quests. Completed sorting groups quests marked ready for turn-in (including click-to-complete quests). Quests with remaining travel or delivery instructions stay in level order.
@@ -63,6 +65,7 @@ All VanillaVarnish commands start with `/vv`.
 | `/vv nameplates help` | List swing appearance and nameplate commands |
 | `/vv tracker group on`, `/vv tracker group off` | Switch zone grouping while preserving the module switch |
 | `/vv tracker compact on`, `/vv tracker compact off` | Switch compact tracker text and spacing |
+| `/vv tracker scroll` | Open or close the scrollable Watched quests window |
 | `/vv tracker expand`, `/vv tracker collapse` | Expand or collapse all zones |
 | `/vv party buffs off`, `/vv party colors on` | Switch party features |
 | `/vv party range on`, `/vv party range off` | Switch party portrait and buff fading |

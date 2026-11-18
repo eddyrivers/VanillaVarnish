@@ -105,6 +105,7 @@ Settings.RegisterCanvasLayoutSubcategory = function(_, panel, name)
 end
 local coreEvents = MockFrames[#MockFrames]
 assert(loadfile("Modules/QuestTracker/Model.lua"))("VanillaVarnish", vv)
+assert(loadfile("Modules/QuestTracker/WatchedQuests.lua"))("VanillaVarnish", vv)
 equal(addon.ReadMetadata()[5].zone, "Elwynn Forest", "metadata uses log category")
 equal(addon.FormatQuestTitle("[15] Quest", 15), "[15] Quest", "native level preserved")
 equal(addon.FormatQuestTitle("|cff00ff00[15]|r Quest", 15), "|cff00ff00[15]|r Quest", "colored level preserved")

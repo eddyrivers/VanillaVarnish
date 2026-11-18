@@ -77,6 +77,7 @@ function addon.RegisterOptions()
     Check("compact", "Compact view", -322,
         "Reduce quest text by 1.5 points, with slightly smaller zone buttons and tighter row spacing. Off by default.")
     Button("Restore defaults", 16, -378, addon.ResetOptions)
+    Button("Watched quests", 172, -378, addon.ToggleWatchedQuests)
     VV.RegisterOptions()
     category = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, panel, "Quest tracker")
     Settings.RegisterAddOnCategory(category)
