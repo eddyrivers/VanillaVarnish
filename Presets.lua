@@ -96,7 +96,6 @@ local presets = {
         ["questTracker"] = {
             ["compact"] = false,
             ["compactLog"] = false,
-            ["scrolling"] = true,
             ["completedSort"] = "bottom",
             ["enabled"] = true,
         },

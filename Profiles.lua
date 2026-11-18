@@ -3,7 +3,7 @@ local fields = {
     nameplates = {"markers", "rangeEnabled", "swingsEnabled", "comboPointsEnabled", "threatColorsEnabled",
         "focusEnabled", "focusMode", "focusScale", "focusOpacity",
         "questieFallback", "groupQuestMarkers", "rangeOpacity", "ignoreMinRange", "damage", "friendly", "swingTimers", "comboPoints"},
-    questTracker = {"enabled", "completedSort", "scrolling", "compact", "compactLog"},
+    questTracker = {"enabled", "completedSort", "compact", "compactLog"},
     party = {"buffs", "classColors", "rangeFade", "spacing", "growUp", "rolePin"},
     tooltips = {"followMouse", "offsetX", "offsetY", "unitColors", "pauseInCombat"},
     groupBrowser = {"compressed", "sort"},
@@ -97,7 +97,6 @@ function VV.ProfileModified()
     if saved.party.spacing == nil then saved.party.spacing = 4 end
     if saved.party.growUp == nil then saved.party.growUp = false end
     if saved.party.rolePin == nil then saved.party.rolePin = "off" end
-    if saved.questTracker.scrolling == nil then saved.questTracker.scrolling = true end
     if saved.questTracker.compact == nil then saved.questTracker.compact = false end
     if saved.questTracker.compactLog == nil then saved.questTracker.compactLog = false end
     if saved.groupBrowser.compressed == nil then saved.groupBrowser.compressed = false end

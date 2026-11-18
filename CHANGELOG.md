@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.35.13
+
+- bugfix: Remove the custom quest tracker scrollbar and restore Blizzard's tracker height limit to avoid extra layout updates interfering with quest items.
+
 ## 1.0.35.12
 
 - bugfix: Keep overflow scrolling available when a tracked quest has a usable item.

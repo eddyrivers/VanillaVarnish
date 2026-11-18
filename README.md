@@ -15,7 +15,7 @@ Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. Active settings 
 | Module | What it adds |
 | --- | --- |
 | Nameplates | Spell-range fading, quest icons, swing timers, combo points, threat colors, combat focus |
-| Quest tracker | Zone grouping, collapsible headings, completion sorting, scrolling, and optional compact tracker and quest log views |
+| Quest tracker | Zone grouping, collapsible headings, completion sorting, and optional compact tracker and quest log views |
 | Party frames | Up to 16 buffs in two rows, larger player buffs and dispellable debuffs, class-colored health bars, and friendly-spell range fading |
 | Tooltips | Mouse following, configurable offsets, class/difficulty colors, immediate hover dismissal, and optional combat pause |
 | Group Browser | Two-line listing rows and optional player sorting by level, class, or role |
@@ -26,7 +26,7 @@ Under **Nameplates > Combat focus**, enable the optional toggle to shrink and fa
 
 Both feature previews follow **Settings > Nameplates**, including style, size, health text, cast details, buffs, debuffs, crowd control, aura size, and spacing. After viewing the game's Nameplates preview, they retain its last enemy/friendly sample type and icons for the session. Before that, they show an enemy NPC sample. The preview matches a visible target's scale so timer widths and horizontal alignment reflect the in-game layout; without a target, it uses the configured target enlargement. Preview frames stay separate from live units; game options update the preview without a reload.
 
-**Quest tracker:** use the mouse wheel or scrollbar to reach tracked quests when the list exceeds the tracker's height. Scrolling is on by default and keeps Blizzard's quest rows, clicks, and quest item buttons. The scrollbar appears only when needed; at the screen's right edge it appears to the left of the tracker. Turn **Scroll overflowing objectives** off under `/vv tracker` to restore the game's height limit. Scrolling also works with zone grouping off. Edit Mode temporarily restores the native layout for moving and resizing.
+**Quest tracker:** group tracked quests by zone and expand or collapse each zone. Move or resize the tracker in Edit Mode to change how many quests fit.
 
 Enable **Compact view** under `/vv tracker` for quest text just 1.5 points smaller, slightly smaller zone buttons, and tighter row spacing. It also works with grouping off. The separate **Quest log** settings page has its own **Compact view** for quest log titles, objectives, and zone headings; open **Settings > AddOns > VanillaVarnish > Quest log**, or type `/vv questlog`. Both options start off, save per character and in profiles, and apply size changes after combat. Quest details keep their usual size. Each page's **Restore defaults** resets only that page.
 

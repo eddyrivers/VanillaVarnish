@@ -165,17 +165,12 @@ check(revised.modules.politeUI == false and revised.politeUI.rules.player.fadeOu
     "Saving active edits preserves dormant beta preferences on that profile")
 check(vv.LoadPreset("Default") and not vv.PresetModified() and vv.db.politeUI.rules == rules
     and vv.db.modules.politeUI == true, "Preset application preserves dormant character data")
-vv.QuestTracker.SetOption("scrolling", false)
-check(vv.SaveProfile("Short tracker") and not vv.profileStore["Short tracker"].settings.questTracker.scrolling,
-    "Profiles retain the overflow scrolling preference")
-vv.QuestTracker.SetOption("scrolling", true)
-check(vv.LoadProfile("Short tracker") and not vv.db.questTracker.scrolling and not vv.ProfileModified(),
-    "Loading a profile restores scrolling without dirtying its status")
-vv.profileStore["Short tracker"].settings.questTracker.scrolling = nil
+check(vv.SaveProfile("Short tracker"), "Tracker preferences save with a profile")
+vv.profileStore["Short tracker"].settings.questTracker.scrolling = true
 vv.profileStore["Short tracker"].settings.questTracker.compact = nil
 vv.profileStore["Short tracker"].settings.questTracker.compactLog = nil
-check(vv.LoadProfile("Short tracker") and vv.db.questTracker.scrolling and not vv.ProfileModified(),
-    "Profiles saved before scrolling use its default without appearing modified")
+check(vv.LoadProfile("Short tracker") and vv.db.questTracker.scrolling == nil and not vv.ProfileModified(),
+    "Legacy profiles load without restoring the retired scrolling option or appearing modified")
 check(not vv.db.questTracker.compact and not vv.db.questTracker.compactLog,
     "Older profiles leave tracker and quest log compact views off")
 vv.GroupBrowser.SetOption("compressed", true)

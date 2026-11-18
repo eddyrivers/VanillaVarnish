@@ -65,7 +65,7 @@ function VV.InitDB()
     local browserSort = db.groupBrowser.sort
     if browserSort ~= "level" and browserSort ~= "class" and browserSort ~= "role" then db.groupBrowser.sort = "default" end
     if type(db.questTracker.enabled) ~= "boolean" then db.questTracker.enabled = true end
-    if type(db.questTracker.scrolling) ~= "boolean" then db.questTracker.scrolling = true end
+    db.questTracker.scrolling = nil
     if type(db.questTracker.compact) ~= "boolean" then db.questTracker.compact = false end
     if type(db.questTracker.compactLog) ~= "boolean" then db.questTracker.compactLog = false end
     local sort = db.questTracker.completedSort
