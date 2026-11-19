@@ -345,4 +345,60 @@ order({"party1", "player", "party2"})
 Mock.combat = false
 Mock.Event("PLAYER_REGEN_ENABLED")
 order({"player", "party2", "party1"})
+
+-- Blizzard can rerun its downward portrait layout during a combat roster refresh.
+Mock.raidStyle = false
+local portrait = anchors(CreateFrame("Frame"))
+portrait.PartyMemberFramePool = PartyFrame.PartyMemberFramePool
+PartyFrame = portrait
+Mock.active = {}
+local damage = anchors(Mock.Member("party1"))
+local tank = anchors(Mock.Member("party2"))
+local hidden = anchors(Mock.Member("party3"))
+hidden:Hide()
+for index, member in ipairs(Mock.active) do
+    member.parent, member.layoutIndex = portrait, index
+    function member:GetParent() return self.parent end
+    function member:IsProtected() return true, true end
+    function member:GetAttribute(key) if key == "unit" then return self.unit end end
+end
+function portrait:Layout()
+    for index, member in ipairs(Mock.active) do
+        if member:IsShown() then
+            member:ClearAllPoints()
+            member:SetPoint("TOPLEFT", self, "TOPLEFT", 0, -63 * (index - 1))
+        end
+    end
+    self:SetHeight(116)
+end
+local screen = CreateFrame("Frame")
+portrait:SetPoint("TOPLEFT", screen, "TOPLEFT", 100, -100)
+portrait:Layout()
+enumRoles.party1, enumRoles.party2 = 3, 1
+Mock.Event("GROUP_ROSTER_UPDATE")
+vv.Party.SetOption("growUp", true)
+vv.Party.SetOption("spacing", 4)
+vv.Party.SetOption("rolePin", "top")
+local tankY, damageY = tank.anchors[1][5], damage.anchors[1][5]
+check(tankY > damageY and portrait.anchors[1][1] == "BOTTOMLEFT",
+    "Portrait setup pins the tank above the damage dealer at the saved bottom anchor")
+Mock.combat = true
+for _ = 1, 2 do
+    Mock.nativeLayout = true
+    portrait:Layout()
+    Mock.nativeLayout = false
+    secureRosterRefresh()
+    check(tank.anchors[1][1] == "BOTTOMLEFT" and tank.anchors[1][5] == tankY
+        and damage.anchors[1][1] == "BOTTOMLEFT" and damage.anchors[1][5] == damageY,
+        "Combat roster refresh restores the upward portrait positions and role order")
+end
+Mock.nativeLayout = true
+hidden:Show()
+portrait:Layout()
+Mock.nativeLayout = false
+secureRosterRefresh()
+check(tank.anchors[1][1] == "TOPLEFT", "A newly visible member keeps the native combat layout")
+Mock.combat = false
+Mock.Event("PLAYER_REGEN_ENABLED")
+check(tank.anchors[1][1] == "BOTTOMLEFT", "Portrait layout resumes with the new roster after combat")
 VV_COMPACT_ROLE_CHECKS = checks

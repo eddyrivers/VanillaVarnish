@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36.1
+
+- bugfix: Keep upward-growing portrait party frames in place when the game refreshes the party during combat.
+
 ## 1.0.36
 
 - Open **Watched quests** with `/vv tracker scroll` to scroll through every tracked quest and its progress in a movable window. Quest item buttons and other quest actions stay in Blizzard's UI.

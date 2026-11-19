@@ -775,7 +775,7 @@ local function memberRole(unit)
     return role or record and record.role
 end
 
-local function saveCombatRoleLayout(layout, party, desired)
+local function saveCombatLayout(layout, party, members, desired, minimumVisible)
     layout.combatAnchors = nil
     local watcher = layout.combatWatcher
     if not desired then
@@ -800,19 +800,20 @@ local function saveCombatRoleLayout(layout, party, desired)
                 local key = "slot" .. index
                 local unit = self:GetAttribute(key .. "unit")
                 if frame:IsVisible() ~= (unit ~= nil) or (unit and frame:GetAttribute("unit") ~= unit) then return end
-                frames[index] = frame
-                local point, relative, edge, x, y = frame:GetPoint(1)
-                if not point then return end
-                if point ~= self:GetAttribute(key .. "point")
-                    or relative ~= (self:GetFrameRef(key .. "relative") or frame:GetParent())
-                    or edge ~= self:GetAttribute(key .. "edge")
-                    or x ~= self:GetAttribute(key .. "x") or y ~= self:GetAttribute(key .. "y") then
-                    changed = true
+                if self:GetAttribute(key .. "point") then
+                    frames[index] = frame
+                    local point, relative, edge, x, y = frame:GetPoint(1)
+                    if point ~= self:GetAttribute(key .. "point")
+                        or relative ~= (self:GetFrameRef(key .. "relative") or frame:GetParent())
+                        or edge ~= self:GetAttribute(key .. "edge")
+                        or x ~= self:GetAttribute(key .. "x") or y ~= self:GetAttribute(key .. "y") then
+                        changed = true
+                    end
                 end
             end
             if not changed then return end
-            for _, frame in ipairs(frames) do frame:ClearAllPoints() end
-            for index, frame in ipairs(frames) do
+            for _, frame in pairs(frames) do frame:ClearAllPoints() end
+            for index, frame in pairs(frames) do
                 local key = "slot" .. index
                 frame:SetPoint(self:GetAttribute(key .. "point"),
                     self:GetFrameRef(key .. "relative") or "$parent", self:GetAttribute(key .. "edge"),
@@ -840,7 +841,7 @@ local function saveCombatRoleLayout(layout, party, desired)
     watcher:SetAttribute("members", nil)
     watcher:SetAttribute("restored", nil)
     local count, anchorsByMember = 0, {}
-    for index, member in ipairs(party.memberUnitFrames) do
+    for index, member in ipairs(members) do
         if not member.IsProtected or not select(2, member:IsProtected()) then return end
         local key = "slot" .. index
         SecureHandlerSetFrameRef(watcher, "member" .. index, member)
@@ -851,22 +852,27 @@ local function saveCombatRoleLayout(layout, party, desired)
             count = count + 1
         end
         local anchors = desired[member]
-        if #anchors ~= 1 then return end
-        local point, relative, edge, x, y = unpack(anchors[1], 1, 5)
-        if secret(point) or secret(relative) or secret(edge) or secret(x) or secret(y) then return end
-        relative = type(relative) == "string" and _G[relative] or relative
-        if relative ~= party and (not relative or not relative.IsProtected or not select(2, relative:IsProtected())) then return end
-        if relative == party then watcher:SetAttribute("frameref-" .. key .. "relative", nil)
-        else SecureHandlerSetFrameRef(watcher, key .. "relative", relative) end
         watcher:SetAttribute(key .. "unit", unit)
-        watcher:SetAttribute(key .. "point", point)
-        watcher:SetAttribute(key .. "edge", edge)
-        watcher:SetAttribute(key .. "x", x or 0)
-        watcher:SetAttribute(key .. "y", y or 0)
-        anchorsByMember[member] = anchors
+        watcher:SetAttribute(key .. "point", nil)
+        if anchors then
+            if #anchors ~= 1 then return end
+            local point, relative, edge, x, y = unpack(anchors[1], 1, 5)
+            if secret(point) or secret(relative) or secret(edge) or secret(x) or secret(y) then return end
+            relative = type(relative) == "string" and _G[relative] or relative
+            if relative ~= party and (not relative or not relative.IsProtected or not select(2, relative:IsProtected())) then return end
+            if relative == party then watcher:SetAttribute("frameref-" .. key .. "relative", nil)
+            else SecureHandlerSetFrameRef(watcher, key .. "relative", relative) end
+            watcher:SetAttribute(key .. "point", point)
+            watcher:SetAttribute(key .. "edge", edge)
+            watcher:SetAttribute(key .. "x", x or 0)
+            watcher:SetAttribute(key .. "y", y or 0)
+            anchorsByMember[member] = anchors
+        elseif unit then
+            return
+        end
     end
-    watcher:SetAttribute("members", count > 1 and #party.memberUnitFrames or nil)
-    layout.combatAnchors = count > 1 and anchorsByMember or nil
+    watcher:SetAttribute("members", count >= minimumVisible and #members or nil)
+    layout.combatAnchors = count >= minimumVisible and anchorsByMember or nil
 end
 
 local function arrangeCompactParty(party, nativeLayout)
@@ -944,7 +950,7 @@ local function arrangeCompactParty(party, nativeLayout)
         end
     end
     if changed or nativeLayout or combatRefresh or enabled ~= layout.applied then
-        saveCombatRoleLayout(layout, party, enabled and desired or nil)
+        saveCombatLayout(layout, party, party.memberUnitFrames, enabled and desired or nil, 2)
     end
     layout.applied = enabled
 end
@@ -958,8 +964,9 @@ local function arrangeParty(party, nativeLayout)
     local editing = manager and manager.IsEditModeActive and manager:IsEditModeActive()
     local enabled = VV.IsModuleEnabled("party") and not raidStyle()
     if not enabled and not layout.applied then return end
-    local members = {}
+    local members, active = {}, {}
     for member in party.PartyMemberFramePool:EnumerateActive() do
+        active[#active + 1] = member
         local index = readable(member.layoutIndex)
         if type(index) == "number" and readable(member:IsShown()) == true then members[#members + 1] = member end
     end
@@ -984,6 +991,7 @@ local function arrangeParty(party, nativeLayout)
         layout.appliedAnchor = nil
         if layout.background and party.Background then setPoints(party.Background, layout.background) end
         layout.applied = false
+        saveCombatLayout(layout, party)
         return
     end
     local config = VV.db.party
@@ -1034,15 +1042,22 @@ local function arrangeParty(party, nativeLayout)
     height = math.max(1, height)
     if party:GetHeight() ~= height then party:SetHeight(height) end
     local offset = config.growUp and bottom or top
+    local edge = config.growUp and "BOTTOMLEFT" or "TOPLEFT"
+    local desired = {}
+    local changed = false
     for _, member in ipairs(members) do
         local petHeight = not feature("buffs") and member.PetFrame and readable(member.PetFrame:IsShown()) == true and 16 or 0
-        member:ClearAllPoints()
-        if config.growUp then
-            member:SetPoint("BOTTOMLEFT", party, "BOTTOMLEFT", left, offset + petHeight)
-        else
-            member:SetPoint("TOPLEFT", party, "TOPLEFT", left, -offset)
-        end
+        local anchors = {{edge, party, edge, left, config.growUp and offset + petHeight or -offset}}
+        desired[member] = anchors
+        if not samePoints(points(member), anchors) then setPoints(member, anchors) end
+        local saved = layout.combatAnchors and layout.combatAnchors[member]
+        if not saved or not samePoints(saved, anchors) then changed = true end
         offset = offset + member:GetHeight() + petHeight + gap
+    end
+    if not editing and #members > 0 then
+        if changed or nativeLayout then saveCombatLayout(layout, party, active, desired, 1) end
+    elseif layout.combatAnchors then
+        saveCombatLayout(layout, party)
     end
     if party.Background then
         if not layout.background then layout.background = points(party.Background) end
