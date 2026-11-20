@@ -4,15 +4,8 @@
 
 - Turn on **Hide background when collapsed** in `/vv tracker` to leave just the **All Objectives** bar visible when you collapse the tracker. Expanding it restores your chosen background opacity.
 - Open **Watched quests** with `/vv tracker scroll` to see every tracked quest and its progress in a movable, scrollable window.
-- Expand or collapse all zones from the Quest Log gear menu or by right-clicking a zone heading in the Quest Log or tracker.
-- bugfix: Keep quest items like the Master's Glaive phial usable by leaving item clicks and tracker sizing to Blizzard's tracker.
-- bugfix: Prevent quest tracker errors when leveling up.
 - bugfix: Prevent a Lua error when accepting a party invite.
 - bugfix: Keep upward-growing portrait party frames in place during combat refreshes.
-- bugfix: Restore pinned tank and healer order after combat if a level-up or dungeon transition disrupts the party layout.
-- Turn on **Keep enemies bright inside minimum range** under **Nameplates → Range check** to keep enemies bright when they step too close for Throw or Auto Shot.
-- Nameplate combo points spin as they fill.
-- bugfix: Prevent tooltip positioning errors when hovering over Auctionator shopping list searches.
 
 ## 1.0.36.3
 
