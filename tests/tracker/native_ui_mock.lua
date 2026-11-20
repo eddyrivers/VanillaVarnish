@@ -31,7 +31,6 @@ local function region()
     function value:SetTextColor(...) self.color = { ... } end
     function value:GetFont() return "TestFont.ttf", self.size, "" end
     function value:SetFont(_, size) self.size = size end
-    function value:SetFontObject(font) self.font = font end
     function value:GetStringHeight()
         local _, lines = (self.text or ""):gsub("\n", "")
         return (lines + 1) * self.size
@@ -61,7 +60,6 @@ CreateFrame = function(kind, name, parent, template)
     function frame:GetParent() return self.parent end
     function frame:SetParent(parent) self.parent = parent end
     function frame:EnableMouseWheel(enabled) self.mouseWheel = enabled end
-    function frame:EnableMouse() end
     function frame:SetHideIfUnscrollable(enabled) self.hideIfUnscrollable = enabled end
     function frame:GetEffectiveScale() return 1 end
     function frame:GetRight() return 1900 end
@@ -134,12 +132,7 @@ CreateFrame = function(kind, name, parent, template)
     function frame:GetVerticalScroll() return self.scroll end
     function frame:GetVerticalScrollRange() return math.max(0, self.child:GetHeight() - self:GetHeight()) end
     function frame:UpdateScrollChildRect() end
-    function frame:CreateFontString()
-        local text = region()
-        self.fontStrings = self.fontStrings or {}
-        self.fontStrings[#self.fontStrings + 1] = text
-        return text
-    end
+    function frame:CreateFontString() return region() end
     function frame:CreateTexture() return region() end
     function frame:IsShown() return MockGeometry[self].shown end
     function frame:SetShown(shown) if shown then self:Show() else self:Hide() end end
@@ -149,12 +142,7 @@ CreateFrame = function(kind, name, parent, template)
         MockGeometry[self].shown = true
         if not wasShown and self.scripts.OnShow then self.scripts.OnShow(self) end
     end
-    function frame:Hide()
-        CheckLayout(self)
-        local wasShown = MockGeometry[self].shown
-        MockGeometry[self].shown = false
-        if wasShown and self.scripts.OnHide then self.scripts.OnHide(self) end
-    end
+    function frame:Hide() CheckLayout(self); MockGeometry[self].shown = false end
     if template == "ScrollFrameTemplate" then
         frame.ScrollBar = CreateFrame("Slider", nil, frame)
     end

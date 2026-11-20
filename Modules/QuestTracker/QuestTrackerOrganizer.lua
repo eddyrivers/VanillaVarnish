@@ -538,7 +538,6 @@ function addon.SetOption(key, value)
         value = not not value
     else return false end
     db[key] = value
-    if key == "completedSort" then addon.RefreshWatchedQuests() end
     addon.RefreshOptions()
     if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
     Refresh()
@@ -559,7 +558,6 @@ function addon.ResetOptions()
     db.enabled, db.completedSort, db.collapsed = true, defaults and defaults.completedSort or "off", {}
     db.compact = false
     db.hideCollapsedBackground = false
-    addon.RefreshWatchedQuests()
     addon.RefreshOptions()
     if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end
     Refresh()
@@ -594,7 +592,6 @@ end)
 local function Slash(message)
     if not db then Initialize() end
     local command = (message or ""):lower():match("^%s*(.-)%s*$")
-    if command == "scroll" then addon.ToggleWatchedQuests(); return end
     TryInstall()
     if command == "" or command == "options" or command == "settings" then
         addon.OpenOptions()
@@ -616,14 +613,13 @@ local function Slash(message)
         Print("Completed quest sorting: " .. label .. ".")
         Print("Compact view " .. (db.compact and "on" or "off") .. ".")
     else
-        Print("/vv tracker opens settings. /vv tracker scroll opens Watched quests. /vv tracker group on | group off | compact on | compact off | expand | collapse | status. Click a native zone heading to fold it.")
+        Print("/vv tracker opens settings. /vv tracker group on | group off | compact on | compact off | expand | collapse | status. Click a native zone heading to fold it.")
     end
 end
 
 addon.HandleSlash = Slash
 function addon.RefreshModule()
     if not db then return end
-    addon.RefreshWatchedQuests()
     TryInstall()
     Refresh(true)
 end

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36.5
+
+- Removed the separate **Watched quests** window and its `/vv tracker scroll` command.
+
 ## 1.0.36.4
 
 - Turn on **Hide background when collapsed** in `/vv tracker` to leave just the **All Objectives** bar visible when you collapse the tracker. Expanding it restores your chosen background opacity.

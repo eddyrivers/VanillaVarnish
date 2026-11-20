@@ -79,7 +79,6 @@ function addon.RegisterOptions()
     Check("hideCollapsedBackground", "Hide background when collapsed", -356,
         "Hide the tracker background when you collapse All Objectives. Your chosen opacity returns when you expand it.")
     Button("Restore defaults", 16, -402, addon.ResetOptions)
-    Button("Watched quests", 172, -402, addon.ToggleWatchedQuests)
     VV.RegisterOptions()
     category = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, panel, "Quest tracker")
     Settings.RegisterAddOnCategory(category)
