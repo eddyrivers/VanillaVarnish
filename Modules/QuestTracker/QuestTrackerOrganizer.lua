@@ -1,6 +1,7 @@
 local _, VV = ...
 local addon = VV.QuestTracker
 local tracker, db
+local backgroundContainer, backgroundAlpha
 local displayEnabled, displaySort, displayCompact
 local COMPACT_SCALE, COMPACT_FONT_REDUCTION = 0.9, 1.5
 -- Standard POI circles fill the inner 24 units of their 32-unit artwork.
@@ -415,9 +416,24 @@ ApplyLayout = function()
     tracker:SetHeight(y + (tracker.bottomSpacing or 0))
 end
 
+local function RefreshBackground()
+    if not backgroundContainer then return end
+    local background = backgroundContainer.NineSlice
+    local alpha = background:GetAlpha()
+    if db.hideCollapsedBackground and VV.IsModuleEnabled("questTracker") and backgroundContainer:IsCollapsed() then
+        if backgroundAlpha == nil then backgroundAlpha = alpha end
+        if alpha ~= 0 then background:SetAlpha(0) end
+    elseif backgroundAlpha ~= nil then
+        local restoreAlpha = backgroundAlpha
+        backgroundAlpha = nil
+        if alpha ~= restoreAlpha then background:SetAlpha(restoreAlpha) end
+    end
+end
+
 Refresh = function(immediate)
     if addon.RefreshQuestLog then addon.RefreshQuestLog() end
     if not tracker then return end
+    RefreshBackground()
     if InCombatLockdown() then
         if immediate then ApplyLayout() end
         return
@@ -455,6 +471,15 @@ local function TryInstall()
     hooksecurefunc(module, "Update", function() Refresh(true) end)
     if module.parentContainer then
         hooksecurefunc(module.parentContainer, "Update", function() Refresh(true) end)
+    end
+    local container = module.parentContainer
+    if container and container.NineSlice and type(container.IsCollapsed) == "function"
+        and type(container.SetBackgroundAlpha) == "function" then
+        backgroundContainer = container
+        hooksecurefunc(container, "SetBackgroundAlpha", function(self)
+            if backgroundAlpha ~= nil then backgroundAlpha = self.NineSlice:GetAlpha() end
+            RefreshBackground()
+        end)
     end
     hooksecurefunc(module, "GetBlock", function(self, id, template)
         if type(id) ~= "number" or (template and template ~= self.blockTemplate) then return end
@@ -502,7 +527,7 @@ end
 function addon.SetOption(key, value)
     if key == "completedSort" then
         if value ~= "off" and value ~= "top" and value ~= "bottom" then return false end
-    elseif key == "enabled" or key == "compact" or key == "compactLog" then
+    elseif key == "enabled" or key == "compact" or key == "compactLog" or key == "hideCollapsedBackground" then
         value = not not value
     else return false end
     db[key] = value
@@ -526,6 +551,7 @@ function addon.ResetOptions()
     local defaults = VV.GetPreset and VV.GetPreset("Default").questTracker
     db.enabled, db.completedSort, db.collapsed = true, defaults and defaults.completedSort or "off", {}
     db.compact = false
+    db.hideCollapsedBackground = false
     addon.RefreshWatchedQuests()
     addon.RefreshOptions()
     if VV.RefreshProfileStatus then VV.RefreshProfileStatus() end

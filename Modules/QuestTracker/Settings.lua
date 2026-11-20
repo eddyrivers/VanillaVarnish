@@ -76,8 +76,10 @@ function addon.RegisterOptions()
         16, -266, "GameFontHighlightSmall")
     Check("compact", "Compact view", -322,
         "Reduce quest text by 1.5 points, with slightly smaller zone buttons and tighter row spacing. Off by default.")
-    Button("Restore defaults", 16, -378, addon.ResetOptions)
-    Button("Watched quests", 172, -378, addon.ToggleWatchedQuests)
+    Check("hideCollapsedBackground", "Hide background when collapsed", -356,
+        "Hide the tracker background when you collapse All Objectives. Your chosen opacity returns when you expand it.")
+    Button("Restore defaults", 16, -402, addon.ResetOptions)
+    Button("Watched quests", 172, -402, addon.ToggleWatchedQuests)
     VV.RegisterOptions()
     category = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, panel, "Quest tracker")
     Settings.RegisterAddOnCategory(category)

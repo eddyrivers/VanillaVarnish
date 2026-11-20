@@ -189,6 +189,16 @@ local container = CreateFrame("Frame")
 container.moduleSpacing = 10
 function container:GetAvailableHeight() return 2000 end
 function container:Update() return native:Update() end
+container.NineSlice = CreateFrame("Frame", nil, container)
+function container.NineSlice:SetAlpha(alpha) self.alpha = alpha end
+function container.NineSlice:GetAlpha() return self.alpha end
+function container:IsCollapsed() return self.isCollapsed end
+function container:SetCollapsed(collapsed)
+    self.isCollapsed = collapsed
+    self:Update()
+end
+function container:SetBackgroundAlpha(alpha) self.NineSlice:SetAlpha(alpha) end
+container:SetBackgroundAlpha(0.45)
 local other = CreateFrame("Frame")
 other:SetHeight(60)
 function other:GetContentsHeight() return 60 end
@@ -667,3 +677,27 @@ equal(top(blocks[1]) > top(blocks[2]), true, "module re-enables saved bottom sor
 vv.InitDB()
 equal(addon.db.completedSort, "bottom", "bottom sorting survives database initialization")
 print("PASS: quest tracker master toggle restoration and combat deferral")
+
+container:SetCollapsed(true)
+equal(container.NineSlice:GetAlpha(), 0.45, "collapsed background is visible by default")
+addon.SetOption("enabled", false)
+addon.SetOption("hideCollapsedBackground", true)
+equal(container.NineSlice:GetAlpha(), 0, "enabling the option hides the collapsed background with grouping off")
+container:SetBackgroundAlpha(0.25)
+equal(container.NineSlice:GetAlpha(), 0, "native opacity changes keep the collapsed background hidden")
+container:SetCollapsed(false)
+equal(container.NineSlice:GetAlpha(), 0.25, "expanding restores the latest native opacity")
+combat = true
+container:SetCollapsed(true)
+equal(container.NineSlice:GetAlpha(), 0, "collapse hides the background in combat")
+container:SetCollapsed(false)
+equal(container.NineSlice:GetAlpha(), 0.25, "expand restores the background in combat")
+combat = false
+container:SetCollapsed(true)
+vv.SetModuleEnabled("questTracker", false)
+equal(container.NineSlice:GetAlpha(), 0.25, "disabling the module restores the background")
+vv.SetModuleEnabled("questTracker", true)
+equal(container.NineSlice:GetAlpha(), 0, "re-enabling the module reapplies the saved option")
+addon.ResetOptions()
+equal(container.NineSlice:GetAlpha(), 0.25, "resetting tracker options restores the background")
+print("PASS: collapsed tracker background and native opacity restoration")

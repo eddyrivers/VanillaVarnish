@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36.3
+
+- Added **Hide background when collapsed** to the Quest tracker settings so you can leave just the **All Objectives** bar visible.
+
 ## 1.0.36.2
 
 - bugfix: Prevent a Lua error when accepting a party invite.

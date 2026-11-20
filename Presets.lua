@@ -98,6 +98,7 @@ local presets = {
             ["compactLog"] = false,
             ["completedSort"] = "bottom",
             ["enabled"] = true,
+            ["hideCollapsedBackground"] = false,
         },
         ["tooltips"] = {
             ["followMouse"] = true,
