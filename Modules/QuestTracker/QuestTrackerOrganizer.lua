@@ -432,8 +432,8 @@ end
 
 Refresh = function(immediate)
     if addon.RefreshQuestLog then addon.RefreshQuestLog() end
-    if not tracker then return end
     RefreshBackground()
+    if not tracker then return end
     if InCombatLockdown() then
         if immediate then ApplyLayout() end
         return
@@ -453,8 +453,24 @@ Refresh = function(immediate)
     if immediate then ApplyLayout() else QueueLayout() end
 end
 
+local function InstallBackgroundHook()
+    local container = ObjectiveTrackerFrame
+    if backgroundContainer or not container or not container.NineSlice
+        or type(container.SetCollapsed) ~= "function" or type(container.IsCollapsed) ~= "function"
+        or type(container.SetBackgroundAlpha) ~= "function" then return end
+    backgroundContainer = container
+    hooksecurefunc(container, "SetCollapsed", RefreshBackground)
+    hooksecurefunc(container, "SetBackgroundAlpha", function(self)
+        if backgroundAlpha ~= nil then backgroundAlpha = self.NineSlice:GetAlpha() end
+        RefreshBackground()
+    end)
+end
+
 local function TryInstall()
-    if VV.IsModuleEnabled("questTracker") then GuardMawBuffQuery() end
+    if VV.IsModuleEnabled("questTracker") then
+        GuardMawBuffQuery()
+        InstallBackgroundHook()
+    end
     if tracker then return true end
     if not VV.IsModuleEnabled("questTracker") then return true end
     if InCombatLockdown() then return false end
@@ -471,15 +487,6 @@ local function TryInstall()
     hooksecurefunc(module, "Update", function() Refresh(true) end)
     if module.parentContainer then
         hooksecurefunc(module.parentContainer, "Update", function() Refresh(true) end)
-    end
-    local container = module.parentContainer
-    if container and container.NineSlice and type(container.IsCollapsed) == "function"
-        and type(container.SetBackgroundAlpha) == "function" then
-        backgroundContainer = container
-        hooksecurefunc(container, "SetBackgroundAlpha", function(self)
-            if backgroundAlpha ~= nil then backgroundAlpha = self.NineSlice:GetAlpha() end
-            RefreshBackground()
-        end)
     end
     hooksecurefunc(module, "GetBlock", function(self, id, template)
         if type(id) ~= "number" or (template and template ~= self.blockTemplate) then return end

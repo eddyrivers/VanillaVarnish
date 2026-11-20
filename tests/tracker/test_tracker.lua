@@ -195,7 +195,7 @@ function container.NineSlice:GetAlpha() return self.alpha end
 function container:IsCollapsed() return self.isCollapsed end
 function container:SetCollapsed(collapsed)
     self.isCollapsed = collapsed
-    self:Update()
+    if native.parentContainer == self then self:Update() end
 end
 function container:SetBackgroundAlpha(alpha) self.NineSlice:SetAlpha(alpha) end
 container:SetBackgroundAlpha(0.45)
@@ -204,7 +204,6 @@ other:SetHeight(60)
 function other:GetContentsHeight() return 60 end
 other:SetPoint("TOP", native, "BOTTOM", 0, -10)
 container.modules = { native, other }
-native.parentContainer = container
 ObjectiveTrackerFrame = container
 QuestObjectiveTracker = native
 local blocks, rendered = {}, {}
@@ -323,6 +322,13 @@ ShouldShowMawBuffs = function(value)
     return value, "native result"
 end
 events.callback(events, "PLAYER_LOGIN")
+addon.SetOption("hideCollapsedBackground", true)
+container:SetCollapsed(true)
+equal(container.NineSlice:GetAlpha(), 0, "All Objectives can collapse before the quest module is assigned")
+container:SetCollapsed(false)
+equal(container.NineSlice:GetAlpha(), 0.45, "expansion restores opacity before module assignment")
+addon.SetOption("hideCollapsedBackground", false)
+native:SetContainer(container)
 local guardedMawQuery = ShouldShowMawBuffs
 local shown, result = ShouldShowMawBuffs(true)
 equal(shown, true, "unrestricted MAW visibility is preserved")

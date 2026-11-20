@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36.4
+
+- bugfix: Hide the quest tracker background when you collapse All Objectives with the option enabled.
+
 ## 1.0.36.3
 
 - Added **Hide background when collapsed** to the Quest tracker settings so you can leave just the **All Objectives** bar visible.
