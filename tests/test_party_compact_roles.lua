@@ -95,6 +95,7 @@ function CreateFrame(kind, name, parent, template)
     end
     function frame:GetAttribute(key) return self.attributes[key] end
     function frame:GetFrameRef(key) return self.refs[key] end
+    function frame:GetParent() return parent end
     function frame:SetWidth(width) self.width = width end
     return frame
 end
@@ -106,8 +107,12 @@ local function runSnippet(body, frame, variables)
     setfenv(assert(loadstring(body)), setmetatable(variables, {__index = _G}))()
 end
 local function secureRosterRefresh()
-    local child = CreateFrame("Button")
-    runSnippet(header:GetAttribute("initialConfigFunction"), child, {control=header})
+    local child = CreateFrame("Button", nil, header, "SecureHandlerAttributeTemplate")
+    runSnippet(header:GetAttribute("initialConfigFunction"), child, {control=child})
+    header.refs.watcher = nil
+    runSnippet(child:GetAttribute("refreshUnitChange"), child, {control=child})
+    SecureHandlerSetFrameRef(header, "watcher", watcher)
+    watcher:SetAttribute("state-vvparty", "combat")
     runSnippet(child:GetAttribute("refreshUnitChange"), child, {})
     check(watcher:GetAttribute("state-vvparty") == "pending", "Secure roster refresh schedules a post-layout pass")
     Mock.secureLayout = true

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36.2
+
+- bugfix: Prevent a Lua error when accepting a party invite.
+
 ## 1.0.36.1
 
 - bugfix: Keep upward-growing portrait party frames in place when the game refreshes the party during combat.

@@ -829,9 +829,10 @@ local function saveCombatLayout(layout, party, members, desired, minimumVisible)
         header:SetAttribute("initialConfigFunction", [[
             self:SetWidth(0)
             self:SetHeight(0)
-            self:SetAttribute("watcher", control:GetFrameRef("watcher"))
             self:SetAttribute("refreshUnitChange", [=[
-                self:GetAttribute("watcher"):SetAttribute("state-vvparty", "pending")
+                local header = self:GetParent()
+                local watcher = header and header:GetFrameRef("watcher")
+                if watcher then watcher:SetAttribute("state-vvparty", "pending") end
             ]=])
         ]])
         header:Show()
