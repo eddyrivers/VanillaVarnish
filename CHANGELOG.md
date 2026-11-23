@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36.9
+
+- bugfix: Keep the tank and healer in separate raid-style party slots when the group layout refreshes.
+
 ## 1.0.36.8
 
 - bugfix: Fix a recurring Lua error when party frames show buffs such as Strength of Earth.

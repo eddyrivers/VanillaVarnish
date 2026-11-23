@@ -51,7 +51,7 @@ compact.borderFrame = anchors(CreateFrame("Frame", nil, compact))
 local nativeSort = function(a, b) return a < b end
 compact.flowSortFunc = nativeSort
 function compact:SetFlowSortFunction() error("Addon sorting taints native restricted health updates") end
-local horizontal, border = false, false
+local horizontal, border, partialLayout = false, false, false
 local function nativeLayout(self)
     assert(Mock.nativeLayout, "Addon must not invoke native layout or unit setup")
     for index, member in ipairs(self.memberUnitFrames) do
@@ -59,6 +59,7 @@ local function nativeLayout(self)
         if index == 1 then member:SetPoint("TOPLEFT", self, "TOPLEFT", 0, -10)
         elseif horizontal then member:SetPoint("TOPLEFT", self.memberUnitFrames[index-1], "TOPRIGHT", 0, 0)
         else member:SetPoint("TOPLEFT", self.memberUnitFrames[index-1], "BOTTOMLEFT", 0, 0) end
+        if partialLayout then return end
     end
     self.borderFrame:ClearAllPoints()
     self.borderFrame:SetPoint("TOPLEFT", self.memberUnitFrames[1], "TOPLEFT", -2, 2)
@@ -146,7 +147,17 @@ local function order(expected)
         local bx, by = position(b)
         return horizontal and ax < bx or not horizontal and ay > by
     end)
-    for index, unit in ipairs(expected) do check(physical[index].unit == unit, "Physical role order matches " .. unit) end
+    for index, unit in ipairs(expected) do
+        local frame = physical[index]
+        check(frame.unit == unit, "Physical role order matches " .. unit)
+        local before = physical[index - 1]
+        if before then
+            local x, y = position(frame)
+            local previousX, previousY = position(before)
+            check(horizontal and x >= previousX + before:GetWidth()
+                or not horizontal and y <= previousY - before:GetHeight(), "Adjacent members do not overlap")
+        end
+    end
     check(compact.flowSortFunc == nativeSort, "Native comparator must never be replaced")
     local first, last = physical[1], physical[#physical]
     check(compact.borderFrame.anchors[1][2] == first and compact.borderFrame.anchors[2][2] == last,
@@ -157,6 +168,18 @@ local function order(expected)
 end
 order(nativeUnits)
 vv.Party.SetOption("rolePin", "top")
+order({"party2", "player", "party4", "party1", "party3"})
+partialLayout = true
+refreshNative()
+order({"party2", "player", "party4", "party1", "party3"})
+Mock.combat = true
+refreshNative()
+local _, healerTop = position(originals[1])
+local _, tankTop = position(originals[3])
+check(healerTop == tankTop, "A partial native layout can place both roles at the same edge")
+partialLayout = false
+Mock.combat = false
+Mock.Event("PLAYER_REGEN_ENABLED")
 order({"party2", "player", "party4", "party1", "party3"})
 vv.Party.SetOption("rolePin", "bottom")
 order({"party1", "party3", "party2", "player", "party4"})

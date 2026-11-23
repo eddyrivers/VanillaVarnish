@@ -820,7 +820,6 @@ local function saveCombatLayout(layout, party, members, desired, minimumVisible)
                     self:GetFrameRef(key .. "relative") or "$parent", self:GetAttribute(key .. "edge"),
                     self:GetAttribute(key .. "x"), self:GetAttribute(key .. "y"))
             end
-            self:SetAttribute("restored", true)
         ]])
         local header = CreateFrame("Frame", nil, UIParent, "SecureGroupHeaderTemplate")
         header:SetAttribute("showParty", true)
@@ -841,7 +840,6 @@ local function saveCombatLayout(layout, party, members, desired, minimumVisible)
         layout.combatWatcher = watcher
     end
     watcher:SetAttribute("members", nil)
-    watcher:SetAttribute("restored", nil)
     local count, anchorsByMember = 0, {}
     for index, member in ipairs(members) do
         if not member.IsProtected or not select(2, member:IsProtected()) then return end
@@ -877,6 +875,27 @@ local function saveCombatLayout(layout, party, members, desired, minimumVisible)
     layout.combatAnchors = count >= minimumVisible and anchorsByMember or nil
 end
 
+local function captureCompactLayout(party, frames)
+    local layout = {}
+    -- Blizzard anchors the first slot to the party and each remaining slot
+    -- to its predecessor. A mixed native and pinned layout can put two
+    -- members at the same edge, so only cache a complete native chain.
+    local previous = party
+    for _, member in ipairs(party.memberUnitFrames) do
+        local anchors = points(member)
+        if #anchors ~= 1 then return end
+        local relative = anchors[1][2]
+        if type(relative) == "string" then relative = _G[relative] end
+        if relative ~= previous then return end
+        layout[member] = anchors
+        previous = member
+    end
+    for _, frame in ipairs(frames) do
+        if not layout[frame] then layout[frame] = points(frame) end
+    end
+    return layout
+end
+
 local function arrangeCompactParty(party, nativeLayout)
     party = party or _G.CompactPartyFrame
     if not party then return end
@@ -908,18 +927,9 @@ local function arrangeCompactParty(party, nativeLayout)
     local combatRefresh = layout.combatRefresh
     layout.combatRefresh = nil
     if nativeLayout or combatRefresh or not layout.native then
-        -- A secure restore may already have moved the members back. Keep
-        -- their original slots while picking up native pet and border points.
-        local previous = layout.native
-        local restored = not nativeLayout and combatRefresh and layout.combatWatcher
-            and layout.combatWatcher:GetAttribute("restored")
-        layout.native = {}
-        for _, frame in ipairs(frames) do
-            local current = points(frame)
-            local saved = restored and previous and layout.combatAnchors and layout.combatAnchors[frame]
-            layout.native[frame] = saved and samePoints(current, saved) and previous[frame] or current
-        end
+        layout.native = captureCompactLayout(party, frames) or layout.native
     end
+    if not layout.native then return end
     local mapping = {}
     if enabled then
         local tanks, healers, others = {}, {}, {}
