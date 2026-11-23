@@ -2,6 +2,8 @@
 
 ## 1.0.36.9
 
+- bugfix: Reduce blocked-action popups when clicking quest items in the tracker. Zone grouping, folding, and Compact view stay available while tracking those quests.
+- bugfix: Fix a recurring Lua error when party frames show buffs such as Strength of Earth.
 - bugfix: Keep the tank and healer in separate raid-style party slots when the group layout refreshes.
 
 ## 1.0.36.8
