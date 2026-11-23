@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36.6
+
+- bugfix: Keep Blizzard's quest tracker layout while you're tracking a quest with a usable item to help prevent blocked-action popups. Zone grouping returns when you stop tracking the item quest.
+
 ## 1.0.36.5
 
 - Removed the separate **Watched quests** window and its `/vv tracker scroll` command.

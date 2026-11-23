@@ -313,13 +313,8 @@ end
 assert(loadfile("Modules/QuestTracker/QuestTrackerOrganizer.lua"))("VanillaVarnish", vv)
 assert(loadfile("Modules/QuestTracker/Settings.lua"))("VanillaVarnish", vv)
 local events = MockFrames[#MockFrames]
-local mawReads, restrictedMaw = 0, false
-C_Secrets = {ShouldAurasBeSecret = function() return restrictedMaw end}
-ShouldShowMawBuffs = function(value)
-    mawReads = mawReads + 1
-    assert(not restrictedMaw, "native MAW query cannot read restricted auras")
-    return value, "native result"
-end
+local nativeMawQuery = function() return false end
+ShouldShowMawBuffs = nativeMawQuery
 events.callback(events, "PLAYER_LOGIN")
 addon.SetOption("hideCollapsedBackground", true)
 container:SetCollapsed(true)
@@ -328,19 +323,9 @@ container:SetCollapsed(false)
 equal(container.NineSlice:GetAlpha(), 0.45, "expansion restores opacity before module assignment")
 addon.SetOption("hideCollapsedBackground", false)
 native:SetContainer(container)
-local guardedMawQuery = ShouldShowMawBuffs
-local shown, result = ShouldShowMawBuffs(true)
-equal(shown, true, "unrestricted MAW visibility is preserved")
-equal(result, "native result", "native query return values are preserved")
-restrictedMaw = true
-equal(ShouldShowMawBuffs(), false, "restricted scenario layout skips MAW buffs")
-equal(mawReads, 1, "restricted Edit Mode query never calls the aura reader")
+equal(ShouldShowMawBuffs, nativeMawQuery, "tracker installation leaves the shared native aura query intact")
 events.callback(events, "ADDON_LOADED", "Blizzard_MawBuffs")
-equal(ShouldShowMawBuffs, guardedMawQuery, "later addon events do not stack query wrappers")
-restrictedMaw = false
-equal(ShouldShowMawBuffs(false), false, "native queries resume when restrictions lift")
-equal(mawReads, 2, "unrestricted query resumes native reads")
-C_Secrets = nil
+equal(ShouldShowMawBuffs, nativeMawQuery, "later addon events leave the native query intact")
 equal(vv.db.questTracker.completedSort, "off", "completion sorting defaults off")
 equal(registeredCategory.name, "Quest tracker", "settings category title")
 equal(addon.optionControls.enabled:GetChecked(), true, "grouping checkbox defaults on")
@@ -529,6 +514,17 @@ equal(heads[2]:IsShown(), true, "native rebuild restores zone heading before nex
 equal(native:GetHeight(), collapsedHeight, "native rebuild restores grouped height before next frame")
 RunMockTimers()
 equal(native:GetHeight(), collapsedHeight, "stale queued refresh does not change grouped height")
+local itemInfo, logIndexForQuest = GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID
+C_QuestLog.GetLogIndexForQuestID = function(id) return id end
+GetQuestLogSpecialItemInfo = function(id) if id == blocks[1].id then return "quest item link" end end
+container:Update()
+equal(blocks[1].ItemButton:IsShown(), true, "watching an item restores its native button even in a folded zone")
+equal(heads[2]:IsShown(), false, "item quests keep the native anchor chain")
+equal(native:GetHeight(), native.contentsHeight, "item quests retain native height")
+GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID = itemInfo, logIndexForQuest
+container:Update()
+equal(blocks[1].ItemButton:IsShown(), false, "removing the item restores the saved fold")
+equal(heads[2]:IsShown(), true, "zone headings return when the item is removed")
 heads[2].Icon.scripts.OnClick(heads[2].Icon, "LeftButton"); RunMockTimers()
 equal(blocks[1]:IsShown(), true, "plus icon expands zone")
 equal(heads[2].Icon.normalTexture:match("Minus$"), "Minus", "expanded icon shows minus")
