@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36.8
+
+- bugfix: Fix a recurring Lua error when party frames show buffs such as Strength of Earth.
+
 ## 1.0.36.7
 
 - bugfix: Keep zone grouping and Compact view available for quests with usable items. Blizzard handles item-button updates to help prevent blocked-action popups.

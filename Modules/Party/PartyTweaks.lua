@@ -51,6 +51,7 @@ end
 
 local function readable(value)
     if not secret(value) then return value end
+    return nil -- Callers such as type() need one result even for a secret value.
 end
 
 local function attempt(fn, ...)
