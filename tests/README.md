@@ -8,7 +8,7 @@ Review regressions also cover late nameplate removal after frame reuse, forbidde
 
 Tracker checks include native slide-anchor updates without quest events, preserving grouped positions before the next frame, folded quest visibility, combat deferral, and native animation placement when grouping is disabled.
 
-Quest-change checks render an empty native watch list, then deliver acceptance, turn-in, removal, watch, and world-entry events. The native dirty runner must rebuild missing rows without a reload, coalesce event bursts, defer combat requests, and stop requesting updates when the module is disabled. The fixture also checks that an item quest suppresses the addon's extra refresh. Live quest-item clicks and aura security still require an in-game check.
+Quest-change checks begin with an empty native watch list, deliver addon events, and then simulate Blizzard's own rebuild after an item quest appears. The fixture rejects addon calls to the native dirty runner and checks that grouping, folds, and Compact view still work on the item row. Live quest-item clicks and aura security still require an in-game check.
 
 Tracker button checks include native artwork larger than its clickable frame, normal/pressed/hover circles, proportional ellipsis and question marks, larger completion/selection atlases, centered compact headings, repeated native style updates, module restoration, pooled buttons used by another owner, and protected-marker combat deferral. The native click handlers and hit frames remain unchanged. Confirm the visible circle edges and hover/selection effects in game; texture dimensions do not emulate atlas transparency.
 

@@ -1,5 +1,5 @@
--- Quest changes can arrive after the native tracker has rendered an empty
--- watch list. A cosmetic relayout alone cannot recreate those missing blocks.
+-- Native quest events rebuild the rows. Addon events and settings must
+-- only arrange the result, even while an item quest is entering the tracker.
 local vv, native, container = VV_TEST_NS, QuestObjectiveTracker, ObjectiveTrackerFrame
 local addon, events = vv.QuestTracker
 for _, frame in ipairs(MockFrames) do
@@ -13,65 +13,47 @@ local function count()
     while block do total, block = total + 1, block.nextBlock end
     return total
 end
-local originalCount, originalMarkDirty = C_QuestLog.GetNumQuestWatches, native.MarkDirty
-local originalCombat, requests = InCombatLockdown, 0
-function native:MarkDirty()
-    originalMarkDirty(self) -- Also asserts that requests cross the secure boundary.
-    requests = requests + 1
-    C_Timer.After(0, function() container:Update() end)
-end
-local function emptyThenChange(event)
-    C_QuestLog.GetNumQuestWatches = function() return 0 end
-    container:Update(); RunMockTimers()
-    check(count() == 0, "native pass reproduces an empty tracker")
-    C_QuestLog.GetNumQuestWatches = originalCount
-    events.callback(events, event)
-end
-emptyThenChange("QUEST_ACCEPTED")
+
+container:SetCollapsed(false)
+local originalCount = C_QuestLog.GetNumQuestWatches
+C_QuestLog.GetNumQuestWatches = function() return 0 end
+native:Update(); RunMockTimers()
+check(count() == 0, "native tracker can start with an empty watch list")
+C_QuestLog.GetNumQuestWatches = originalCount
+
+events.callback(events, "QUEST_ACCEPTED")
 events.callback(events, "QUEST_LOG_UPDATE")
+RunMockTimers()
+check(count() == 0, "addon quest events do not trigger a rebuild before the item watch arrives")
+
+local itemInfo, logIndexForQuest = GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID
+C_QuestLog.GetLogIndexForQuestID = function(id) return id end
+GetQuestLogSpecialItemInfo = function(index) if index == 1 then return "quest item link" end end
+-- The game can run a captured container callback that bypasses its Update
+-- post-hook. The module's Update post-hook still arranges the rebuilt rows.
+C_Timer.After(0, function() native:Update() end)
 events.callback(events, "QUEST_WATCH_LIST_CHANGED")
 RunMockTimers()
-check(requests == 1, "quest-change burst requests one fresh native quest pass")
-RunMockTimers()
-check(count() == originalCount() and native.firstBlock:IsShown(), "watched quests return without a reload")
-for _, event in ipairs({"QUEST_TURNED_IN", "QUEST_REMOVED", "QUEST_WATCH_UPDATE", "PLAYER_ENTERING_WORLD"}) do
-    check(events.events[event], "refresh event is registered: " .. event)
-    local before = requests
-    emptyThenChange(event); RunMockTimers(); RunMockTimers()
-    check(requests == before + 1 and count() == originalCount(), "fresh native rows recover after " .. event)
-end
-local before = requests
+local block = native:GetExistingBlock(1)
+check(count() == originalCount() and block.ItemButton:IsShown(), "the native update supplies the item row and button")
+local heading
+for _, frame in ipairs(MockFrames) do if frame.zone == "Westfall" then heading = frame; break end end
+check(heading and heading:IsShown(), "item quests keep grouped headings")
+local itemClick = block.ItemButton:GetScript("OnClick")
+addon.SetAllZonesCollapsed(true); RunMockTimers()
+check(not block.ItemButton:IsShown(), "grouping can still fold the item row")
+addon.SetAllZonesCollapsed(false); RunMockTimers()
+check(block.ItemButton:IsShown() and block.ItemButton:GetScript("OnClick") == itemClick,
+    "expanding restores the same native item button and click handler")
+addon.SetOption("compact", true); RunMockTimers()
+check(heading:IsShown() and block.HeaderText.size == 10.5, "compact view still works with item quests")
+addon.SetOption("compact", false); RunMockTimers()
+
+local originalCombat = InCombatLockdown
 InCombatLockdown = function() return true end
 events.callback(events, "QUEST_LOG_UPDATE"); RunMockTimers()
-check(requests == before, "native refresh request waits during combat")
 InCombatLockdown = originalCombat
-events.callback(events, "PLAYER_REGEN_ENABLED"); RunMockTimers(); RunMockTimers()
-check(requests == before + 1, "pending quest refresh runs after combat")
-local restricted = true
-C_Secrets = {ShouldAurasBeSecret = function() return restricted end}
-before = requests
-emptyThenChange("QUEST_ACCEPTED"); RunMockTimers()
-check(requests == before, "quest refresh waits for aura access even outside combat")
-events.callback(events, "ADDON_RESTRICTION_STATE_CHANGED")
-restricted = false
-RunMockTimers(); RunMockTimers()
-check(requests == before + 1 and count() == originalCount(), "quest refresh resumes after aura restrictions lift")
-C_Secrets = nil
-local specialItemInfo, logIndexForQuest = GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID
-C_QuestLog.GetLogIndexForQuestID = function(id) return id end
-GetQuestLogSpecialItemInfo = function() return "quest item link" end
-before = requests
-events.callback(events, "QUEST_LOG_UPDATE"); RunMockTimers()
-check(requests == before, "Blizzard owns rebuilds while a quest item is watched")
-GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID = specialItemInfo, logIndexForQuest
-vv.SetModuleEnabled("questTracker", false); RunMockTimers(); RunMockTimers()
-before = requests
-events.callback(events, "QUEST_LOG_UPDATE"); RunMockTimers(); RunMockTimers()
-check(requests == before, "disabled module leaves native quest events alone")
-vv.SetModuleEnabled("questTracker", true); RunMockTimers(); RunMockTimers()
-before = requests
-addon.RefreshModule(); container:Update(); RunMockTimers(); RunMockTimers()
-check(requests == before, "native posthooks do not request another native update")
-native.MarkDirty = originalMarkDirty
+events.callback(events, "PLAYER_REGEN_ENABLED"); RunMockTimers()
+GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID = itemInfo, logIndexForQuest
 container:Update(); RunMockTimers()
-print("PASS: " .. checks .. " quest-change refresh, missing-row recovery, coalescing, combat, and module checks")
+print("PASS: " .. checks .. " native quest refresh, item grouping, folding, and compact view checks")

@@ -8,7 +8,6 @@ local COMPACT_SCALE, COMPACT_FONT_REDUCTION = 0.9, 1.5
 local MARKER_CIRCLE_FILL = 24 / 32
 local eventFrame = CreateFrame("Frame")
 local queued = false
-local nativeRefreshPending, nativeRefreshQueued = false, false
 local snapshots, titles = {}, {}
 local originalFonts = setmetatable({}, { __mode = "k" })
 local hookedBlocks = setmetatable({}, { __mode = "k" })
@@ -22,31 +21,6 @@ local function QueueLayout()
     if not tracker or queued then return end
     queued = true
     C_Timer.After(0, function() if queued then ApplyLayout() end end)
-end
-
-local function RequestNativeRefresh()
-    -- Skip this extra quest-module refresh when a rebuild would write
-    -- the native item button's protected click data.
-    if addon.HasWatchedQuestItem() then nativeRefreshPending = false; return end
-    -- The quest module schedules a shared tracker update, which also reads
-    -- player auras through ScenarioObjectiveTracker.
-    nativeRefreshPending = VV.AurasRestricted() == true
-    if not nativeRefreshPending then securecallfunction(tracker.MarkDirty, tracker) end
-end
-
-local function QueueNativeRefresh()
-    if not tracker or not VV.IsModuleEnabled("questTracker") then return end
-    nativeRefreshPending = true
-    if nativeRefreshQueued then return end
-    nativeRefreshQueued = true
-    C_Timer.After(0, function()
-        nativeRefreshQueued = false
-        if not VV.IsModuleEnabled("questTracker") then nativeRefreshPending = false; return end
-        if InCombatLockdown() then return end
-        -- Let quest/watch events settle before asking Blizzard to rebuild.
-        -- A relayout of existing frames cannot recover a missing quest row.
-        RequestNativeRefresh()
-    end)
 end
 
 local function Print(message)
@@ -303,10 +277,7 @@ ApplyLayout = function()
     if not tracker or not db then return end
     if InCombatLockdown() and not CanLayoutInCombat() then return end
     RestoreLayout()
-    -- Native item buttons are anchored to their quest rows. Leave the
-    -- complete anchor chain in Blizzard's layout while those items are watched.
-    if not (displayEnabled or displayCompact) or not tracker:IsShown() or tracker:IsCollapsed()
-        or addon.HasWatchedQuestItem() then
+    if not (displayEnabled or displayCompact) or not tracker:IsShown() or tracker:IsCollapsed() then
         return
     end
 
@@ -432,7 +403,6 @@ Refresh = function(immediate)
         displayEnabled = enabled
         displayCompact = compact
         for region in pairs(originalFonts) do SizeFont(region, displayEnabled, displayCompact) end
-        RequestNativeRefresh()
     end
     -- Native post-hooks finish before the game can draw this frame. Apply here
     -- so restoring/rebuilding native blocks never leaves an ungrouped frame on
@@ -470,6 +440,8 @@ local function TryInstall()
     hooksecurefunc(module, "BeginLayout", function()
         if not InCombatLockdown() or CanRestoreInCombat() then RestoreLayout() end
     end)
+    -- Blizzard's events own the rebuild. MarkDirty from addon code can taint
+    -- its shared update, which writes the native item button's click attributes.
     hooksecurefunc(module, "Update", function() Refresh(true) end)
     if module.parentContainer then
         hooksecurefunc(module.parentContainer, "Update", function() Refresh(true) end)
@@ -560,7 +532,7 @@ local questRefreshEvents = {
     QUEST_LOG_UPDATE = true, QUEST_WATCH_UPDATE = true, QUEST_WATCH_LIST_CHANGED = true,
 }
 for event in pairs(questRefreshEvents) do eventFrame:RegisterEvent(event) end
-for _, event in ipairs({ "PLAYER_LOGIN", "ADDON_LOADED", "PLAYER_REGEN_ENABLED", "ADDON_RESTRICTION_STATE_CHANGED" }) do
+for _, event in ipairs({ "PLAYER_LOGIN", "ADDON_LOADED", "PLAYER_REGEN_ENABLED" }) do
     eventFrame:RegisterEvent(event)
 end
 eventFrame:SetScript("OnEvent", function(_, event)
@@ -570,8 +542,6 @@ eventFrame:SetScript("OnEvent", function(_, event)
         if event == "PLAYER_LOGIN" then Print("Waiting for the native quest tracker. /vv tracker status shows diagnostics.") end
         return
     end
-    if questRefreshEvents[event] or (nativeRefreshPending
-        and (event == "PLAYER_REGEN_ENABLED" or event == "ADDON_RESTRICTION_STATE_CHANGED")) then QueueNativeRefresh() end
     Refresh()
 end)
 

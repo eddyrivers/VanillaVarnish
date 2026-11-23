@@ -8,7 +8,7 @@ assert(loadfile("tests/tracker/native_ui_mock.lua"))()
 local addon, combat = {}, false
 local vv = VV_TEST_NS
 vv.QuestTracker = addon
-local inSecureCall, dirty = false, 0
+local inSecureCall = false
 InCombatLockdown = function() return combat end
 issecretvalue = function() error("secret capability must not gate native grouping") end
 DEFAULT_CHAT_FRAME = { AddMessage = function() end }
@@ -212,8 +212,7 @@ function native:IsCollapsed() return self.isCollapsed end
 function native:SetContainer(frame) self.parentContainer = frame; self:SetParent(frame) end
 function native:GetContentsHeight() return self.contentsHeight end
 function native:MarkDirty()
-    assert(inSecureCall, "MarkDirty must run through Blizzard's security boundary")
-    dirty = dirty + 1
+    error("addon code must leave native dirty state alone")
 end
 function native:GetExistingBlock(id) return blocks[id] end
 function native:GetBlock(id)
@@ -514,17 +513,6 @@ equal(heads[2]:IsShown(), true, "native rebuild restores zone heading before nex
 equal(native:GetHeight(), collapsedHeight, "native rebuild restores grouped height before next frame")
 RunMockTimers()
 equal(native:GetHeight(), collapsedHeight, "stale queued refresh does not change grouped height")
-local itemInfo, logIndexForQuest = GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID
-C_QuestLog.GetLogIndexForQuestID = function(id) return id end
-GetQuestLogSpecialItemInfo = function(id) if id == blocks[1].id then return "quest item link" end end
-container:Update()
-equal(blocks[1].ItemButton:IsShown(), true, "watching an item restores its native button even in a folded zone")
-equal(heads[2]:IsShown(), false, "item quests keep the native anchor chain")
-equal(native:GetHeight(), native.contentsHeight, "item quests retain native height")
-GetQuestLogSpecialItemInfo, C_QuestLog.GetLogIndexForQuestID = itemInfo, logIndexForQuest
-container:Update()
-equal(blocks[1].ItemButton:IsShown(), false, "removing the item restores the saved fold")
-equal(heads[2]:IsShown(), true, "zone headings return when the item is removed")
 heads[2].Icon.scripts.OnClick(heads[2].Icon, "LeftButton"); RunMockTimers()
 equal(blocks[1]:IsShown(), true, "plus icon expands zone")
 equal(heads[2].Icon.normalTexture:match("Minus$"), "Minus", "expanded icon shows minus")
@@ -588,14 +576,12 @@ equal(blocks[4]:IsShown(), false, "tracker zone menu collapses the other zone")
 menu.buttons[3].callback(); RunMockTimers()
 equal(blocks[1]:IsShown(), true, "tracker zone menu expands the first zone")
 equal(blocks[4]:IsShown(), true, "tracker zone menu expands the other zone")
-local beforeToggleDirty = dirty
 VV_TEST_NS.QuestTracker.HandleSlash("group off"); RunMockTimers()
 equal(native:GetHeight(), nativeHeight, "off restores native frame height")
 equal(blocks[1].HeaderText:GetText(), "Low", "off restores native title")
 equal(blocks[1].HeaderText.size, 14, "off restores native title font")
 equal(heads[1]:IsShown(), false, "off removes headings")
 equal(blocks[1]:IsShown(), true, "off restores native visibility")
-equal(dirty, beforeToggleDirty + 1, "off requests native refresh securely")
 native:AdjustSlideAnchor(-30)
 equal(top(native.firstBlock), -40, "grouping off preserves native slide positioning")
 VV_TEST_NS.QuestTracker.HandleSlash("group on")
@@ -612,7 +598,6 @@ combat = false
 coreEvents.callback(coreEvents, "PLAYER_REGEN_ENABLED"); events.callback(events, "PLAYER_REGEN_ENABLED"); RunMockTimers()
 equal(blocks[4].HeaderText.size, 14, "combat off restores font after combat")
 equal(heads[1]:IsShown(), false, "combat off removes headings after combat")
-equal(dirty, beforeToggleDirty + 3, "deferred off requests native refresh securely")
 -- A freed/reused native block must not receive an old title on the next refresh.
 VV_TEST_NS.QuestTracker.HandleSlash("group on")
 native.availableHeight = 2000

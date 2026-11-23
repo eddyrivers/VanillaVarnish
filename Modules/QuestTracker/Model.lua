@@ -1,16 +1,6 @@
 local _, VV = ...
 local addon = VV.QuestTracker
 
-function addon.HasWatchedQuestItem()
-    if not GetQuestLogSpecialItemInfo then return false end
-    for index = 1, C_QuestLog.GetNumQuestWatches() do
-        local questID = C_QuestLog.GetQuestIDForQuestWatchIndex(index)
-        local logIndex = questID and C_QuestLog.GetLogIndexForQuestID(questID)
-        if logIndex and logIndex > 0 and GetQuestLogSpecialItemInfo(logIndex) then return true end
-    end
-    return false
-end
-
 -- Read the engine watch list without invoking native renderers/cache builders.
 function addon.ReadWatchGroups(completedSort)
     local metadata, watches = addon.ReadMetadata(), {}
