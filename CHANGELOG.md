@@ -2,7 +2,8 @@
 
 ## 1.0.36.10
 
-- bugfix: Keep portrait party frames where you saved them in Edit Mode and reduce shifting when combat starts or ends.
+- bugfix: Portrait party frames stay where you placed them after you save and close Edit Mode.
+- bugfix: Portrait party frames stay steadier when entering or leaving combat, whether your party grows up or down.
 
 ## 1.0.36.9
 
