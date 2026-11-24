@@ -2,7 +2,7 @@
 
 ## 1.0.36.11
 
-- bugfix: Portrait party frames hold their places when a party pet dies or is dismissed.
+- bugfix: Party members' portrait frames no longer jump when a pet dies or is dismissed, even with extra party buffs turned off.
 
 ## 1.0.36.10
 
