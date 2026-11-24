@@ -1044,13 +1044,25 @@ local function arrangeParty(party, nativeLayout)
     local gap = config.spacing or 4
     local top, bottom = party.topPadding or 0, party.bottomPadding or 0
     local left, height = party.leftPadding or 0, top + bottom
+    local ok, showPets
+    if GetCVarBool then ok, showPets = attempt(GetCVarBool, "showPartyPets") end
+    showPets = not ok or readable(showPets) ~= false
+    local extraBuffs = feature("buffs")
+    local petOwners, petClearance = {}, {}
     for index, member in ipairs(members) do
         if index > 1 then height = height + gap end
-        height = height + member:GetHeight()
-        -- Native pets extend below the original portrait frame when extra
-        -- buffs are disabled. Preserve that clearance without a blanket gap.
-        if not feature("buffs") and member.PetFrame and readable(member.PetFrame:IsShown()) == true then height = height + 16 end
+        local unit = memberUnit(member)
+        local owner = memberGUID(unit) or unit or member
+        -- Keep space for a pet already seen in this roster when its frame
+        -- hides on death or dismissal. Don't carry it over to a new owner.
+        if showPets and member.PetFrame and (readable(member.PetFrame:IsShown()) == true
+            or (layout.petOwners and layout.petOwners[owner])) then
+            petOwners[owner] = true
+        end
+        petClearance[member] = not extraBuffs and petOwners[owner] and 16 or 0
+        height = height + member:GetHeight() + petClearance[member]
     end
+    layout.petOwners = petOwners
     local anchor = layout.anchor[1]
     if not editing and (config.growUp or customAnchor) and #members > 0 and anchor and #layout.anchor == 1 then
         local point, relative, relativePoint, x, y = unpack(anchor, 1, 5)
@@ -1079,7 +1091,7 @@ local function arrangeParty(party, nativeLayout)
     local desired = {}
     local changed = false
     for _, member in ipairs(members) do
-        local petHeight = not feature("buffs") and member.PetFrame and readable(member.PetFrame:IsShown()) == true and 16 or 0
+        local petHeight = petClearance[member]
         local anchors = {{edge, party, edge, left, config.growUp and offset + petHeight or -offset}}
         desired[member] = anchors
         if not samePoints(points(member), anchors) then setPoints(member, anchors) end

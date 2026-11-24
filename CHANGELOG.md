@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36.11
+
+- bugfix: Portrait party frames hold their places when a party pet dies or is dismissed.
+
 ## 1.0.36.10
 
 - bugfix: Portrait party frames stay where you placed them after you save and close Edit Mode.

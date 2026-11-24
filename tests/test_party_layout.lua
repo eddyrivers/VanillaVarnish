@@ -193,14 +193,39 @@ vv.Party.HandleSlash("spacing 6")
 vv.Party.HandleSlash("grow down")
 check(vv.db.party.spacing == 6 and not vv.db.party.growUp, "Slash commands configure spacing and direction")
 vv.Party.SetOption("buffs", false)
+local originalGUID, petOwnerGUID = UnitGUID, "pet-owner"
+function UnitGUID(unit)
+    if unit == "party1" then return petOwnerGUID end
+    if originalGUID then return originalGUID(unit) end
+end
 members[1].PetFrame:SetSize(64, 23)
 members[1].PetFrame:SetPoint("TOPLEFT", members[1], "TOPLEFT", 23, -43)
 members[1].PetFrame.GetTop, members[1].PetFrame.GetBottom = top, bottom
 members[1].PetFrame:Show()
 Mock.Event("UNIT_PET", "party1")
 check(near(bottom(members[1]) - top(members[2]), 22), "Native pet clearance is added only where it is needed")
+local petLayoutHeight, secondTop = PartyFrame:GetHeight(), top(members[2])
+members[1].PetFrame:Hide()
+PartyFrame:UpdatePartyMemberBackground()
+Mock.Event("UNIT_PET", "party1")
+check(near(PartyFrame:GetHeight(), petLayoutHeight) and near(top(members[2]), secondTop),
+    "Losing a pet does not shift members in a downward party")
+members[1].PetFrame:Show()
+Mock.Event("UNIT_PET", "party1")
 vv.Party.SetOption("growUp", true)
 check(bottom(members[1].PetFrame) >= bottom(PartyFrame), "Upward growth keeps a bottom member's pet inside the container")
+petLayoutHeight, secondTop = PartyFrame:GetHeight(), top(members[2])
+members[1].PetFrame:Hide()
+Mock.combat = true
+Mock.Event("UNIT_PET", "party1")
+Mock.combat = false
+Mock.Event("PLAYER_REGEN_ENABLED")
+check(near(PartyFrame:GetHeight(), petLayoutHeight) and near(top(members[2]), secondTop),
+    "Losing a pet in combat does not shift members after combat")
+petOwnerGUID = "replacement"
+Mock.Event("GROUP_ROSTER_UPDATE")
+check(near(PartyFrame:GetHeight(), petLayoutHeight - 16), "A new member does not inherit the pet gap")
+UnitGUID = originalGUID
 vv.Party.SetOption("buffs", true)
 PartyFrame.scale = 1.8
 Mock.Event("EDIT_MODE_LAYOUTS_UPDATED")
