@@ -373,4 +373,35 @@ Mock.Event("EDIT_MODE_LAYOUTS_UPDATED")
 Mock.Tick(2)
 check(party.point[1] == "BOTTOMLEFT", "Leaving Edit Mode restores upward growth at the new position")
 cleanEditState("Edit Mode exit, layout events, and polling preserve native snap and dirty state")
+
+-- A native refresh can reanchor the live frame even after Edit Mode saves
+-- the custom point. The saved offsets are in scale-1 coordinates.
+editing = true
+party:ClearAllPoints()
+party:SetPoint("LEFT", UIParent, "LEFT", 180, -110)
+party.systemInfo = {anchorInfo = {
+    point = "LEFT", relativeTo = "UIParent", relativePoint = "LEFT",
+    offsetX = 180 * editScale, offsetY = -110 * editScale,
+}}
+local savedTop, savedBottom = top(party), bottom(party)
+Mock.EditModeEvent("EditMode.SavedLayouts")
+editing = false
+party:ClearAllPoints()
+party:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
+anchorWrites, EditModeManagerFrame.editModeSystemAnchorDirty = 0, nil
+Mock.EditModeEvent("EditMode.Exit")
+Mock.Event("EDIT_MODE_LAYOUTS_UPDATED")
+check(near(bottom(party), savedBottom) and near(party.point[4], 180),
+    "Closing Edit Mode restores the saved custom bottom after a native reanchor")
+cleanEditState("Restoring the custom position preserves Edit Mode bookkeeping")
+vv.Party.SetOption("growUp", false)
+check(party.point[1] == "TOPLEFT" and near(top(party), savedTop),
+    "Downward growth uses the saved top even for a center-height Edit Mode point")
+Mock.combat = true
+Mock.Event("PLAYER_REGEN_DISABLED")
+check(near(top(party), savedTop), "Entering combat keeps the downward party top fixed")
+Mock.combat = false
+vv.Party.SetOption("spacing", 18)
+Mock.Event("PLAYER_REGEN_ENABLED")
+check(near(top(party), savedTop), "A height change at combat exit keeps the downward party top fixed")
 NST_PARTY_LAYOUT_CHECKS = checks

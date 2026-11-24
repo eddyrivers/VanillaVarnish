@@ -699,6 +699,18 @@ local function partyIsDragging(party)
     return party and party.IsEditModeDragging and party:IsEditModeDragging()
 end
 
+local function editModeAnchor(party)
+    local system = party.systemInfo
+    local anchor = system and system.anchorInfo
+    if not anchor or system.anchorInfo2 or system.isInDefaultPosition then return end
+    local relative = anchor.relativeTo
+    if type(relative) == "string" then relative = _G[relative] end
+    if not relative or type(anchor.point) ~= "string" or type(anchor.relativePoint) ~= "string"
+        or type(anchor.offsetX) ~= "number" or type(anchor.offsetY) ~= "number" then return end
+    local scale = party:GetScale()
+    return {{anchor.point, relative, anchor.relativePoint, anchor.offsetX / scale, anchor.offsetY / scale}}
+end
+
 local function memberGUID(unit)
     if unit and UnitGUID then
         local ok, value = attempt(UnitGUID, unit)
@@ -986,7 +998,14 @@ local function arrangeParty(party, nativeLayout)
     local current = points(party)
     -- Edit Mode can move the container after our last arrangement. Keep that
     -- new position as the restore point instead of snapping to an old layout.
-    if not layout.anchor or not layout.appliedAnchor or not samePoints(current, layout.appliedAnchor) then
+    local customAnchor = not editing and editModeAnchor(party)
+    if customAnchor then
+        -- Layout refreshes can replace the live point. Edit Mode's active
+        -- layout still owns the user's custom position.
+        if not layout.anchor or not samePoints(customAnchor, layout.anchor) then
+            layout.anchor, layout.anchorHeight = customAnchor, party:GetHeight()
+        end
+    elseif not layout.anchor or not layout.appliedAnchor or not samePoints(current, layout.appliedAnchor) then
         layout.anchor, layout.anchorHeight = current, party:GetHeight()
     end
     if nativeLayout or not layout.height or not layout.applied then
@@ -1033,14 +1052,16 @@ local function arrangeParty(party, nativeLayout)
         if not feature("buffs") and member.PetFrame and readable(member.PetFrame:IsShown()) == true then height = height + 16 end
     end
     local anchor = layout.anchor[1]
-    if not editing and config.growUp and #members > 0 and anchor and #layout.anchor == 1 then
+    if not editing and (config.growUp or customAnchor) and #members > 0 and anchor and #layout.anchor == 1 then
         local point, relative, relativePoint, x, y = unpack(anchor, 1, 5)
         if type(point) == "string" and type(readable(y)) == "number" then
             local factor = point:find("TOP", 1, true) and 1 or point:find("BOTTOM", 1, true) and 0 or 0.5
-            local bottomPoint = point:find("RIGHT", 1, true) and "BOTTOMRIGHT"
-                or point:find("LEFT", 1, true) and "BOTTOMLEFT" or "BOTTOM"
+            local edge = config.growUp and "BOTTOM" or "TOP"
+            local suffix = point:find("RIGHT", 1, true) and "RIGHT"
+                or point:find("LEFT", 1, true) and "LEFT" or ""
             local referenceHeight = growthAnchorHeight(party, anchor, layout.anchorHeight)
-            local grown = {{bottomPoint, relative, relativePoint, x, y - referenceHeight * factor}}
+            local grown = {{edge .. suffix, relative, relativePoint, x,
+                y + referenceHeight * (config.growUp and -factor or (1 - factor))}}
             if not samePoints(current, grown) then
                 setPoints(party, grown)
                 current = points(party)
@@ -1281,13 +1302,14 @@ end
 
 if EventRegistry and EventRegistry.RegisterCallback then
     EventRegistry:RegisterCallback("EditMode.SavedLayouts", function()
-        if InCombatLockdown() or not ready or not VV.IsModuleEnabled("party") or not VV.db.party.growUp or raidStyle() then return end
+        if InCombatLockdown() or not ready or not VV.IsModuleEnabled("party") or raidStyle() then return end
         local party = _G.PartyFrame
         local layout = party and partyLayouts[party]
         if not layout then return end
         local current = points(party)
-        if #current == 1 and (not layout.appliedAnchor or not samePoints(current, layout.appliedAnchor)) then
-            growthAnchorHeight(party, current[1], party:GetHeight())
+        local saved = editModeAnchor(party) or current
+        if #saved == 1 and (not layout.appliedAnchor or not samePoints(current, layout.appliedAnchor)) then
+            growthAnchorHeight(party, saved[1], party:GetHeight())
         end
     end, addon)
     EventRegistry:RegisterCallback("EditMode.Exit", queueRefresh, addon)

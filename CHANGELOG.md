@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36.10
+
+- bugfix: Keep portrait party frames where you saved them in Edit Mode and reduce shifting when combat starts or ends.
+
 ## 1.0.36.9
 
 - bugfix: Reduce blocked-action popups when clicking quest items in the tracker. Zone grouping, folding, and Compact view stay available while tracking those quests.
