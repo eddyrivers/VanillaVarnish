@@ -83,6 +83,10 @@ function VV.InitDB()
     local spacing = db.party.spacing
     if type(spacing) ~= "number" or spacing ~= spacing or spacing < 0 or spacing > 40 then spacing = 4 end
     db.party.spacing = math.floor(spacing + 0.5)
+    if VV.CursorRing then
+        if type(db.cursorRing) ~= "table" then db.cursorRing = {} end
+        VV.CursorRing.Normalize(db.cursorRing)
+    end
     db.schemaVersion = 1
     VV.conflicts = {}
     for key, name in pairs(legacy) do
@@ -129,6 +133,7 @@ function VV.OpenOptions(page)
     if page == "tooltips" then VV.Tooltips.OpenOptions(); return end
     VV.OpenSettingsCategory(page == "party" and VV.partyCategory
         or page == "profiles" and VV.profilesCategory
+        or page == "cursor" and VV.cursorRingCategory
         or page == "groupBrowser" and VV.groupBrowserCategory or VV.rootCategory)
 end
 
@@ -149,6 +154,7 @@ SlashCmdList.VANILLAVARNISH = function(message)
     if command == "" or command == "options" or command == "settings" then VV.OpenOptions(); return end
     if command == "status" then Status(); return end
     if command == "profiles" or command == "presets" then VV.OpenOptions("profiles"); return end
+    if command == "cursor" then VV.OpenOptions("cursor"); return end
     if command == "questlog" then VV.OpenOptions("questLog"); return end
     if command == "groupbrowser" or command == "lfg" then VV.OpenOptions("groupBrowser"); return end
     if key then
@@ -163,7 +169,7 @@ SlashCmdList.VANILLAVARNISH = function(message)
         end
         return
     end
-    VV.Print("/vv opens settings. /vv nameplates, /vv tracker, /vv questlog, /vv party, /vv tooltips, /vv groupbrowser open settings pages.")
+    VV.Print("/vv opens settings. /vv nameplates, /vv tracker, /vv questlog, /vv party, /vv tooltips, /vv groupbrowser, /vv cursor open settings pages.")
     VV.Print("/vv <module> on | off | toggle controls the whole module and preserves its feature settings.")
     VV.Print("/vv status shows module status. Use /vv <module> help for feature commands.")
 end
@@ -176,6 +182,7 @@ events:SetScript("OnEvent", function(_, event, name)
         if not VV.db then VV.InitDB() end
     elseif event == "PLAYER_LOGIN" then
         VV.RegisterOptions()
+        if VV.CursorRing then VV.CursorRing.Refresh() end
         VV.Print("Loaded. Type /vv to configure Nameplates, Quest tracker, Party frames, and Tooltips.")
         for _, key in ipairs(VV.moduleOrder) do
             if VV.conflicts[key] and VV.db.modules[key] then

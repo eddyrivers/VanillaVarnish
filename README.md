@@ -18,6 +18,7 @@ Open **Settings > AddOns > VanillaVarnish**, or type **`/vv`**. Active settings 
 | Quest tracker | Zone grouping, collapsible headings, completion sorting, and optional compact tracker and quest log views |
 | Party frames | Up to 16 buffs in two rows, larger player buffs and dispellable debuffs, class-colored health bars, and friendly-spell range fading |
 | Tooltips | Mouse following, configurable offsets, class/difficulty colors, immediate hover dismissal, and optional combat pause |
+| Cursor ring | Optional hollow cursor highlight with adjustable color, radius, and stroke width |
 | Group Browser | Two-line listing rows and optional player sorting by level, class, or role |
 
 **Nameplates:** choose damage and friendly range spells; unreadable range results keep normal opacity. Quest loot icons include a compact bundled pfQuest Vanilla baseline, so Questie and QuestieDB are optional. Native quest objectives still control progress and completion; native tooltips identify kill and other objectives. An installed drop database can fill quests absent from the baseline. No website-derived Forever overrides are included; changed or new Forever quests may need further coverage. Enable **Include your group's quest objectives** under **Nameplates > Quest icons** to include unfinished loot and kill needs from current party or raid members, even for quests you do not have. Group progress must be supplied by the game's mob tooltip. Swing timers and combo points share a live preview. Positive X moves right; positive Y moves down. Threat colors turn fighting enemies blue when you hold aggro as a tank, or when you avoid aggro as a damage dealer or healer. Enemies tagged by another group keep gray health bars even when your group gains aggro or the Threat colors option is off.
@@ -38,6 +39,8 @@ Click a zone heading to collapse or expand it, including in combat. Collapsing a
 
 **Tooltips:** item comparisons stay beside the main tooltip. Defaults are X `34`, Y `-6`; positive Y moves up. Combat pause uses the position saved in Edit Mode. Clicked chat links keep their usual placement.
 
+**Cursor ring.** Open `/vv cursor` and check **Show cursor ring**. The ring starts white with a dark outline and stays visible during combat. Its color, radius, and stroke width save per character.
+
 **Group Browser:** open `/vv groupbrowser` and check **Compressed view**. Each listing puts the character or leader name, level, class, and activity on the first line, with roles or group makeup alongside. The second line shows playstyle and the current zone when WoW provides them. Right-click the **Players** heading or use **Sort players by** in settings to choose default order, highest level first, class A–Z, or role with tanks first, then healers, then DPS. Sorting works in either layout. Both preferences save with profiles.
 
 ## Commands
@@ -50,6 +53,7 @@ All VanillaVarnish commands start with `/vv`.
 | `/vv profiles`, `/vv presets` | Open Profiles & Presets |
 | `/vv nameplates`, `/vv tracker`, `/vv party`, `/vv tooltips` | Open a module page |
 | `/vv questlog` | Open the separate Quest log settings page |
+| `/vv cursor` | Open Cursor ring settings |
 | `/vv groupbrowser`, `/vv lfg` | Open Group Browser settings |
 | `/vv <module> on`, `off`, or `toggle` | Enable or disable a whole module |
 | `/vv nameplates range`, `quests`, `swings`, `combo`, or `focus` | Open a nameplate feature page |

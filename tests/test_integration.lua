@@ -4,12 +4,59 @@ Mock.Event("PLAYER_LOGIN")
 assert(vv.Nameplates ~= vv.QuestTracker and vv.Party ~= vv.Nameplates)
 assert(vv.db.nameplates == vv.Nameplates.tweaksDB and vv.db.questTracker == vv.QuestTracker.db)
 assert(vv.Nameplates.db == vv.db.nameplates.swingTimers)
-assert(#Mock.categories == #vv.moduleOrder + 9 and Mock.categories[1].name == "VanillaVarnish")
+assert(#Mock.categories == #vv.moduleOrder + 10 and Mock.categories[1].name == "VanillaVarnish")
 assert(vv.QuestTracker.questLogOptionsCategory.name == "Quest log"
     and vv.QuestTracker.questLogOptionsCategory.parent == vv.rootCategory)
+assert(vv.cursorRingCategory.name == "Cursor ring")
 assert(vv.rootCategory.shouldSortAlphabetically)
 assert(table.concat(vv.moduleOrder, ",") == "nameplates,party,questTracker,tooltips")
 for index = 2, #Mock.categories do assert(Mock.categories[index].parent == vv.rootCategory) end
+do
+    local db = vv.db.cursorRing
+    assert(not db.enabled and db.radius == 22 and db.stroke == 3 and db.r == 1 and db.g == 1 and db.b == 1)
+    SlashCmdList.VANILLAVARNISH("cursor")
+    assert(vv.cursorRingCategory.frame:IsShown())
+    local x, y, looking = 500, 250, false
+    local oldCursor, oldLooking = GetCursorPosition, IsMouselooking
+    GetCursorPosition = function() return x, y end
+    IsMouselooking = function() return looking end
+    local createTexture = Mock.Object.CreateTexture
+    local layers = {}
+    Mock.Object.CreateTexture = function(self, name, layer)
+        local texture = createTexture(self, name, layer)
+        if self.strata == "TOOLTIP" then layers[layer] = texture end
+        return texture
+    end
+    local oldStrata = Mock.Object.SetFrameStrata
+    Mock.Object.SetFrameStrata = function(self, strata) self.strata = strata end
+    local button = vv.optionControls["cursorRing.enabled"].button
+    button:SetChecked(true)
+    button.scripts.OnClick(button)
+    local stroke = assert(layers.OVERLAY)
+    local ringFrame = stroke.parent
+    assert(ringFrame:IsShown() and ringFrame.mouse == false and stroke.mask)
+    assert(ringFrame.points[1][4] == 500 and ringFrame.points[1][5] == 250)
+    x = 680
+    UIParent:SetScale(0.5)
+    Mock.Tick(0.02)
+    assert(ringFrame.points[1][4] == 1360 and ringFrame.points[1][5] == 500)
+    looking = true
+    Mock.Tick(0.02)
+    assert(not stroke:IsShown() and not layers.ARTWORK:IsShown())
+    looking = false
+    Mock.Tick(0.02)
+    assert(stroke:IsShown() and layers.ARTWORK:IsShown())
+    vv.optionControls["cursorRing.radius"].slider:SetValue(40)
+    vv.optionControls["cursorRing.stroke"].slider:SetValue(8)
+    assert(db.radius == 40 and db.stroke == 8)
+    assert(stroke:GetWidth() == 80 * 128 / 124 and stroke.mask:GetWidth() == 64 * 128 / 124)
+    button:SetChecked(false)
+    button.scripts.OnClick(button)
+    assert(not ringFrame:IsShown() and db.radius == 40 and db.stroke == 8)
+    UIParent:SetScale(1)
+    GetCursorPosition, IsMouselooking = oldCursor, oldLooking
+    Mock.Object.CreateTexture, Mock.Object.SetFrameStrata = createTexture, oldStrata
+end
 local n = vv.Nameplates
 local plate = Mock.Plate("nameplate1")
 Mock.plates.target, Mock.units.target, Mock.units.nameplate1 = plate, true, true

@@ -329,6 +329,6 @@ end
 Mock.Event("PLAYER_LOGIN")
 assert(VV_TEST_NS.Nameplates.tweaksDB == VV_TEST_NS.db.nameplates)
 assert(VV_TEST_NS.Nameplates.db == VV_TEST_NS.db.nameplates.swingTimers)
-assert(#Mock.categories == #VV_TEST_NS.moduleOrder + 9)
+assert(#Mock.categories == #VV_TEST_NS.moduleOrder + 10)
 ''')
 print("PASS: modules disabled at startup can be enabled later; initialization is independent of event dispatch order")

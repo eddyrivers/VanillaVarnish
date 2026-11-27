@@ -220,5 +220,15 @@ function VV.RegisterOptions()
     VV.groupBrowserCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, browser, "Group Browser")
     Settings.RegisterAddOnCategory(VV.groupBrowserCategory)
     browser:SetScript("OnShow", VV.RefreshOptions)
+
+    if VV.CursorRing then
+        local cursor = CreateFrame("Frame", nil, UIParent)
+        cursor:Hide()
+        Heading(cursor, "Cursor ring", "Find your cursor amid combat effects and nameplates.")
+        VV.CursorRing.AddOptions(cursor, controls)
+        VV.cursorRingCategory = Settings.RegisterCanvasLayoutSubcategory(VV.rootCategory, cursor, "Cursor ring")
+        Settings.RegisterAddOnCategory(VV.cursorRingCategory)
+        cursor:SetScript("OnShow", VV.RefreshOptions)
+    end
     VV.RefreshOptions()
 end

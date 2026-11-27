@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.36.12
+
+- Find your cursor in busy fights with an optional hollow ring. Choose its color, radius, and stroke width in Cursor ring settings.
+
 ## 1.0.36.11
 
 - bugfix: Party members' portrait frames no longer jump when a pet dies or is dismissed, even with extra party buffs turned off.
